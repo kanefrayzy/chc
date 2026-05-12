@@ -3,100 +3,125 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RouletteColor } from '@/lib/api/roulette';
 import { ROULETTE_SLOTS } from '../constants';
+import { playTick, playWin, playSlow } from '@/lib/sound';
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Цвета и иконки секторов
+// Палитра секторов
 // ──────────────────────────────────────────────────────────────────────────────
-const COLORS: Record<RouletteColor, { base: string; hi: string; lo: string; label: string; icon: string }> = {
-  GREEN: { base: '#00ff88', hi: '#7cffc1', lo: '#00a85a', label: '#07090c', icon: '★' },
-  RED:   { base: '#ff3b5c', hi: '#ff7888', lo: '#b71b34', label: '#ffffff', icon: '♦' },
-  BLACK: { base: '#222a39', hi: '#3a4658', lo: '#0d1219', label: '#ffffff', icon: '♠' },
+const COLOR_FILL: Record<RouletteColor, string> = {
+  GREEN: '#00ff88',
+  RED:   '#ff3b5c',
+  BLACK: '#2a3344',
+};
+const COLOR_GLOW: Record<RouletteColor, string> = {
+  GREEN: 'rgba(0,255,136,0.65)',
+  RED:   'rgba(255,59,92,0.55)',
+  BLACK: 'rgba(60,75,100,0.45)',
 };
 
-const TOTAL = ROULETTE_SLOTS.length;       // 15
-const DEG_PER_SLOT = 360 / TOTAL;          // 24°
-const VB = 360;                            // viewBox size
+const TOTAL = ROULETTE_SLOTS.length;     // 15
+const DEG_PER_SLOT = 360 / TOTAL;        // 24°
+const VB = 360;
 const CX = VB / 2;
 const CY = VB / 2;
-const R_OUT = 174;                         // внешний радиус сектора
-const R_IN = 70;                           // внутренний радиус (ступица)
-const R_RIM = 178;                         // золотой ободок
+// Тонкое кольцо как на референсе
+const R_OUTER = 168;                     // внешняя кромка кольца
+const R_INNER = 138;                     // внутренняя кромка кольца
+const CELL_GAP_DEG = 4;                  // зазор между ячейками
+const CELL_SPAN_DEG = DEG_PER_SLOT - CELL_GAP_DEG; // 20° — сам цвет
 
 export interface RouletteWheelProps {
   winningSlot: number | null;
   status: 'BETTING' | 'ROLLING' | 'COMPLETED' | 'CANCELLED';
+  /** компактное содержимое в центре колеса (таймер/статус) */
+  center?: React.ReactNode;
 }
 
 /**
- * Премиальное круглое колесо рулетки.
- * - Золотой внешний ободок с заклёпками
- * - Сектора с радиальным градиентом (объём)
- * - Стрелка-указатель сверху с тенью
- * - Плавная анимация ease-out 5 секунд + bounce в конце
- * - При COMPLETED — снап к нужному слоту с подсветкой
+ * Колесо в виде тонкого кольца с маленькими цветными ячейками.
+ * Дизайн опирается на референс (Roobet-подобный круговой ринг):
+ *  - тёмная подложка кольца
+ *  - яркие ячейки с собственным glow
+ *  - небольшой пин-указатель сверху
+ *  - центр свободен под таймер/статус (`center`)
  */
-export function RouletteWheel({ winningSlot, status }: RouletteWheelProps): JSX.Element {
+export function RouletteWheel({ winningSlot, status, center }: RouletteWheelProps): JSX.Element {
   const [angleDeg, setAngleDeg] = useState(0);
-  const [isSpinning, setIsSpinning] = useState(false);
   const rafRef = useRef<number | null>(null);
   const prevStatus = useRef(status);
+  const lastTickSlot = useRef<number>(0);
+  const winSoundFired = useRef(false);
 
+  // ── анимация ───────────────────────────────────────────────────────────
   useEffect(() => {
+    const wasNotRolling = prevStatus.current !== 'ROLLING';
     const nowRolling = status === 'ROLLING';
     const nowCompleted = status === 'COMPLETED';
-    const wasNotRolling = prevStatus.current !== 'ROLLING';
 
-    // ── ROLLING: длинный спин с ease-out cubic ────────────────────────────
     if (wasNotRolling && nowRolling) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      setIsSpinning(true);
+      winSoundFired.current = false;
       const start = performance.now();
-      const dur = 5000;
+      const dur = 4200;
       const from = angleDeg;
-      // 7 полных оборотов + случайный фрагмент
-      const to = from + 360 * 7 + Math.random() * 360;
+      const to = from + 360 * 6 + Math.random() * 180;
+      lastTickSlot.current = Math.floor(((from % 360) + 360) % 360 / DEG_PER_SLOT);
+
       const tick = (now: number): void => {
         const t = Math.min((now - start) / dur, 1);
         const ease = 1 - Math.pow(1 - t, 3);
-        setAngleDeg(from + (to - from) * ease);
+        const cur = from + (to - from) * ease;
+        setAngleDeg(cur);
+
+        // звук-тик когда сектор проходит под стрелкой
+        const slotAt = Math.floor((((cur % 360) + 360) % 360) / DEG_PER_SLOT);
+        if (slotAt !== lastTickSlot.current) {
+          lastTickSlot.current = slotAt;
+          playTick();
+        }
         if (t < 1) rafRef.current = requestAnimationFrame(tick);
-        else setIsSpinning(false);
+        else playSlow();
       };
       rafRef.current = requestAnimationFrame(tick);
     }
 
-    // ── COMPLETED: снап к выигрышному слоту ───────────────────────────────
     if (nowCompleted && winningSlot !== null) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      setIsSpinning(true);
-
-      // Центр сектора winningSlot в собственной системе колеса:
-      //   slotCenter = (winningSlot + 0.5) * DEG_PER_SLOT
-      // Стрелка указывает на угол -90° (вверх).
-      // Угол поворота колеса α должен удовлетворять:
-      //   (slotCenter + α) mod 360 = 270  (= -90 + 360)
+      // Сектор i центрирован в локальной системе в (i+0.5)*24 - 90 (от +x, CW в SVG).
+      // Под стрелкой (вверх) — экранный угол 270°. Значит:
+      //   α ≡ 360 - (i+0.5)*24  (mod 360)
       const slotCenter = (winningSlot + 0.5) * DEG_PER_SLOT;
-      const desiredMod = (270 - slotCenter + 360) % 360;
+      const desiredMod = (360 - slotCenter + 360) % 360;
       const cur = angleDeg;
       const curMod = ((cur % 360) + 360) % 360;
-      // дельта вперёд (минимум полтора оборота для эффектности)
       let delta = desiredMod - curMod;
       if (delta < 0) delta += 360;
+      // полтора оборота для эффектности
       delta += 360 * 1.5;
 
       const start = performance.now();
-      const dur = 1400;
+      const dur = 1500;
       const from = cur;
       const to = cur + delta;
-      const tick = (now: number): void => {
+      const startTickSlot = Math.floor(curMod / DEG_PER_SLOT);
+      lastTickSlot.current = startTickSlot;
+      const snap = (now: number): void => {
         const t = Math.min((now - start) / dur, 1);
-        // ease-out quart + лёгкий bounce
         const ease = 1 - Math.pow(1 - t, 4);
-        setAngleDeg(from + (to - from) * ease);
-        if (t < 1) rafRef.current = requestAnimationFrame(tick);
-        else setIsSpinning(false);
+        const v = from + (to - from) * ease;
+        setAngleDeg(v);
+        const slotAt = Math.floor((((v % 360) + 360) % 360) / DEG_PER_SLOT);
+        if (slotAt !== lastTickSlot.current) {
+          lastTickSlot.current = slotAt;
+          playTick();
+        }
+        if (t < 1) rafRef.current = requestAnimationFrame(snap);
+        else if (!winSoundFired.current) {
+          winSoundFired.current = true;
+          playWin();
+        }
       };
-      rafRef.current = requestAnimationFrame(tick);
+      rafRef.current = requestAnimationFrame(snap);
     }
 
     prevStatus.current = status;
@@ -106,287 +131,148 @@ export function RouletteWheel({ winningSlot, status }: RouletteWheelProps): JSX.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, winningSlot]);
 
-  // ── Построение секторов ──────────────────────────────────────────────────
-  type Sector = {
-    d: string;
-    color: RouletteColor;
-    gradId: string;
-    labelX: number;
-    labelY: number;
-    labelRot: number;
-  };
-
+  // ── расчёт ячеек ──────────────────────────────────────────────────────
   const toRad = (d: number): number => (d * Math.PI) / 180;
 
-  const sectors: Sector[] = ROULETTE_SLOTS.map((color, i) => {
-    // -90° чтобы 0° сектора был сверху
-    const startDeg = i * DEG_PER_SLOT - 90;
-    const endDeg = startDeg + DEG_PER_SLOT;
+  type Cell = { d: string; color: RouletteColor; cx: number; cy: number };
+  const cells: Cell[] = ROULETTE_SLOTS.map((color, i) => {
+    const center = (i + 0.5) * DEG_PER_SLOT - 90;
+    const start = center - CELL_SPAN_DEG / 2;
+    const end = center + CELL_SPAN_DEG / 2;
 
-    const x1 = CX + R_OUT * Math.cos(toRad(startDeg));
-    const y1 = CY + R_OUT * Math.sin(toRad(startDeg));
-    const x2 = CX + R_OUT * Math.cos(toRad(endDeg));
-    const y2 = CY + R_OUT * Math.sin(toRad(endDeg));
-    const ix1 = CX + R_IN * Math.cos(toRad(startDeg));
-    const iy1 = CY + R_IN * Math.sin(toRad(startDeg));
-    const ix2 = CX + R_IN * Math.cos(toRad(endDeg));
-    const iy2 = CY + R_IN * Math.sin(toRad(endDeg));
+    const x1o = CX + R_OUTER * Math.cos(toRad(start));
+    const y1o = CY + R_OUTER * Math.sin(toRad(start));
+    const x2o = CX + R_OUTER * Math.cos(toRad(end));
+    const y2o = CY + R_OUTER * Math.sin(toRad(end));
+    const x1i = CX + R_INNER * Math.cos(toRad(start));
+    const y1i = CY + R_INNER * Math.sin(toRad(start));
+    const x2i = CX + R_INNER * Math.cos(toRad(end));
+    const y2i = CY + R_INNER * Math.sin(toRad(end));
 
     const d = [
-      `M ${ix1.toFixed(2)} ${iy1.toFixed(2)}`,
-      `L ${x1.toFixed(2)} ${y1.toFixed(2)}`,
-      `A ${R_OUT} ${R_OUT} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`,
-      `L ${ix2.toFixed(2)} ${iy2.toFixed(2)}`,
-      `A ${R_IN} ${R_IN} 0 0 0 ${ix1.toFixed(2)} ${iy1.toFixed(2)}`,
+      `M ${x1i.toFixed(2)} ${y1i.toFixed(2)}`,
+      `L ${x1o.toFixed(2)} ${y1o.toFixed(2)}`,
+      `A ${R_OUTER} ${R_OUTER} 0 0 1 ${x2o.toFixed(2)} ${y2o.toFixed(2)}`,
+      `L ${x2i.toFixed(2)} ${y2i.toFixed(2)}`,
+      `A ${R_INNER} ${R_INNER} 0 0 0 ${x1i.toFixed(2)} ${y1i.toFixed(2)}`,
       'Z',
     ].join(' ');
 
-    const midDeg = startDeg + DEG_PER_SLOT / 2;
-    const labelR = (R_OUT + R_IN) / 2;
-    const labelX = CX + labelR * Math.cos(toRad(midDeg));
-    const labelY = CY + labelR * Math.sin(toRad(midDeg));
-    // поворот текста чтобы он читался радиально
-    const labelRot = midDeg + 90;
-
-    return { d, color, gradId: `grad-${color}-${i}`, labelX, labelY, labelRot };
+    const midR = (R_OUTER + R_INNER) / 2;
+    const ccx = CX + midR * Math.cos(toRad(center));
+    const ccy = CY + midR * Math.sin(toRad(center));
+    return { d, color, cx: ccx, cy: ccy };
   });
 
-  // Заклёпки на ободе
-  const studs: { x: number; y: number }[] = [];
-  for (let i = 0; i < 24; i++) {
-    const deg = (360 / 24) * i;
-    studs.push({
-      x: CX + (R_RIM + 8) * Math.cos(toRad(deg - 90)),
-      y: CY + (R_RIM + 8) * Math.sin(toRad(deg - 90)),
-    });
-  }
-
-  const winnerColor = winningSlot !== null ? ROULETTE_SLOTS[winningSlot] ?? null : null;
-  const completed = status === 'COMPLETED' && winnerColor !== null;
+  const winnerColor =
+    status === 'COMPLETED' && winningSlot !== null ? ROULETTE_SLOTS[winningSlot] ?? null : null;
 
   return (
-    <div className="flex flex-col items-center gap-4 select-none">
+    <div className="relative flex items-center justify-center select-none" style={{ width: '100%', maxWidth: 420, aspectRatio: '1 / 1' }}>
+      {/* мягкое внешнее свечение */}
       <div
-        className="relative"
+        aria-hidden
+        className="absolute inset-0 rounded-full pointer-events-none"
         style={{
-          width: 'min(92vw, 420px)',
-          aspectRatio: '1 / 1',
+          background: winnerColor
+            ? `radial-gradient(circle, ${COLOR_GLOW[winnerColor]}, transparent 60%)`
+            : 'radial-gradient(circle, rgba(0,255,136,0.12), transparent 60%)',
+          filter: 'blur(28px)',
+          transform: 'scale(1.05)',
+          transition: 'background 0.5s ease',
         }}
+      />
+
+      {/* указатель сверху (теардроп) */}
+      <div
+        aria-hidden
+        className="absolute z-30 pointer-events-none"
+        style={{ top: 0, left: '50%', transform: 'translate(-50%, -55%)' }}
       >
-        {/* Внешнее свечение */}
-        <div
-          aria-hidden
-          className="absolute inset-0 rounded-full pointer-events-none"
-          style={{
-            background:
-              completed && winnerColor
-                ? `radial-gradient(circle, ${COLORS[winnerColor].base}30, transparent 65%)`
-                : 'radial-gradient(circle, rgba(0,255,136,0.18), transparent 65%)',
-            filter: 'blur(20px)',
-            transform: 'scale(1.15)',
-            transition: 'background 0.4s ease',
-          }}
-        />
-
-        {/* Стрелка-указатель (фиксированная сверху) */}
-        <div
-          aria-hidden
-          className="absolute left-1/2 -translate-x-1/2 z-30 pointer-events-none"
-          style={{ top: -4 }}
-        >
-          <svg width="36" height="48" viewBox="0 0 36 48">
-            <defs>
-              <linearGradient id="arrowGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#ffe27a" />
-                <stop offset="50%" stopColor="#f5b400" />
-                <stop offset="100%" stopColor="#a87600" />
-              </linearGradient>
-              <filter id="arrowShadow" x="-50%" y="-50%" width="200%" height="200%">
-                <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000" floodOpacity="0.5" />
-              </filter>
-            </defs>
-            <g filter="url(#arrowShadow)">
-              <path
-                d="M 18 4 L 30 28 L 18 42 L 6 28 Z"
-                fill="url(#arrowGrad)"
-                stroke="#5a3e00"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-              <circle cx="18" cy="14" r="3" fill="#fff7d6" opacity="0.8" />
-            </g>
-          </svg>
-        </div>
-
-        {/* Само колесо */}
-        <svg
-          viewBox={`0 0 ${VB} ${VB}`}
-          width="100%"
-          height="100%"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            transform: `rotate(${angleDeg}deg)`,
-            transition: isSpinning ? 'none' : 'transform 0.2s ease-out',
-            willChange: 'transform',
-            filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.6))',
-          }}
-        >
+        <svg width="22" height="32" viewBox="0 0 22 32">
           <defs>
-            {/* Градиенты для каждого сектора */}
-            {ROULETTE_SLOTS.map((c, i) => (
-              <radialGradient
-                key={`grad-${i}`}
-                id={`grad-${c}-${i}`}
-                cx="50%"
-                cy="50%"
-                r="65%"
-                fx="50%"
-                fy="50%"
-              >
-                <stop offset="0%" stopColor={COLORS[c].hi} stopOpacity="0.5" />
-                <stop offset="55%" stopColor={COLORS[c].base} stopOpacity="1" />
-                <stop offset="100%" stopColor={COLORS[c].lo} stopOpacity="1" />
-              </radialGradient>
-            ))}
-            {/* Золотой обод */}
-            <linearGradient id="goldRim" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#fff1a8" />
-              <stop offset="30%" stopColor="#f5b400" />
-              <stop offset="60%" stopColor="#7a5300" />
-              <stop offset="100%" stopColor="#f5b400" />
+            <linearGradient id="pin" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ff7a8c" />
+              <stop offset="100%" stopColor="#c11638" />
             </linearGradient>
-            {/* Тёмный обод-вкладыш */}
-            <radialGradient id="hubGrad" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#1a2230" />
-              <stop offset="70%" stopColor="#0d1219" />
-              <stop offset="100%" stopColor="#04060a" />
-            </radialGradient>
-            {/* Блик */}
-            <linearGradient id="glossGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.18" />
-              <stop offset="55%" stopColor="#ffffff" stopOpacity="0" />
-            </linearGradient>
+            <filter id="pinShadow"><feDropShadow dx="0" dy="2" stdDeviation="1.5" floodOpacity="0.5" /></filter>
           </defs>
-
-          {/* Золотой внешний обод */}
-          <circle cx={CX} cy={CY} r={R_RIM + 6} fill="url(#goldRim)" />
-          {/* Тёмный кант */}
-          <circle cx={CX} cy={CY} r={R_RIM} fill="#04060a" />
-          {/* Подложка под сектора */}
-          <circle cx={CX} cy={CY} r={R_OUT + 2} fill="#0d111c" />
-
-          {/* Сектора */}
-          {sectors.map((s, i) => (
-            <g key={i}>
-              <path
-                d={s.d}
-                fill={`url(#${s.gradId})`}
-                stroke="#04060a"
-                strokeWidth="1.5"
-              />
-              <text
-                x={s.labelX}
-                y={s.labelY}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize="22"
-                fontWeight="800"
-                fill={COLORS[s.color].label}
-                transform={`rotate(${s.labelRot} ${s.labelX} ${s.labelY})`}
-                style={{ pointerEvents: 'none', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
-              >
-                {COLORS[s.color].icon}
-              </text>
-            </g>
-          ))}
-
-          {/* Глянцевый блик поверх секторов (полукруг сверху) */}
-          <ellipse
-            cx={CX}
-            cy={CY - 60}
-            rx={R_OUT - 20}
-            ry={70}
-            fill="url(#glossGrad)"
-            style={{ pointerEvents: 'none' }}
-          />
-
-          {/* Заклёпки на ободе */}
-          {studs.map((s, i) => (
-            <circle
-              key={i}
-              cx={s.x}
-              cy={s.y}
-              r="2.5"
-              fill="#5a3e00"
-              opacity="0.8"
-            />
-          ))}
-
-          {/* Ступица */}
-          <circle cx={CX} cy={CY} r={R_IN} fill="url(#hubGrad)" stroke="#f5b400" strokeWidth="2" />
-          <circle cx={CX} cy={CY} r={R_IN - 12} fill="#0a0d13" stroke="#1e2530" strokeWidth="1.5" />
-          {/* Логотип в центре */}
-          <text
-            x={CX}
-            y={CY - 6}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fontSize="22"
-            fontWeight="900"
-            fill="#00ff88"
-            letterSpacing="2"
-            style={{ filter: 'drop-shadow(0 0 6px rgba(0,255,136,0.6))' }}
-          >
-            CHC
-          </text>
-          <text
-            x={CX}
-            y={CY + 16}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fontSize="10"
-            fontWeight="700"
-            fill="#94a0b4"
-            letterSpacing="3"
-          >
-            GREEN
-          </text>
+          <g filter="url(#pinShadow)">
+            <path d="M11 1 C 4 1, 1 8, 4 14 L 11 30 L 18 14 C 21 8, 18 1, 11 1 Z" fill="url(#pin)" stroke="#3a0a18" strokeWidth="1" />
+            <circle cx="11" cy="10" r="3" fill="#fff" opacity="0.55" />
+          </g>
         </svg>
-
-        {/* Победная подсветка */}
-        {completed && winnerColor && (
-          <div
-            aria-hidden
-            className="absolute inset-0 rounded-full pointer-events-none animate-pulse"
-            style={{
-              boxShadow: `0 0 0 4px ${COLORS[winnerColor].base}, 0 0 60px ${COLORS[winnerColor].base}80`,
-            }}
-          />
-        )}
       </div>
 
-      {/* Бейдж результата под колесом */}
-      {completed && winnerColor && (
+      {/* колесо */}
+      <svg
+        viewBox={`0 0 ${VB} ${VB}`}
+        width="100%"
+        height="100%"
+        style={{
+          transform: `rotate(${angleDeg}deg)`,
+          willChange: 'transform',
+          transition: status === 'ROLLING' || status === 'COMPLETED' ? 'none' : 'transform 0.3s ease-out',
+          filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.45))',
+        }}
+      >
+        <defs>
+          <radialGradient id="wheelBgGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#11161f" />
+            <stop offset="80%" stopColor="#0a0e15" />
+            <stop offset="100%" stopColor="#05080d" />
+          </radialGradient>
+          <linearGradient id="ringGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1c2433" />
+            <stop offset="100%" stopColor="#0e1320" />
+          </linearGradient>
+          {(['GREEN', 'RED', 'BLACK'] as RouletteColor[]).map((c) => (
+            <filter key={c} id={`glow-${c}`} x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="1.6" result="b" />
+              <feMerge>
+                <feMergeNode in="b" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          ))}
+        </defs>
+
+        {/* фон */}
+        <circle cx={CX} cy={CY} r={R_OUTER + 8} fill="url(#wheelBgGrad)" />
+        {/* подложка кольца */}
+        <circle cx={CX} cy={CY} r={(R_OUTER + R_INNER) / 2} fill="none" stroke="url(#ringGrad)" strokeWidth={R_OUTER - R_INNER + 4} />
+        {/* тонкая декоративная линия по внутренней кромке */}
+        <circle cx={CX} cy={CY} r={R_INNER - 12} fill="none" stroke="#1a2333" strokeWidth="1" opacity="0.6" />
+
+        {/* ячейки */}
+        {cells.map((cell, i) => {
+          const isWinner = winnerColor !== null && i === winningSlot && status === 'COMPLETED';
+          return (
+            <path
+              key={i}
+              d={cell.d}
+              fill={COLOR_FILL[cell.color]}
+              filter={`url(#glow-${cell.color})`}
+              opacity={status === 'COMPLETED' && !isWinner ? 0.55 : 1}
+              style={{
+                transition: 'opacity 0.4s',
+                ...(isWinner ? { filter: `drop-shadow(0 0 8px ${COLOR_FILL[cell.color]})` } : {}),
+              }}
+            />
+          );
+        })}
+      </svg>
+
+      {/* центр (таймер/статус) — НЕ вращается */}
+      {center !== undefined && (
         <div
-          className="flex items-center gap-2 rounded-full px-5 py-2 text-sm font-bold"
+          className="absolute pointer-events-none flex items-center justify-center"
           style={{
-            background: COLORS[winnerColor].base,
-            color: COLORS[winnerColor].label,
-            boxShadow: `0 0 20px ${COLORS[winnerColor].base}80`,
+            width: `${(R_INNER / VB) * 100 * 2}%`,
+            height: `${(R_INNER / VB) * 100 * 2}%`,
           }}
         >
-          <span className="text-lg">{COLORS[winnerColor].icon}</span>
-          <span>
-            {winnerColor === 'GREEN' ? 'GREEN ×14' : winnerColor === 'RED' ? 'RED ×2' : 'BLACK ×2'}
-          </span>
-        </div>
-      )}
-
-      {isSpinning && status === 'ROLLING' && (
-        <div className="flex items-center gap-2 text-xs font-semibold text-brand">
-          <span className="inline-block h-2 w-2 rounded-full bg-brand animate-ping" />
-          Крутим колесо…
+          {center}
         </div>
       )}
     </div>
@@ -394,6 +280,8 @@ export function RouletteWheel({ winningSlot, status }: RouletteWheelProps): JSX.
 }
 
 // ── ColorTotalsBadge ──────────────────────────────────────────────────────────
+const ICON: Record<RouletteColor, string> = { GREEN: '★', RED: '♦', BLACK: '♠' };
+
 export interface ColorTotalsBadgeProps {
   color: RouletteColor;
   amountMinor: string;
@@ -402,13 +290,13 @@ export interface ColorTotalsBadgeProps {
 }
 
 export function ColorTotalsBadge({ color, amountMinor, betsCount, multiplier }: ColorTotalsBadgeProps): JSX.Element {
-  const c = COLORS[color];
+  const fill = COLOR_FILL[color];
   return (
     <div
       className="flex items-center justify-between rounded-lg px-3 py-1.5 text-xs font-semibold"
-      style={{ background: c.base + '22', border: `1px solid ${c.base}55` }}
+      style={{ background: fill + '22', border: `1px solid ${fill}55` }}
     >
-      <span style={{ color: c.base }}>{c.icon} ×{multiplier}</span>
+      <span style={{ color: fill }}>{ICON[color]} ×{multiplier}</span>
       <span className="text-text-secondary">{betsCount} ставок</span>
       <span className="text-text-primary font-mono">{(Number(amountMinor) / 100).toFixed(2)} AZN</span>
     </div>

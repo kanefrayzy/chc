@@ -8,6 +8,7 @@ import { AmountInput, parseAmountToMinor } from '@/features/deposits/components/
 import { rouletteApi, type RouletteColor } from '@/lib/api/roulette';
 import { ApiException } from '@/lib/api/client';
 import { COLOR_CLASSES } from '../constants';
+import { playClick } from '@/lib/sound';
 
 const MIN_BET_MINOR = 100n; // 1 AZN
 const MAX_BET_MINOR = 50_000n; // 500 AZN
@@ -29,9 +30,10 @@ export interface BetPanelProps {
   balanceMinor: string;
   disabled?: boolean;
   multipliers: Record<RouletteColor, number>;
+  onBetPlaced?: () => void;
 }
 
-export function BetPanel({ balanceMinor, disabled, multipliers }: BetPanelProps): JSX.Element {
+export function BetPanel({ balanceMinor, disabled, multipliers, onBetPlaced }: BetPanelProps): JSX.Element {
   const t = useTranslations('roulette.bet');
   const [amount, setAmount] = useState('');
   const [pendingColor, setPendingColor] = useState<RouletteColor | null>(null);
@@ -64,8 +66,10 @@ export function BetPanel({ balanceMinor, disabled, multipliers }: BetPanelProps)
     startTransition(async () => {
       try {
         await rouletteApi.placeBet({ color, amountMinor: minor.toString() });
+        playClick();
         toast.success(`Ставка ${(Number(minor) / 100).toFixed(2)} AZN на ${COLOR_LABELS[color]} принята!`);
         setAmount('');
+        if (onBetPlaced) onBetPlaced();
       } catch (err) {
         let msg = t('errors.placeFailed');
         if (err instanceof ApiException) {

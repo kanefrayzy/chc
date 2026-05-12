@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
 import { Modal, Spinner } from '@chcgreen/ui';
 import { useUi } from './ui-context';
 import { RankList } from '@/features/ranks/components/RankList';
@@ -43,28 +42,28 @@ export function RanksModal({ locale, isAuthed }: RanksModalProps): JSX.Element {
     <Modal
       open={ranksModalOpen}
       onClose={closeRanks}
-      size="3xl"
+      size="lg"
       title={
         <span className="flex items-center gap-2">
-          <span
-            aria-hidden
-            className="flex h-7 w-7 items-center justify-center rounded-md bg-accent-purple/15 text-accent-purple"
-          >
+          <span aria-hidden className="flex h-7 w-7 items-center justify-center rounded-md bg-accent-purple/15 text-accent-purple">
             🏆
           </span>
-          <span>Ранги и привилегии</span>
+          <span>Ранги</span>
         </span>
       }
-      description="Чем больше ставите — тем выше ранг и бонусы"
+      description="Чем больше ставите — выше ранг и бонусы"
     >
-      <div className="-mx-6 -my-5 bg-bg-elevated px-6 py-5">
+      <div className="-mx-6 -my-5 bg-bg-elevated px-6 py-5 space-y-4">
         {loading ? (
-          <div className="flex justify-center py-16">
+          <div className="flex justify-center py-10">
             <Spinner />
           </div>
         ) : (
-          <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
-            <div className="rounded-xl border border-border bg-bg-card p-4">
+          <>
+            {progress ? (
+              <RankProgressCard progress={progress} locale={locale} />
+            ) : null}
+            <div className="rounded-xl border border-border bg-bg-card p-3">
               <RankList
                 ranks={ranks}
                 locale={locale}
@@ -72,12 +71,7 @@ export function RanksModal({ locale, isAuthed }: RanksModalProps): JSX.Element {
                 totalWageredMinor={progress?.totalWageredMinor}
               />
             </div>
-            {progress ? (
-              <div className="lg:sticky lg:top-0">
-                <RankProgressCard progress={progress} locale={locale} />
-              </div>
-            ) : null}
-          </div>
+          </>
         )}
       </div>
     </Modal>

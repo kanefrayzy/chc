@@ -244,6 +244,18 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (round.status === 'BETTING') {
+      // Если нет ни одной ставки — продлеваем фазу приёма ставок (раунд без участников не крутим).
+      const betsCount = await this.prisma.rouletteBet.count({ where: { roundId: round.id } });
+      if (betsCount === 0) {
+        const extended = await this.prisma.rouletteRound.update({
+          where: { id: round.id },
+          data: { bettingEndsAt: new Date(Date.now() + BETTING_DURATION_MS) },
+        });
+        this.logger.log(`Round ${round.id} extended: no bets, waiting for participants`);
+        this.emitRound(extended);
+        this.scheduleNextTick(extended);
+        return;
+      }
       const rolling = await this.prisma.rouletteRound.update({
         where: { id: round.id },
         data: { status: 'ROLLING', publicSeed: generatePublicSeed() },

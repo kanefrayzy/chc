@@ -1,11 +1,12 @@
 import { cn } from '@chcgreen/ui';
 import type { RouletteColor } from '@/lib/api/roulette';
 
-export const ROULETTE_SLOTS: RouletteColor[] = [
-  'GREEN',
-  'RED', 'RED', 'RED', 'RED', 'RED', 'RED', 'RED',
-  'BLACK', 'BLACK', 'BLACK', 'BLACK', 'BLACK', 'BLACK', 'BLACK',
-];
+// ВАЖНО: должно совпадать с apps/api/src/modules/roulette/roulette.constants.ts (slotToColor)
+//   0 — GREEN, нечётные — RED, чётные ≠ 0 — BLACK
+export const ROULETTE_SLOTS: RouletteColor[] = Array.from({ length: 15 }, (_, i) => {
+  if (i === 0) return 'GREEN';
+  return i % 2 === 1 ? 'RED' : 'BLACK';
+});
 
 export const COLOR_CLASSES: Record<RouletteColor, string> = {
   BLACK: 'bg-bg-elevated text-text-primary',

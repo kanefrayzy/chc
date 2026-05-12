@@ -1,26 +1,28 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { Spinner, cn } from '@chcgreen/ui';
+import { Spinner } from '@chcgreen/ui';
 import { toast } from 'sonner';
 import { RouletteWheel } from './RouletteWheel';
 import { BetPanel } from './BetPanel';
 import { HistoryStrip } from './HistoryStrip';
 import { CountdownTimer } from './CountdownTimer';
+import { useUi } from '@/components/layout/ui-context';
 import {
   rouletteApi,
   type RouletteBetDto,
   type RouletteColor,
   type RouletteRoundDto,
 } from '@/lib/api/roulette';
+import { walletApi } from '@/lib/api/wallet';
 import { useRouletteSocket } from '@/lib/realtime/useRouletteSocket';
+import { playWin, playLose } from '@/lib/sound';
+import { SoundToggle } from './SoundToggle';
 
 const COLOR_ORDER: RouletteColor[] = ['BLACK', 'RED', 'GREEN'];
-
-const COLOR_ICON: Record<RouletteColor, string> = { BLACK: '♠', RED: '♦', GREEN: '★' };
 const COLOR_FILL: Record<RouletteColor, string> = {
-  BLACK: '#1a2035',
+  BLACK: '#2a3344',
   RED: '#ff3b5c',
   GREEN: '#00ff88',
 };
@@ -30,7 +32,6 @@ const COLOR_TEXT: Record<RouletteColor, string> = {
   GREEN: '#07090c',
 };
 
-// Безопасное чтение multiplier/totals, если поля ещё не пришли от бекенда
 function safeMultiplier(round: RouletteRoundDto, color: RouletteColor): number {
   return round.multipliers?.[color] ?? (color === 'GREEN' ? 14 : 2);
 }
@@ -46,6 +47,7 @@ export interface RouletteLayoutProps {
 
 export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: RouletteLayoutProps): JSX.Element {
   const t = useTranslations('roulette');
+  const { refreshBalance } = useUi();
   const [round, setRound] = useState<RouletteRoundDto | null>(null);
   const [recentBets, setRecentBets] = useState<RouletteBetDto[]>([]);
   const [history, setHistory] = useState<RouletteRoundDto[]>([]);
@@ -53,7 +55,16 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
   const [balance, setBalance] = useState(initialBalance);
   const prevRound = useRef<RouletteRoundDto | null>(null);
 
-  // Polling: текущее состояние раунда
+  const reloadBalance = useCallback(async (): Promise<void> => {
+    if (!isAuthed) return;
+    try {
+      const b = await walletApi.balance();
+      setBalance(b.balanceMinor);
+      refreshBalance();
+    } catch { /* */ }
+  }, [isAuthed, refreshBalance]);
+
+  // ── polling: текущее состояние ──
   useEffect(() => {
     let cancelled = false;
     const pull = async (): Promise<void> => {
@@ -71,7 +82,7 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
     return () => { cancelled = true; };
   }, []);
 
-  // Polling: история
+  // ── polling: история ──
   useEffect(() => {
     let cancelled = false;
     const pull = async (): Promise<void> => {
@@ -86,21 +97,63 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
     return () => { cancelled = true; };
   }, []);
 
-  // Real-time socket
+  // ── real-time ──
   useRouletteSocket((r) => {
     setRound(r);
     if (r.status === 'COMPLETED' && prevRound.current?.status !== 'COMPLETED') {
       if (r.winningColor) {
         const c = r.winningColor;
         const mul = r.multipliers?.[c] ?? (c === 'GREEN' ? 14 : 2);
-        toast(`${COLOR_ICON[c]} Выпал ${c} ×${mul}!`, {
-          duration: 5000,
-          style: { background: COLOR_FILL[c], color: COLOR_TEXT[c], fontWeight: 700 },
-        });
+
+        // Запросим свои ставки в этом раунде, чтобы посчитать итог
+        if (isAuthed) {
+          void (async () => {
+            try {
+              const mine = await rouletteApi.myBets(20);
+              const myBets = mine.items.filter((b) => b.roundId === r.id);
+              if (myBets.length > 0) {
+                const totalBet = myBets.reduce((s, b) => s + BigInt(b.amountMinor), 0n);
+                const totalWin = myBets
+                  .filter((b) => b.color === c)
+                  .reduce((s, b) => s + BigInt(b.amountMinor) * BigInt(mul), 0n);
+                const net = totalWin - totalBet;
+                if (totalWin > 0n) {
+                  toast.success(`🎉 Победа! +${(Number(net) / 100).toFixed(2)} AZN`, {
+                    duration: 6000,
+                    style: {
+                      background: COLOR_FILL[c],
+                      color: COLOR_TEXT[c],
+                      fontWeight: 700,
+                      boxShadow: `0 0 28px ${COLOR_FILL[c]}80`,
+                    },
+                  });
+                  playWin();
+                } else {
+                  toast.error(`Не повезло — ${(Number(totalBet) / 100).toFixed(2)} AZN ушло`, { duration: 5000 });
+                  playLose();
+                }
+                void reloadBalance();
+                return;
+              }
+            } catch { /* */ }
+            // если своих ставок нет — просто показываем результат
+            toast(`Выпал ${c} ×${mul}`, {
+              duration: 4000,
+              style: { background: COLOR_FILL[c], color: COLOR_TEXT[c], fontWeight: 700 },
+            });
+          })();
+        } else {
+          toast(`Выпал ${c} ×${mul}`, {
+            duration: 4000,
+            style: { background: COLOR_FILL[c], color: COLOR_TEXT[c], fontWeight: 700 },
+          });
+        }
       }
     }
     prevRound.current = r;
   });
+
+  // когда пользователь делает ставку — обновляем баланс
 
   if (loading) {
     return (
@@ -126,12 +179,49 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
     GREEN: recentBets.filter((b) => b.color === 'GREEN'),
   };
 
-  // Multipliers для BetPanel (с fallback)
   const safeMultipliers: Record<RouletteColor, number> = {
     BLACK: safeMultiplier(round, 'BLACK'),
     RED: safeMultiplier(round, 'RED'),
     GREEN: safeMultiplier(round, 'GREEN'),
   };
+
+  // Центр колеса: таймер / статус / результат
+  const centerNode = (
+    <div className="flex flex-col items-center justify-center text-center">
+      {round.status === 'BETTING' && round.bettingEndsAt ? (
+        <>
+          <span className="text-[10px] uppercase tracking-[0.25em] text-text-muted">
+            Принимаются ставки
+          </span>
+          <span className="mt-1 font-black text-4xl sm:text-5xl tabular-nums text-brand drop-shadow-[0_0_12px_rgba(0,255,136,0.5)]">
+            <CountdownTimer endsAt={round.bettingEndsAt} />
+          </span>
+        </>
+      ) : round.status === 'ROLLING' ? (
+        <>
+          <span className="text-[10px] uppercase tracking-[0.25em] text-text-muted">Крутим</span>
+          <span className="mt-1 text-3xl font-bold text-brand animate-pulse">…</span>
+        </>
+      ) : round.status === 'COMPLETED' && round.winningColor ? (
+        <div
+          className="flex flex-col items-center justify-center rounded-full px-4 py-2"
+          style={{
+            background: COLOR_FILL[round.winningColor] + '22',
+            border: `1px solid ${COLOR_FILL[round.winningColor]}66`,
+          }}
+        >
+          <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: COLOR_FILL[round.winningColor] }}>
+            Выпал
+          </span>
+          <span className="text-xl font-black" style={{ color: COLOR_FILL[round.winningColor] }}>
+            {round.winningColor} ×{safeMultipliers[round.winningColor]}
+          </span>
+        </div>
+      ) : (
+        <span className="text-xs text-text-muted">Раунд начнётся скоро…</span>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -141,47 +231,34 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
       {/* Основная панель колеса */}
       <div className="rounded-2xl border border-border bg-bg-card overflow-hidden">
         {/* Статистика */}
-        <div className="flex items-center gap-4 px-4 pt-3 pb-2 text-xs text-text-muted border-b border-border/40">
-          <span className="font-medium">Статистика ({history.length} раундов):</span>
-          {COLOR_ORDER.map((c) => {
-            const cnt = history.filter((r) => r.winningColor === c).length;
-            const pct = history.length ? Math.round((cnt / history.length) * 100) : 0;
-            return (
-              <span key={c} className="flex items-center gap-1">
-                <span
-                  className="inline-block w-2.5 h-2.5 rounded-full border"
-                  style={{ background: COLOR_FILL[c], borderColor: COLOR_FILL[c] + '80' }}
-                />
-                <span style={{ color: COLOR_FILL[c] }} className="font-semibold">{cnt}</span>
-                <span className="text-text-muted">({pct}%)</span>
-              </span>
-            );
-          })}
+        <div className="flex items-center justify-between gap-4 px-4 pt-3 pb-2 text-xs text-text-muted border-b border-border/40">
+          <div className="flex items-center gap-4">
+            <span className="font-medium">Статистика ({history.length}):</span>
+            {COLOR_ORDER.map((c) => {
+              const cnt = history.filter((r) => r.winningColor === c).length;
+              const pct = history.length ? Math.round((cnt / history.length) * 100) : 0;
+              return (
+                <span key={c} className="flex items-center gap-1">
+                  <span
+                    className="inline-block w-2.5 h-2.5 rounded-full"
+                    style={{ background: COLOR_FILL[c], boxShadow: `0 0 8px ${COLOR_FILL[c]}60` }}
+                  />
+                  <span style={{ color: COLOR_FILL[c] }} className="font-semibold">{cnt}</span>
+                  <span className="text-text-muted">({pct}%)</span>
+                </span>
+              );
+            })}
+          </div>
+          <SoundToggle />
         </div>
 
         {/* Колесо */}
-        <div className="flex justify-center py-6 px-4">
-          <RouletteWheel winningSlot={round.winningSlot} status={round.status} />
-        </div>
-
-        {/* Таймер / статус */}
-        <div className="border-t border-border px-4 py-3 text-center">
-          {round.status === 'BETTING' && round.bettingEndsAt ? (
-            <div>
-              <div className="text-xs text-text-muted mb-0.5 uppercase tracking-widest">Принимаются ставки</div>
-              <div className="text-4xl font-black tabular-nums text-brand">
-                <CountdownTimer endsAt={round.bettingEndsAt} />
-              </div>
-            </div>
-          ) : round.status === 'ROLLING' ? (
-            <div className="flex items-center justify-center gap-2 text-sm font-semibold text-brand">
-              <span className="animate-spin">⟳</span> Крутим колесо…
-            </div>
-          ) : round.status === 'COMPLETED' ? (
-            <div className="text-sm font-semibold text-text-secondary">Следующий раунд скоро…</div>
-          ) : (
-            <div className="text-sm text-text-muted">Ожидаем раунд…</div>
-          )}
+        <div className="flex justify-center py-4 px-4">
+          <RouletteWheel
+            winningSlot={round.winningSlot}
+            status={round.status}
+            center={centerNode}
+          />
         </div>
       </div>
 
@@ -191,6 +268,7 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
           balanceMinor={balance}
           disabled={!canBet}
           multipliers={safeMultipliers}
+          onBetPlaced={() => { void reloadBalance(); }}
         />
       ) : (
         <div className="rounded-2xl border border-border bg-bg-card p-4 text-sm text-text-secondary text-center">
@@ -213,46 +291,24 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
               className="rounded-xl overflow-hidden border"
               style={{ borderColor: fill + '40', background: fill + '0d' }}
             >
-              {/* Заголовок колонки */}
-              <div
-                className="flex items-center justify-between px-3 py-2.5"
-                style={{ background: fill, color: textColor }}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-black">{COLOR_ICON[color]}</span>
-                  <span className="text-sm font-bold">{color}</span>
-                </div>
-                <span className="text-base font-extrabold">×{mul}</span>
+              <div className="flex items-center justify-between px-3 py-2" style={{ background: fill, color: textColor }}>
+                <span className="font-bold text-sm">{color}</span>
+                <span className="font-mono text-xs opacity-90">×{mul}</span>
               </div>
-
-              {/* Итоги */}
-              <div
-                className="flex items-center justify-between px-3 py-1.5 text-xs border-b"
-                style={{ borderColor: fill + '30' }}
-              >
-                <span className="text-text-muted">{totals.betsCount} игроков</span>
-                <span className="font-semibold text-text-secondary">
+              <div className="px-3 py-2 flex items-center justify-between text-xs">
+                <span className="text-text-muted">{totals.betsCount} ставок</span>
+                <span className="font-mono font-semibold text-text-primary">
                   {(Number(totals.amountMinor) / 100).toFixed(2)} AZN
                 </span>
               </div>
-
-              {/* Список ставок */}
-              <div className="divide-y divide-border/20 max-h-44 overflow-y-auto">
+              <div className="px-3 pb-3 max-h-32 overflow-y-auto space-y-1">
                 {bets.length === 0 ? (
-                  <div className="px-3 py-4 text-center text-xs text-text-muted">Ставок пока нет</div>
+                  <div className="text-[11px] text-text-muted italic">Ставок пока нет</div>
                 ) : (
-                  bets.slice(0, 12).map((b) => (
-                    <div key={b.id} className="flex items-center justify-between px-3 py-1.5">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <div
-                          className="h-5 w-5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold"
-                          style={{ background: fill + '33', color: fill, border: `1px solid ${fill}55` }}
-                        >
-                          {(b.username ?? '?').charAt(0).toUpperCase()}
-                        </div>
-                        <span className="truncate text-xs text-text-secondary">{b.username ?? 'Аноним'}</span>
-                      </div>
-                      <span className="tabular-nums text-xs font-semibold text-text-primary ml-2 shrink-0">
+                  bets.slice(0, 6).map((b) => (
+                    <div key={b.id} className="flex items-center justify-between text-[11px]">
+                      <span className="text-text-secondary truncate max-w-[70%]">{b.username ?? '—'}</span>
+                      <span className="font-mono font-medium" style={{ color: fill }}>
                         {(Number(b.amountMinor) / 100).toFixed(2)}
                       </span>
                     </div>
