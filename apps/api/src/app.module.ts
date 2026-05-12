@@ -9,6 +9,8 @@ import { WalletModule } from './modules/wallet/wallet.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { DepositsModule } from './modules/deposits/deposits.module';
 import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
+import { TicketsModule } from './modules/tickets/tickets.module';
+import { CodePurchasesModule } from './modules/code-purchases/code-purchases.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
     PaymentsModule,
     DepositsModule,
     WithdrawalsModule,
+    TicketsModule,
+    CodePurchasesModule,
   ],
   controllers: [HealthController],
 })

@@ -222,5 +222,53 @@
         "CANCELLED": "Ləğv edildi"
       }
     }
+  },
+  "chat": {
+    "pageTitle": "Dəstək çatı",
+    "list": {
+      "title": "Mənim müraciətlərim",
+      "empty": "Hələ müraciətiniz yoxdur.",
+      "errors": { "loadFailed": "Çat siyahısı yüklənmədi." }
+    },
+    "thread": {
+      "empty": "Hələ mesaj yoxdur.",
+      "selectHint": "Yazışmanı açmaq üçün soldakı müraciəti seçin."
+    },
+    "composer": {
+      "placeholder": "Mesaj yazın…",
+      "send": "Göndər",
+      "sending": "Göndərilir…",
+      "closed": "Çat bağlıdır"
+    },
+    "type": {
+      "CODE_PURCHASE": "Kod alışı",
+      "WITHDRAWAL": "Vəsaitin çıxarılması",
+      "SUPPORT": "Dəstək"
+    },
+    "status": {
+      "OPEN": "Açıq",
+      "WAITING_USER": "Cavabınız gözlənilir",
+      "WAITING_MODERATOR": "Moderatorda",
+      "CLOSED": "Bağlı"
+    }
+  },
+  "codePurchase": {
+    "pageTitle": "Kod alışı",
+    "form": {
+      "title": "Kod al",
+      "description": "Məbləği göstərin — sizə kod verəcək moderatorla çat açılacaq.",
+      "amountLabel": "Məbləğ, AZN",
+      "commentLabel": "Şərh",
+      "commentHint": "İstəyə bağlı: kodla bağlı istəklərinizi yazın.",
+      "commentPlaceholder": "Məsələn: X kateqoriyası üçün kod",
+      "submit": "Çat aç və al",
+      "submitting": "Yaradılır…",
+      "errors": {
+        "invalidAmount": "Düzgün məbləğ daxil edin",
+        "outOfRange": "Məbləğ icazə verilən aralıqdan kənardadır",
+        "insufficient": "Balansda kifayət qədər vəsait yoxdur",
+        "createFailed": "Alış yaradıla bilmədi"
+      }
+    }
   }
 }
