@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getLocale } from 'next-intl/server';
-import './globals.css';
+import '../globals.css';
+
+export const dynamic = 'force-dynamic';
 
 const siteName = process.env.NEXT_PUBLIC_SITE_NAME ?? 'CHCGREEN';
 

@@ -14,7 +14,7 @@ ARG PNPM_VERSION
 RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 WORKDIR /repo
 
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* turbo.json tsconfig.base.json ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* turbo.json tsconfig.base.json .npmrc ./
 COPY apps/api/package.json apps/api/
 COPY packages/db/package.json packages/db/
 COPY packages/shared/package.json packages/shared/
@@ -31,11 +31,8 @@ RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 WORKDIR /repo
 
 COPY --from=deps /repo/node_modules ./node_modules
-COPY --from=deps /repo/apps/api/node_modules ./apps/api/node_modules
-COPY --from=deps /repo/packages/db/node_modules ./packages/db/node_modules
-COPY --from=deps /repo/packages/shared/node_modules ./packages/shared/node_modules
 
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* turbo.json tsconfig.base.json ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* turbo.json tsconfig.base.json .npmrc ./
 COPY packages ./packages
 COPY apps/api ./apps/api
 
@@ -53,7 +50,7 @@ WORKDIR /repo
 
 ENV NODE_ENV=production
 
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* .npmrc ./
 COPY apps/api/package.json apps/api/
 COPY packages/db/package.json packages/db/
 COPY packages/shared/package.json packages/shared/
@@ -62,11 +59,12 @@ COPY packages/db/prisma packages/db/prisma
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile=false --prod
 
+# Regenerate Prisma Client in the runtime image (pnpm stores it under .pnpm/...)
+RUN pnpm --filter @chcgreen/db exec prisma generate
+
 COPY --from=build /repo/apps/api/dist ./apps/api/dist
 COPY --from=build /repo/packages/db/dist ./packages/db/dist
 COPY --from=build /repo/packages/shared/dist ./packages/shared/dist
-COPY --from=build /repo/node_modules/.prisma ./node_modules/.prisma
-COPY --from=build /repo/node_modules/@prisma ./node_modules/@prisma
 
 # non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S -u 1001 -G nodejs nestjs

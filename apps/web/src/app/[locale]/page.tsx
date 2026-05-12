@@ -1,5 +1,7 @@
 import { useTranslations } from 'next-intl';
 
+export const dynamic = 'force-dynamic';
+
 export default function HomePage(): JSX.Element {
   const t = useTranslations();
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME ?? 'CHCGREEN';

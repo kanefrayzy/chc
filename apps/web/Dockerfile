@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1.7
-# CHCGREEN web — Next.js 14 (App Router, standalone output)
+# CHCGREEN web — Next.js 14 (App Router)
 ARG NODE_VERSION=20.18.0
 ARG PNPM_VERSION=9.12.0
 
+# ---- deps ----
 FROM node:${NODE_VERSION}-alpine AS deps
 RUN apk add --no-cache libc6-compat
 ARG PNPM_VERSION
@@ -15,13 +16,13 @@ COPY packages/ui/package.json packages/ui/
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile=false
 
+# ---- build ----
 FROM node:${NODE_VERSION}-alpine AS build
 RUN apk add --no-cache libc6-compat
 ARG PNPM_VERSION
 RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 WORKDIR /repo
 
-# build-time public env (must be inlined into bundle)
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_REALTIME_URL
 ARG NEXT_PUBLIC_SITE_NAME
@@ -42,20 +43,35 @@ COPY apps/web ./apps/web
 RUN pnpm --filter @chcgreen/shared build
 RUN pnpm --filter @chcgreen/web build
 
+# ---- runtime ----
 FROM node:${NODE_VERSION}-alpine AS runtime
 RUN apk add --no-cache libc6-compat wget
-WORKDIR /app
+ARG PNPM_VERSION
+RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
+WORKDIR /repo
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 
-# Next.js standalone — копируем только нужное
-COPY --from=build /repo/apps/web/public ./public
-COPY --from=build /repo/apps/web/.next/standalone ./
-COPY --from=build /repo/apps/web/.next/static ./apps/web/.next/static
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY apps/web/package.json apps/web/
+COPY packages/shared/package.json packages/shared/
+COPY packages/ui/package.json packages/ui/
 
-RUN addgroup -g 1001 -S nodejs && adduser -S -u 1001 -G nodejs nextjs
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --prod --frozen-lockfile=false
+
+COPY --from=build /repo/packages/shared/dist ./packages/shared/dist
+COPY --from=build /repo/packages/ui ./packages/ui
+COPY --from=build /repo/apps/web/.next ./apps/web/.next
+COPY --from=build /repo/apps/web/public ./apps/web/public
+COPY --from=build /repo/apps/web/next.config.mjs ./apps/web/
+
+RUN addgroup -g 1001 -S nodejs && adduser -S -u 1001 -G nodejs nextjs \
+    && chown -R nextjs:nodejs /repo
 USER nextjs
 
 EXPOSE 3000
-WORKDIR /app/apps/web
-CMD ["node", "server.js"]
+WORKDIR /repo/apps/web
+CMD ["node", "node_modules/next/dist/bin/next", "start", "-H", "0.0.0.0", "-p", "3000"]
