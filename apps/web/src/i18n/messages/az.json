@@ -347,5 +347,20 @@
         "FROM_WIN": "Udulandan"
       }
     }
+  },
+  "ranks": {
+    "pageTitle": "Ranqlar",
+    "pageSubtitle": "Nə qədər çox oynasanız, ranqınız da bir o qədər yüksək olur.",
+    "all": "Bütün ranqlar",
+    "current": "Cari",
+    "reached": "Əldə edilib",
+    "threshold": "Mərc tələbi",
+    "progress": {
+      "title": "Sizin irəliləyişiniz",
+      "current": "Cari ranq",
+      "next": "Növbəti ranq",
+      "wagered": "Edilmiş mərclər",
+      "max": "Maksimum"
+    }
   }
 }

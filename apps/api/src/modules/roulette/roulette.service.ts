@@ -10,6 +10,7 @@ import {
 import type { RouletteBet, RouletteColor, RouletteRound } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
 import { ReferralsService } from '../referrals/referrals.service';
+import { RanksService } from '../ranks/ranks.service';
 import {
   ROULETTE_TOTAL_SLOTS,
   calculatePayout,
@@ -38,6 +39,7 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly referrals: ReferralsService,
+    private readonly ranks: RanksService,
   ) {
     this.minBetMinor = BigInt(process.env.ROULETTE_MIN_BET_MINOR || DEFAULT_MIN_BET.toString());
     this.maxBetMinor = BigInt(process.env.ROULETTE_MAX_BET_MINOR || DEFAULT_MAX_BET.toString());
@@ -150,6 +152,9 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
           description: `Roulette bet on ${color}`,
         },
       });
+
+      // Обновляем ранг по росту totalWageredMinor.
+      await this.ranks.syncUserRank(userId, tx);
 
       return bet;
     });

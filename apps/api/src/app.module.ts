@@ -13,6 +13,7 @@ import { TicketsModule } from './modules/tickets/tickets.module';
 import { CodePurchasesModule } from './modules/code-purchases/code-purchases.module';
 import { RouletteModule } from './modules/roulette/roulette.module';
 import { ReferralsModule } from './modules/referrals/referrals.module';
+import { RanksModule } from './modules/ranks/ranks.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ReferralsModule } from './modules/referrals/referrals.module';
     CodePurchasesModule,
     RouletteModule,
     ReferralsModule,
+    RanksModule,
   ],
   controllers: [HealthController],
 })
