@@ -270,5 +270,52 @@
         "createFailed": "Не удалось создать покупку"
       }
     }
+  },
+  "roulette": {
+    "pageTitle": "Рулетка",
+    "description": "Классическая рулетка на 15 слотов. Множители: Красный/Чёрный ×2, Зелёный ×14.",
+    "noRound": "Активных раундов нет. Ожидаем запуск…",
+    "loginToBet": "Войдите, чтобы делать ставки.",
+    "round": {
+      "title": "Раунд",
+      "timeLeft": "Осталось",
+      "serverSeedHash": "server seed hash",
+      "serverSeed": "server seed",
+      "publicSeed": "public seed",
+      "status": {
+        "BETTING": "Ставки",
+        "ROLLING": "Крутим",
+        "COMPLETED": "Завершён",
+        "CANCELLED": "Отменён"
+      }
+    },
+    "bet": {
+      "title": "Новая ставка",
+      "amountLabel": "Сумма, AZN",
+      "color": {
+        "BLACK": "Чёрный",
+        "RED": "Красный",
+        "GREEN": "Зелёный"
+      },
+      "errors": {
+        "invalidAmount": "Введите корректную сумму",
+        "outOfRange": "Сумма вне допустимого диапазона",
+        "insufficient": "Недостаточно средств",
+        "noOpenRound": "Нет открытого раунда",
+        "bettingClosed": "Приём ставок закрыт",
+        "placeFailed": "Не удалось поставить ставку"
+      }
+    },
+    "bets": {
+      "recentTitle": "Последние ставки",
+      "mineTitle": "Мои ставки",
+      "empty": {
+        "recent": "Пока нет ставок.",
+        "mine": "Вы ещё не делали ставок."
+      }
+    },
+    "history": {
+      "empty": "История раундов появится после первого раунда."
+    }
   }
 }

@@ -270,5 +270,52 @@
         "createFailed": "Alış yaradıla bilmədi"
       }
     }
+  },
+  "roulette": {
+    "pageTitle": "Rulet",
+    "description": "Klassik 15 slotlu rulet. Əmsallar: Qırmızı/Qara ×2, Yaşıl ×14.",
+    "noRound": "Aktiv raund yoxdur. Gözləyirik…",
+    "loginToBet": "Mərc etmək üçün daxil olun.",
+    "round": {
+      "title": "Raund",
+      "timeLeft": "Qalıb",
+      "serverSeedHash": "server seed hash",
+      "serverSeed": "server seed",
+      "publicSeed": "public seed",
+      "status": {
+        "BETTING": "Mərclər",
+        "ROLLING": "Fırlanır",
+        "COMPLETED": "Bitdi",
+        "CANCELLED": "Ləğv"
+      }
+    },
+    "bet": {
+      "title": "Yeni mərc",
+      "amountLabel": "Məbləğ, AZN",
+      "color": {
+        "BLACK": "Qara",
+        "RED": "Qırmızı",
+        "GREEN": "Yaşıl"
+      },
+      "errors": {
+        "invalidAmount": "Düzgün məbləğ daxil edin",
+        "outOfRange": "Məbləğ icazə verilən aralıqdan kənardadır",
+        "insufficient": "Vəsait kifayət etmir",
+        "noOpenRound": "Açıq raund yoxdur",
+        "bettingClosed": "Mərclər bağlandı",
+        "placeFailed": "Mərc qoyula bilmədi"
+      }
+    },
+    "bets": {
+      "recentTitle": "Son mərclər",
+      "mineTitle": "Mənim mərclərim",
+      "empty": {
+        "recent": "Hələ mərc yoxdur.",
+        "mine": "Siz hələ mərc etməmisiniz."
+      }
+    },
+    "history": {
+      "empty": "Raund tarixçəsi ilk raunddan sonra görünəcək."
+    }
   }
 }
