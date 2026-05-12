@@ -137,5 +137,43 @@
       "JACKPOT_WIN": "Выигрыш джекпота",
       "JACKPOT_COMMISSION": "Комиссия джекпота"
     }
+  },
+  "deposit": {
+    "pageTitle": "Пополнение баланса",
+    "historyTitle": "История пополнений",
+    "form": {
+      "title": "Новое пополнение",
+      "selectProvider": "Способ оплаты",
+      "providerLimpay": "Карта / банк (Limpay)",
+      "providerWest": "Криптовалюта USDT",
+      "amountLabel": "Сумма, AZN",
+      "submit": "Пополнить",
+      "submitting": "Создаём…",
+      "hintLocale": "Платёжная страница откроется на языке {locale}.",
+      "errors": {
+        "invalidAmount": "Введите корректную сумму",
+        "outOfRange": "Сумма вне допустимого диапазона",
+        "createFailed": "Не удалось создать пополнение"
+      }
+    },
+    "list": {
+      "empty": "Пополнений пока нет.",
+      "loadMore": "Загрузить ещё",
+      "loading": "Загрузка…",
+      "errors": { "loadFailed": "Не удалось загрузить список пополнений." }
+    },
+    "card": {
+      "provider": "Провайдер",
+      "payNow": "Перейти к оплате",
+      "address": "Адрес для перевода",
+      "expectedAmount": "К оплате",
+      "status": {
+        "PENDING": "Создан",
+        "PROCESSING": "В обработке",
+        "COMPLETED": "Зачислен",
+        "FAILED": "Ошибка",
+        "EXPIRED": "Истёк"
+      }
+    }
   }
 }

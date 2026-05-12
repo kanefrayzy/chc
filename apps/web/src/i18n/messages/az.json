@@ -137,5 +137,43 @@
       "JACKPOT_WIN": "Cekpot uduşu",
       "JACKPOT_COMMISSION": "Cekpot komissiyası"
     }
+  },
+  "deposit": {
+    "pageTitle": "Balansın doldurulması",
+    "historyTitle": "Doldurma tarixi",
+    "form": {
+      "title": "Yeni doldurma",
+      "selectProvider": "Ödəniş üsulu",
+      "providerLimpay": "Kart / bank (Limpay)",
+      "providerWest": "Kriptovalyuta USDT",
+      "amountLabel": "Məbləğ, AZN",
+      "submit": "Doldur",
+      "submitting": "Yaradılır…",
+      "hintLocale": "Ödəniş səhifəsi {locale} dilində açılacaq.",
+      "errors": {
+        "invalidAmount": "Düzgün məbləğ daxil edin",
+        "outOfRange": "Məbləğ icazə verilən diapazondan kənardadır",
+        "createFailed": "Doldurma yaratmaq alınmadı"
+      }
+    },
+    "list": {
+      "empty": "Hələ doldurma yoxdur.",
+      "loadMore": "Daha çox yüklə",
+      "loading": "Yüklənir…",
+      "errors": { "loadFailed": "Doldurma siyahısını yükləmək alınmadı." }
+    },
+    "card": {
+      "provider": "Provayder",
+      "payNow": "Ödənişə keçid",
+      "address": "Köçürmə üçün ünvan",
+      "expectedAmount": "Ödənilməli",
+      "status": {
+        "PENDING": "Yaradıldı",
+        "PROCESSING": "İşlənir",
+        "COMPLETED": "Hesablandı",
+        "FAILED": "Xəta",
+        "EXPIRED": "Vaxtı keçib"
+      }
+    }
   }
 }
