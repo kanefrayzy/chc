@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import type { RouletteBet, RouletteColor, RouletteRound } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
+import { ReferralsService } from '../referrals/referrals.service';
 import {
   ROULETTE_TOTAL_SLOTS,
   calculatePayout,
@@ -34,7 +35,10 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
   private loopTimer: ReturnType<typeof setTimeout> | null = null;
   private running = false;
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly referrals: ReferralsService,
+  ) {
     this.minBetMinor = BigInt(process.env.ROULETTE_MIN_BET_MINOR || DEFAULT_MIN_BET.toString());
     this.maxBetMinor = BigInt(process.env.ROULETTE_MAX_BET_MINOR || DEFAULT_MAX_BET.toString());
   }
@@ -237,33 +241,57 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
     const color = slotToColor(slot);
 
     await this.prisma.$transaction(async (tx) => {
-      const winners = await tx.rouletteBet.findMany({
-        where: { roundId: round.id, color },
+      const allBets = await tx.rouletteBet.findMany({
+        where: { roundId: round.id },
       });
-      for (const bet of winners) {
-        const payout = calculatePayout(bet.amountMinor, color);
-        const updated = await tx.user.update({
-          where: { id: bet.userId },
-          data: { balanceMinor: { increment: payout } },
-          select: { balanceMinor: true },
-        });
-        await tx.rouletteBet.update({
-          where: { id: bet.id },
-          data: { isWinner: true, payoutMinor: payout },
-        });
-        await tx.transaction.create({
-          data: {
-            userId: bet.userId,
-            type: 'BET_WIN',
-            status: 'COMPLETED',
-            amountMinor: payout,
-            balanceAfterMinor: updated.balanceMinor,
-            idempotencyKey: `bet:${bet.id}:win`,
+      for (const bet of allBets) {
+        if (bet.color === color) {
+          const payout = calculatePayout(bet.amountMinor, color);
+          const updated = await tx.user.update({
+            where: { id: bet.userId },
+            data: { balanceMinor: { increment: payout } },
+            select: { balanceMinor: true },
+          });
+          await tx.rouletteBet.update({
+            where: { id: bet.id },
+            data: { isWinner: true, payoutMinor: payout },
+          });
+          await tx.transaction.create({
+            data: {
+              userId: bet.userId,
+              type: 'BET_WIN',
+              status: 'COMPLETED',
+              amountMinor: payout,
+              balanceAfterMinor: updated.balanceMinor,
+              idempotencyKey: `bet:${bet.id}:win`,
+              referenceType: 'roulette_bet',
+              referenceId: bet.id,
+              description: `Roulette win on ${color}`,
+            },
+          });
+          // Реферал: 3% от чистого выигрыша (payout - ставка)
+          const netWin = payout - bet.amountMinor;
+          if (netWin > 0n) {
+            await this.referrals.creditEarning({
+              referredId: bet.userId,
+              kind: 'FROM_WIN',
+              sourceAmountMinor: netWin,
+              referenceType: 'roulette_bet',
+              referenceId: bet.id,
+              tx,
+            });
+          }
+        } else {
+          // Реферал: 10% от проигранной ставки
+          await this.referrals.creditEarning({
+            referredId: bet.userId,
+            kind: 'FROM_LOSS',
+            sourceAmountMinor: bet.amountMinor,
             referenceType: 'roulette_bet',
             referenceId: bet.id,
-            description: `Roulette win on ${color}`,
-          },
-        });
+            tx,
+          });
+        }
       }
 
       await tx.rouletteRound.update({

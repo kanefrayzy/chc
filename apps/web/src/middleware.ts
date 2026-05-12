@@ -5,7 +5,7 @@ import { locales, defaultLocale } from './i18n/request';
 const ACCESS_COOKIE = 'chc_at';
 
 /** Пути (без префикса локали), требующие авторизации. */
-const PROTECTED_PATHS = ['/profile', '/wallet', '/deposit', '/withdraw', '/chat'];
+const PROTECTED_PATHS = ['/profile', '/wallet', '/deposit', '/withdraw', '/chat', '/referrals'];
 
 /** Пути (без префикса локали), недоступные авторизованным. */
 const GUEST_ONLY_PATHS = ['/login', '/register'];

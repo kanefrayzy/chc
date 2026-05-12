@@ -12,6 +12,7 @@ import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
 import { TicketsModule } from './modules/tickets/tickets.module';
 import { CodePurchasesModule } from './modules/code-purchases/code-purchases.module';
 import { RouletteModule } from './modules/roulette/roulette.module';
+import { ReferralsModule } from './modules/referrals/referrals.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { RouletteModule } from './modules/roulette/roulette.module';
     TicketsModule,
     CodePurchasesModule,
     RouletteModule,
+    ReferralsModule,
   ],
   controllers: [HealthController],
 })

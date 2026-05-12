@@ -317,5 +317,35 @@
     "history": {
       "empty": "Raund tarixçəsi ilk raunddan sonra görünəcək."
     }
+  },
+  "referrals": {
+    "pageTitle": "Referral proqramı",
+    "pageSubtitle": "Dostlarınızı dəvət edin və onların oyunundan faiz qazanın.",
+    "code": {
+      "title": "Sizin referral kodunuz",
+      "description": "Kodu və ya keçidi paylaşın — dostunuzun hər oyunundan mükafat alın.",
+      "codeLabel": "Kod",
+      "linkLabel": "Qeydiyyat üçün keçid",
+      "copy": "Kopyala",
+      "copied": "Kopyalandı",
+      "rates": {
+        "fromLoss": "Uduzulanın 10%-i",
+        "fromWin": "Udulanın 3%-i"
+      }
+    },
+    "stats": {
+      "referrals": "Dəvət olunub",
+      "totalEarned": "Cəmi qazanılıb"
+    },
+    "earnings": {
+      "title": "Hesablamalar",
+      "empty": "Hələ hesablama yoxdur.",
+      "loadMore": "Daha çox göstər",
+      "source": "Mənbə",
+      "kind": {
+        "FROM_LOSS": "Uduzulandan",
+        "FROM_WIN": "Udulandan"
+      }
+    }
   }
 }
