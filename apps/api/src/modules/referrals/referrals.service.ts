@@ -6,12 +6,27 @@ import {
   REFERRAL_FROM_WIN_BPS,
   calcEarningBps,
 } from './referrals.constants';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class ReferralsService {
   private readonly logger = new Logger(ReferralsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly settings: SettingsService,
+  ) {}
+
+  private async getRateBps(kind: ReferralEarningKind): Promise<number> {
+    const key = kind === 'FROM_LOSS' ? 'referral.from_loss_bps' : 'referral.from_win_bps';
+    const fallback = kind === 'FROM_LOSS' ? REFERRAL_FROM_LOSS_BPS : REFERRAL_FROM_WIN_BPS;
+    try {
+      const v = await this.settings.get<number>(key);
+      return typeof v === 'number' && v >= 0 ? v : fallback;
+    } catch {
+      return fallback;
+    }
+  }
 
   /**
    * Начисляет реферальную выплату на баланс пригласившего.
@@ -29,7 +44,15 @@ export class ReferralsService {
     const { referredId, kind, sourceAmountMinor, referenceType, referenceId } = params;
     if (sourceAmountMinor <= 0n) return;
 
-    const rateBps = kind === 'FROM_LOSS' ? REFERRAL_FROM_LOSS_BPS : REFERRAL_FROM_WIN_BPS;
+    // Если реферальная программа выключена флагом — выходим тихо.
+    try {
+      const enabled = await this.settings.get<boolean>('gameplay.referrals_enabled');
+      if (!enabled) return;
+    } catch {
+      // нет ключа — продолжаем со старой логикой
+    }
+
+    const rateBps = await this.getRateBps(kind);
     const earningMinor = calcEarningBps(sourceAmountMinor, rateBps);
     if (earningMinor <= 0n) return;
 
@@ -87,7 +110,7 @@ export class ReferralsService {
   }
 
   async getSummary(userId: string) {
-    const [user, referralsCount, agg] = await Promise.all([
+    const [user, referralsCount, agg, fromLossBps, fromWinBps] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
         select: { referralCode: true },
@@ -97,14 +120,16 @@ export class ReferralsService {
         where: { referrerId: userId },
         _sum: { earningMinor: true },
       }),
+      this.getRateBps('FROM_LOSS'),
+      this.getRateBps('FROM_WIN'),
     ]);
     return {
       referralCode: user?.referralCode ?? '',
       referralsCount,
       totalEarningsMinor: agg._sum.earningMinor ?? 0n,
       rates: {
-        fromLossBps: REFERRAL_FROM_LOSS_BPS,
-        fromWinBps: REFERRAL_FROM_WIN_BPS,
+        fromLossBps,
+        fromWinBps,
       },
     };
   }

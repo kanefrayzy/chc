@@ -11,6 +11,7 @@ import type { RouletteBet, RouletteColor, RouletteRound } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
 import { ReferralsService } from '../referrals/referrals.service';
 import { RanksService } from '../ranks/ranks.service';
+import { SettingsService } from '../settings/settings.service';
 import {
   ROULETTE_TOTAL_SLOTS,
   calculatePayout,
@@ -40,6 +41,7 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
     private readonly prisma: PrismaService,
     private readonly referrals: ReferralsService,
     private readonly ranks: RanksService,
+    private readonly settings: SettingsService,
   ) {
     this.minBetMinor = BigInt(process.env.ROULETTE_MIN_BET_MINOR || DEFAULT_MIN_BET.toString());
     this.maxBetMinor = BigInt(process.env.ROULETTE_MAX_BET_MINOR || DEFAULT_MAX_BET.toString());
@@ -103,6 +105,10 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
     amountMinor: bigint;
   }): Promise<RouletteBet> {
     const { userId, color, amountMinor } = params;
+    const enabled = await this.settings.get<boolean>('gameplay.roulette_enabled');
+    if (!enabled) {
+      throw new BadRequestException('ROULETTE_DISABLED');
+    }
     if (amountMinor < this.minBetMinor || amountMinor > this.maxBetMinor) {
       throw new BadRequestException(
         `Bet must be between ${this.minBetMinor} and ${this.maxBetMinor} qəpik`,

@@ -7,26 +7,24 @@ import {
 import type { Deposit, PaymentProvider as PaymentProviderEnum, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
 import { PaymentProviderRegistry } from '../payments/payments.module';
-
-/**
- * Лимиты MVP: 1 AZN ≤ сумма ≤ 10 000 AZN.
- * Финальные числа задаём в конфиге (DEPOSIT_MIN_MINOR / DEPOSIT_MAX_MINOR).
- */
-const DEFAULT_MIN_MINOR = 100n; // 1 AZN
-const DEFAULT_MAX_MINOR = 1_000_000n; // 10 000 AZN
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class DepositsService {
   private readonly logger = new Logger(DepositsService.name);
-  private readonly minMinor: bigint;
-  private readonly maxMinor: bigint;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly providers: PaymentProviderRegistry,
-  ) {
-    this.minMinor = BigInt(process.env.DEPOSIT_MIN_MINOR ?? DEFAULT_MIN_MINOR.toString());
-    this.maxMinor = BigInt(process.env.DEPOSIT_MAX_MINOR ?? DEFAULT_MAX_MINOR.toString());
+    private readonly settings: SettingsService,
+  ) {}
+
+  private async getLimits(): Promise<{ minMinor: bigint; maxMinor: bigint }> {
+    const [minStr, maxStr] = await Promise.all([
+      this.settings.get<string>('deposit.min_amount_minor'),
+      this.settings.get<string>('deposit.max_amount_minor'),
+    ]);
+    return { minMinor: BigInt(minStr), maxMinor: BigInt(maxStr) };
   }
 
   async createDeposit(params: {
@@ -35,9 +33,10 @@ export class DepositsService {
     amountMinor: bigint;
   }): Promise<Deposit> {
     const { userId, provider, amountMinor } = params;
-    if (amountMinor < this.minMinor || amountMinor > this.maxMinor) {
+    const { minMinor, maxMinor } = await this.getLimits();
+    if (amountMinor < minMinor || amountMinor > maxMinor) {
       throw new BadRequestException(
-        `Amount must be between ${this.minMinor} and ${this.maxMinor} qəpik`,
+        `Amount must be between ${minMinor} and ${maxMinor} qəpik`,
       );
     }
 

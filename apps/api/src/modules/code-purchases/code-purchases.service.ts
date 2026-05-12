@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type { CodePurchase } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
+import { SettingsService } from '../settings/settings.service';
 
 const DEFAULT_MIN_MINOR = 100n;
 const DEFAULT_MAX_MINOR = 1_000_000n;
@@ -21,7 +22,10 @@ export class CodePurchasesService {
   private readonly minMinor: bigint;
   private readonly maxMinor: bigint;
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly settings: SettingsService,
+  ) {
     this.minMinor = BigInt(process.env.CODE_PURCHASE_MIN_MINOR || DEFAULT_MIN_MINOR.toString());
     this.maxMinor = BigInt(process.env.CODE_PURCHASE_MAX_MINOR || DEFAULT_MAX_MINOR.toString());
   }
@@ -32,6 +36,10 @@ export class CodePurchasesService {
     comment?: string;
   }): Promise<{ purchase: CodePurchase; ticketId: string }> {
     const { userId, amountMinor, comment } = params;
+    const enabled = await this.settings.get<boolean>('gameplay.code_purchase_enabled');
+    if (!enabled) {
+      throw new BadRequestException('CODE_PURCHASE_DISABLED');
+    }
     if (amountMinor < this.minMinor || amountMinor > this.maxMinor) {
       throw new BadRequestException(
         `Amount must be between ${this.minMinor} and ${this.maxMinor} qəpik`,

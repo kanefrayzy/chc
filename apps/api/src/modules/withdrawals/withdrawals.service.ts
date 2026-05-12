@@ -7,29 +7,25 @@ import {
 } from '@nestjs/common';
 import type { Prisma, Withdrawal, WithdrawalMethod } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
+import { SettingsService } from '../settings/settings.service';
 
-const DEFAULT_MIN_MINOR = 500n; // 5 AZN
-const DEFAULT_MAX_MINOR = 1_000_000n; // 10 000 AZN
+const DEFAULT_MAX_MINOR = 1_000_000n; // 10 000 AZN (страховочный потолок)
 
-/**
- * MVP правила вывода:
- *  - Лимиты: 5 AZN ≤ amount ≤ 10 000 AZN (через env override).
- *  - При создании средства мгновенно списываются с баланса (hold через
- *    Transaction status=PENDING). Реальное движение фиксируется модератором
- *    через админ-эндпоинт (будет добавлен позже) либо webhook автоматического
- *    провайдера.
- *  - Пользователь может отменить PENDING-заявку — баланс возвращается, а
- *    pending-транзакция помечается как REVERSED (создаётся компенсирующая запись).
- */
 @Injectable()
 export class WithdrawalsService {
   private readonly logger = new Logger(WithdrawalsService.name);
-  private readonly minMinor: bigint;
   private readonly maxMinor: bigint;
 
-  constructor(private readonly prisma: PrismaService) {
-    this.minMinor = BigInt(process.env.WITHDRAWAL_MIN_MINOR ?? DEFAULT_MIN_MINOR.toString());
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly settings: SettingsService,
+  ) {
     this.maxMinor = BigInt(process.env.WITHDRAWAL_MAX_MINOR ?? DEFAULT_MAX_MINOR.toString());
+  }
+
+  private async getMinMinor(): Promise<bigint> {
+    const raw = await this.settings.get<string>('withdrawal.min_amount_minor');
+    return BigInt(raw);
   }
 
   async createWithdrawal(params: {
@@ -39,9 +35,10 @@ export class WithdrawalsService {
     destination: Prisma.InputJsonValue;
   }): Promise<Withdrawal> {
     const { userId, method, amountMinor, destination } = params;
-    if (amountMinor < this.minMinor || amountMinor > this.maxMinor) {
+    const minMinor = await this.getMinMinor();
+    if (amountMinor < minMinor || amountMinor > this.maxMinor) {
       throw new BadRequestException(
-        `Amount must be between ${this.minMinor} and ${this.maxMinor} qəpik`,
+        `Amount must be between ${minMinor} and ${this.maxMinor} qəpik`,
       );
     }
 
