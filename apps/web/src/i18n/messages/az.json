@@ -175,5 +175,52 @@
         "EXPIRED": "Vaxtı keçib"
       }
     }
+  },
+  "withdraw": {
+    "pageTitle": "Vəsaitin çıxarılması",
+    "historyTitle": "Çıxarış tarixçəsi",
+    "form": {
+      "title": "Yeni çıxarış müraciəti",
+      "selectMethod": "Çıxarış üsulu",
+      "methodCard": "Bank kartına",
+      "methodCrypto": "Kriptovalyuta USDT",
+      "methodManualLabel": "Moderator vasitəsilə",
+      "methodManual": "Dəstək çatında",
+      "cardNumber": "Kart nömrəsi",
+      "cardHolder": "Sahibin adı",
+      "walletAddress": "Cüzdan ünvanı",
+      "manualDetails": "Rekvizitlər / şərh",
+      "amountLabel": "Məbləğ, AZN",
+      "submit": "Müraciət yarat",
+      "submitting": "Yaradılır…",
+      "errors": {
+        "invalidAmount": "Düzgün məbləğ daxil edin",
+        "outOfRange": "Məbləğ icazə verilən aralıqdan kənardadır",
+        "insufficient": "Balansda kifayət qədər vəsait yoxdur",
+        "invalidDestination": "Alıcının rekvizitlərini doldurun",
+        "createFailed": "Müraciət yaradıla bilmədi"
+      }
+    },
+    "list": {
+      "empty": "Hələ çıxarış müraciəti yoxdur.",
+      "loadMore": "Daha çox yüklə",
+      "loading": "Yüklənir…",
+      "errors": { "loadFailed": "Müraciət siyahısını yükləmək alınmadı." }
+    },
+    "card": {
+      "method": "Üsul",
+      "destination": "Alıcı",
+      "reason": "Səbəb",
+      "cancel": "Ləğv et",
+      "cancelling": "Ləğv olunur…",
+      "status": {
+        "PENDING": "Yaradıldı",
+        "PROCESSING": "Emal olunur",
+        "COMPLETED": "Ödənildi",
+        "REJECTED": "İmtina",
+        "FAILED": "Xəta",
+        "CANCELLED": "Ləğv edildi"
+      }
+    }
   }
 }

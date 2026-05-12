@@ -175,5 +175,52 @@
         "EXPIRED": "Истёк"
       }
     }
+  },
+  "withdraw": {
+    "pageTitle": "Вывод средств",
+    "historyTitle": "История выводов",
+    "form": {
+      "title": "Новая заявка на вывод",
+      "selectMethod": "Способ вывода",
+      "methodCard": "На банковскую карту",
+      "methodCrypto": "Криптовалюта USDT",
+      "methodManualLabel": "Через модератора",
+      "methodManual": "В чате с поддержкой",
+      "cardNumber": "Номер карты",
+      "cardHolder": "Имя держателя",
+      "walletAddress": "Адрес кошелька",
+      "manualDetails": "Реквизиты / комментарий",
+      "amountLabel": "Сумма, AZN",
+      "submit": "Создать заявку",
+      "submitting": "Создаём…",
+      "errors": {
+        "invalidAmount": "Введите корректную сумму",
+        "outOfRange": "Сумма вне допустимого диапазона",
+        "insufficient": "Недостаточно средств на балансе",
+        "invalidDestination": "Заполните реквизиты получателя",
+        "createFailed": "Не удалось создать заявку"
+      }
+    },
+    "list": {
+      "empty": "Заявок на вывод пока нет.",
+      "loadMore": "Загрузить ещё",
+      "loading": "Загрузка…",
+      "errors": { "loadFailed": "Не удалось загрузить список заявок." }
+    },
+    "card": {
+      "method": "Способ",
+      "destination": "Получатель",
+      "reason": "Причина",
+      "cancel": "Отменить",
+      "cancelling": "Отмена…",
+      "status": {
+        "PENDING": "Создана",
+        "PROCESSING": "В обработке",
+        "COMPLETED": "Выплачена",
+        "REJECTED": "Отклонена",
+        "FAILED": "Ошибка",
+        "CANCELLED": "Отменена"
+      }
+    }
   }
 }

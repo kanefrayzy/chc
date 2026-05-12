@@ -8,6 +8,7 @@ import { UsersModule } from './modules/users/users.module';
 import { WalletModule } from './modules/wallet/wallet.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { DepositsModule } from './modules/deposits/deposits.module';
+import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { DepositsModule } from './modules/deposits/deposits.module';
     WalletModule,
     PaymentsModule,
     DepositsModule,
+    WithdrawalsModule,
   ],
   controllers: [HealthController],
 })
