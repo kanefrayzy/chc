@@ -14,10 +14,11 @@ import {
   type RouletteColor,
   type RouletteRoundDto,
 } from '@/lib/api/roulette';
+import { useRouletteSocket } from '@/lib/realtime/useRouletteSocket';
 
-const STATE_POLL_MS = 1500;
-const HISTORY_POLL_MS = 5000;
-const MY_BETS_POLL_MS = 4000;
+const HISTORY_POLL_MS = 15000;
+const MY_BETS_POLL_MS = 10000;
+const RECENT_BETS_POLL_MS = 3000;
 
 const COLOR_ORDER: RouletteColor[] = ['BLACK', 'GREEN', 'RED'];
 
@@ -49,7 +50,7 @@ export function RouletteLayout({ isAuthed, balanceMinor }: RouletteLayoutProps):
       } finally {
         if (!cancelled) {
           setLoading(false);
-          timer = setTimeout(pull, STATE_POLL_MS);
+          timer = setTimeout(pull, RECENT_BETS_POLL_MS);
         }
       }
     };
@@ -59,6 +60,11 @@ export function RouletteLayout({ isAuthed, balanceMinor }: RouletteLayoutProps):
       if (timer) clearTimeout(timer);
     };
   }, []);
+
+  // Real-time обновление статуса раунда через WebSocket
+  useRouletteSocket((r) => {
+    setRound(r);
+  });
 
   useEffect(() => {
     let cancelled = false;

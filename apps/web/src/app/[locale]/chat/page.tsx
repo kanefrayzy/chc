@@ -41,7 +41,7 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps):
       <SiteHeader locale={params.locale} />
       <h1 className="mt-8 text-2xl font-bold text-text-primary">{t('pageTitle')}</h1>
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
-        <ChatLayout locale={params.locale} initialTicketId={searchParams.ticket ?? null} />
+        <ChatLayout locale={params.locale} viewerId={user!.id} initialTicketId={searchParams.ticket ?? null} />
         <aside>
           <CodePurchaseForm locale={params.locale} balanceMinor={balance.balanceMinor} />
         </aside>

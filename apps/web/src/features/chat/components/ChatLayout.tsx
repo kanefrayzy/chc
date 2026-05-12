@@ -11,10 +11,11 @@ const POLL_INTERVAL_MS = 8000;
 
 export interface ChatLayoutProps {
   locale: string;
+  viewerId: string;
   initialTicketId?: string | null;
 }
 
-export function ChatLayout({ locale, initialTicketId }: ChatLayoutProps): JSX.Element {
+export function ChatLayout({ locale, viewerId, initialTicketId }: ChatLayoutProps): JSX.Element {
   const t = useTranslations('chat');
   const [tickets, setTickets] = useState<TicketDto[]>([]);
   const [activeId, setActiveId] = useState<string | null>(initialTicketId ?? null);
@@ -71,7 +72,7 @@ export function ChatLayout({ locale, initialTicketId }: ChatLayoutProps): JSX.El
       </aside>
       <section>
         {activeTicket ? (
-          <ChatThread ticket={activeTicket} locale={locale} />
+          <ChatThread ticket={activeTicket} viewerId={viewerId} locale={locale} />
         ) : (
           <div className="rounded-xl border border-border p-8 text-center text-sm text-text-secondary">
             {t('thread.selectHint')}

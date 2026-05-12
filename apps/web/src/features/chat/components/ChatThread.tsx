@@ -6,51 +6,61 @@ import { Card, CardBody, CardHeader, Spinner, Badge } from '@chcgreen/ui';
 import { MessageBubble } from './MessageBubble';
 import { MessageComposer } from './MessageComposer';
 import { ticketsApi, type MessageDto, type TicketDto } from '@/lib/api/tickets';
-
-const POLL_INTERVAL_MS = 4000;
+import { useTicketSocket } from '@/lib/realtime/useTicketSocket';
 
 export interface ChatThreadProps {
   ticket: TicketDto;
+  /** id текущего пользователя — нужен чтобы расставлять `isMine` для приходящих сокет-событий */
+  viewerId: string;
   locale: string;
 }
 
-export function ChatThread({ ticket, locale }: ChatThreadProps): JSX.Element {
+export function ChatThread({ ticket, viewerId, locale }: ChatThreadProps): JSX.Element {
   const t = useTranslations('chat');
   const [messages, setMessages] = useState<MessageDto[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [status, setStatus] = useState(ticket.status);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const lastIdRef = useRef<string | null>(null);
 
+  // Первичная загрузка
   useEffect(() => {
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const pull = async (): Promise<void> => {
+    setInitialLoading(true);
+    setMessages([]);
+    setStatus(ticket.status);
+    (async () => {
       try {
         const res = await ticketsApi.messages(ticket.id, { limit: 100 });
-        if (cancelled) return;
-        setMessages(res.items);
-        lastIdRef.current = res.items[res.items.length - 1]?.id ?? null;
+        if (!cancelled) setMessages(res.items);
       } catch {
         /* silent */
       } finally {
-        if (!cancelled) {
-          setInitialLoading(false);
-          timer = setTimeout(pull, POLL_INTERVAL_MS);
-        }
+        if (!cancelled) setInitialLoading(false);
       }
-    };
-
-    setInitialLoading(true);
-    setMessages([]);
-    lastIdRef.current = null;
-    pull();
-
+    })();
     return () => {
       cancelled = true;
-      if (timer) clearTimeout(timer);
     };
-  }, [ticket.id]);
+  }, [ticket.id, ticket.status]);
+
+  // Realtime подписка
+  useTicketSocket(ticket.id, {
+    onMessage: (m) => {
+      const dto: MessageDto = {
+        id: m.id,
+        ticketId: m.ticketId,
+        authorId: m.authorId,
+        kind: m.kind,
+        body: m.body,
+        createdAt: m.createdAt,
+        isMine: m.authorId === viewerId,
+      };
+      setMessages((prev) => (prev.some((x) => x.id === dto.id) ? prev : [...prev, dto]));
+    },
+    onStatus: (s) => {
+      setStatus(s.status);
+    },
+  });
 
   useEffect(() => {
     const node = scrollRef.current;
@@ -59,7 +69,7 @@ export function ChatThread({ ticket, locale }: ChatThreadProps): JSX.Element {
 
   const handleSend = async (body: string): Promise<void> => {
     const msg = await ticketsApi.sendMessage(ticket.id, body);
-    setMessages((prev) => [...prev, msg]);
+    setMessages((prev) => (prev.some((x) => x.id === msg.id) ? prev : [...prev, msg]));
   };
 
   return (
@@ -71,7 +81,7 @@ export function ChatThread({ ticket, locale }: ChatThreadProps): JSX.Element {
             {ticket.subject ?? t(`type.${ticket.type}`)}
           </div>
         </div>
-        <Badge variant="info">{t(`status.${ticket.status}`)}</Badge>
+        <Badge variant="info">{t(`status.${status}`)}</Badge>
       </CardHeader>
       <CardBody className="flex-1 overflow-hidden p-0">
         <div ref={scrollRef} className="h-full space-y-2 overflow-y-auto px-4 py-3">
@@ -88,7 +98,7 @@ export function ChatThread({ ticket, locale }: ChatThreadProps): JSX.Element {
           )}
         </div>
       </CardBody>
-      <MessageComposer onSend={handleSend} disabled={ticket.status === 'CLOSED'} />
+      <MessageComposer onSend={handleSend} disabled={status === 'CLOSED'} />
     </Card>
   );
 }
