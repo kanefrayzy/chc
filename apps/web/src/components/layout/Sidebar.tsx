@@ -77,6 +77,12 @@ const ICONS = {
       <path d="M12 19V5M5 12l7-7 7 7" />
     </Icon>
   ),
+  code: (
+    <Icon>
+      <rect x="3" y="7" width="18" height="10" rx="2" />
+      <path d="M7 11h.01M11 11h.01M15 11h.01M7 14h10" />
+    </Icon>
+  ),
 };
 
 async function buildSections(locale: string): Promise<SidebarSection[]> {
@@ -88,6 +94,8 @@ async function buildSections(locale: string): Promise<SidebarSection[]> {
   if (settings['gameplay.roulette_enabled']) {
     games.push({ href: '/roulette', label: tNav('roulette'), icon: ICONS.roulette, badge: 'LIVE' });
   }
+  // Активация купленного кода (вход в стороннее казино)
+  games.push({ href: '/code', label: 'Ввести код', icon: ICONS.code, action: 'code', badge: 'NEW' });
   if (settings['gameplay.ranks_enabled']) {
     games.push({ href: '/ranks', label: tNav('ranks'), icon: ICONS.ranks, action: 'ranks' });
   }

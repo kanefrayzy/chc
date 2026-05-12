@@ -7,6 +7,7 @@ import { AuthModal } from './AuthModal';
 import { DepositModal } from './DepositModal';
 import { WithdrawModal } from './WithdrawModal';
 import { RanksModal } from './RanksModal';
+import { RedeemCodeModal } from './RedeemCodeModal';
 import { ChatWidget } from './ChatWidget';
 import { UiProvider } from './ui-context';
 import { getServerUser } from '@/lib/api/server';
@@ -59,6 +60,7 @@ export async function AppShell({ locale, children }: AppShellProps): Promise<JSX
         <DepositModal locale={locale} />
         <WithdrawModal locale={locale} balanceMinor={balanceMinor} />
         <RanksModal locale={locale} isAuthed={Boolean(user)} />
+        <RedeemCodeModal isAuthed={Boolean(user)} />
         <ChatWidget viewerId={user?.id ?? null} />
       </div>
     </UiProvider>

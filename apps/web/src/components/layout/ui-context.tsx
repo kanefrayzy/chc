@@ -9,6 +9,7 @@ interface UiState {
   depositModalOpen: boolean;
   withdrawModalOpen: boolean;
   ranksModalOpen: boolean;
+  redeemCodeModalOpen: boolean;
   chatOpen: boolean;
   toggleSidebar: () => void;
   closeSidebar: () => void;
@@ -20,6 +21,8 @@ interface UiState {
   closeWithdraw: () => void;
   openRanks: () => void;
   closeRanks: () => void;
+  openRedeemCode: () => void;
+  closeRedeemCode: () => void;
   toggleChat: () => void;
   closeChat: () => void;
   refreshBalance: () => void;
@@ -35,6 +38,7 @@ export function UiProvider({ children }: { children: ReactNode }): JSX.Element {
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [ranksModalOpen, setRanksModalOpen] = useState(false);
+  const [redeemCodeModalOpen, setRedeemCodeModalOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [balanceVersion, setBalanceVersion] = useState(0);
 
@@ -51,6 +55,8 @@ export function UiProvider({ children }: { children: ReactNode }): JSX.Element {
   const closeWithdraw = useCallback((): void => setWithdrawModalOpen(false), []);
   const openRanks = useCallback((): void => setRanksModalOpen(true), []);
   const closeRanks = useCallback((): void => setRanksModalOpen(false), []);
+  const openRedeemCode = useCallback((): void => setRedeemCodeModalOpen(true), []);
+  const closeRedeemCode = useCallback((): void => setRedeemCodeModalOpen(false), []);
   const toggleChat = useCallback((): void => setChatOpen((v) => !v), []);
   const closeChat = useCallback((): void => setChatOpen(false), []);
   const refreshBalance = useCallback((): void => { setBalanceVersion((v) => v + 1); }, []);
@@ -65,12 +71,13 @@ export function UiProvider({ children }: { children: ReactNode }): JSX.Element {
     <UiContext.Provider
       value={{
         sidebarOpen, authModalOpen, authModalTab,
-        depositModalOpen, withdrawModalOpen, ranksModalOpen, chatOpen,
+        depositModalOpen, withdrawModalOpen, ranksModalOpen, redeemCodeModalOpen, chatOpen,
         toggleSidebar, closeSidebar,
         openAuth, closeAuth,
         openDeposit, closeDeposit,
         openWithdraw, closeWithdraw,
         openRanks, closeRanks,
+        openRedeemCode, closeRedeemCode,
         toggleChat, closeChat,
         refreshBalance, balanceVersion,
       }}

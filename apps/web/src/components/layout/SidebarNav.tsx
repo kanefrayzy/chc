@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@chcgreen/ui';
 import { useUi } from './ui-context';
 
-export type SidebarAction = 'deposit' | 'withdraw' | 'ranks' | 'chat';
+export type SidebarAction = 'deposit' | 'withdraw' | 'ranks' | 'chat' | 'code';
 
 export interface SidebarItem {
   href: string;
@@ -28,7 +28,7 @@ export interface SidebarNavProps {
 
 export function SidebarNav({ sections, localePrefix }: SidebarNavProps): JSX.Element {
   const pathname = usePathname();
-  const { closeSidebar, openDeposit, openWithdraw, openRanks, toggleChat } = useUi();
+  const { closeSidebar, openDeposit, openWithdraw, openRanks, toggleChat, openRedeemCode } = useUi();
 
   function isActive(href: string): boolean {
     const full = `${localePrefix}${href}`;
@@ -42,6 +42,7 @@ export function SidebarNav({ sections, localePrefix }: SidebarNavProps): JSX.Ele
     else if (action === 'withdraw') openWithdraw();
     else if (action === 'ranks') openRanks();
     else if (action === 'chat') toggleChat();
+    else if (action === 'code') openRedeemCode();
   }
 
   return (

@@ -8,6 +8,7 @@ import { SidebarToggleButton } from './SidebarToggleButton';
 import { BalancePill } from './BalancePill';
 import { AuthButtons } from './AuthButtons';
 import { UserMenu } from './UserMenu';
+import { RedeemCodeButton } from './RedeemCodeButton';
 
 export interface TopBarProps {
   locale: string;
@@ -53,6 +54,7 @@ export async function TopBar({ locale }: TopBarProps): Promise<JSX.Element> {
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
           {user ? (
             <>
+              <RedeemCodeButton />
               <BalancePill
                 locale={locale as 'ru' | 'az' | 'en'}
                 initialBalanceMinor={initialBalance}
