@@ -25,8 +25,9 @@ import {
   pickSlot,
 } from './roulette.rng';
 
-const BETTING_DURATION_MS = Number(process.env.ROULETTE_BETTING_MS || 20_000);
-const ROLLING_DURATION_MS = Number(process.env.ROULETTE_ROLLING_MS || 5_000);
+const BETTING_DURATION_MS = Number(process.env.ROULETTE_BETTING_MS || 30_000);
+// ROLLING-\u0444\u0430\u0437\u0430 \u043d\u0430 \u0431\u044d\u043a\u0435 \u043a\u043e\u0440\u043e\u0442\u043a\u0430\u044f: \u0432\u0438\u0437\u0443\u0430\u043b\u044c\u043d\u0443\u044e \u0438\u043d\u0442\u0440\u0438\u0433\u0443 (~10\u0441) \u0440\u0438\u0441\u0443\u0435\u0442 \u0444\u0440\u043e\u043d\u0442 \u043f\u043e \u0444\u0438\u043a\u0441\u0438\u0440\u043e\u0432\u0430\u043d\u043d\u043e\u043c\u0443 winningSlot.
+const ROLLING_DURATION_MS = Number(process.env.ROULETTE_ROLLING_MS || 1_500);
 const DEFAULT_MIN_BET = 100n;
 const DEFAULT_MAX_BET = 100_000n;
 
@@ -152,6 +153,20 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
       if (!user) throw new NotFoundException('USER_NOT_FOUND');
       if (user.balanceMinor < amountMinor) throw new ConflictException('INSUFFICIENT_FUNDS');
 
+      // Правило комбинации ставок: максимум 2 цвета из пар RED+GREEN или BLACK+GREEN.
+      // Нельзя ставить одновременно на RED и BLACK.
+      const myBets = await tx.rouletteBet.findMany({
+        where: { roundId: round.id, userId },
+        select: { color: true },
+      });
+      const myColors = new Set(myBets.map((b) => b.color));
+      myColors.add(color);
+      if (myColors.has('RED') && myColors.has('BLACK')) {
+        throw new ConflictException('INVALID_BET_COMBINATION');
+      }
+
+      const isFirstBetInRound = (await tx.rouletteBet.count({ where: { roundId: round.id } })) === 0;
+
       const bet = await tx.rouletteBet.create({
         data: { roundId: round.id, userId, color, amountMinor },
       });
@@ -181,6 +196,20 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
 
       // Обновляем ранг по росту totalWageredMinor.
       await this.ranks.syncUserRank(userId, tx);
+
+      // Если это первая ставка в раунде — сбросить таймер на BETTING_DURATION_MS (30с по умолчанию),
+      // чтобы при добавлении первого игрока всем хватило времени подключиться.
+      if (isFirstBetInRound) {
+        const updated = await tx.rouletteRound.update({
+          where: { id: round.id },
+          data: { bettingEndsAt: new Date(Date.now() + BETTING_DURATION_MS) },
+        });
+        // Перепланируем тик и разошлём обновление (вне транзакции — через setImmediate).
+        setImmediate(() => {
+          this.emitRound(updated);
+          this.scheduleNextTick(updated);
+        });
+      }
 
       return bet;
     });

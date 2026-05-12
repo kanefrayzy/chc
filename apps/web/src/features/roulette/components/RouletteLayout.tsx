@@ -20,7 +20,11 @@ import { useRouletteSocket } from '@/lib/realtime/useRouletteSocket';
 import { playWin, playLose } from '@/lib/sound';
 import { SoundToggle } from './SoundToggle';
 
-const COLOR_ORDER: RouletteColor[] = ['BLACK', 'RED', 'GREEN'];
+// Длительность визуальной анимации после получения winningSlot —
+// должна совпадать с SPIN_DURATION_MS в RouletteWheel + небольшой буфер.
+const VISUAL_SPIN_MS = 9700;
+
+const COLOR_ORDER: RouletteColor[] = ['RED', 'GREEN', 'BLACK'];
 const COLOR_FILL: Record<RouletteColor, string> = {
   BLACK: '#2a3344',
   RED: '#ff3b5c',
@@ -53,7 +57,10 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
   const [history, setHistory] = useState<RouletteRoundDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState(initialBalance);
-  const prevRound = useRef<RouletteRoundDto | null>(null);
+  // Свои цвета в текущем раунде (для правила RED+GREEN | BLACK+GREEN)
+  const [myColors, setMyColors] = useState<RouletteColor[]>([]);
+  const prevRoundIdRef = useRef<string | null>(null);
+  const prevStatusRef = useRef<RouletteRoundDto['status'] | null>(null);
 
   const reloadBalance = useCallback(async (): Promise<void> => {
     if (!isAuthed) return;
@@ -63,6 +70,31 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
       refreshBalance();
     } catch { /* */ }
   }, [isAuthed, refreshBalance]);
+
+  // При смене раунда — сбрасываем «свои цвета».
+  useEffect(() => {
+    if (!round) return;
+    if (prevRoundIdRef.current !== round.id) {
+      prevRoundIdRef.current = round.id;
+      setMyColors([]);
+    }
+  }, [round]);
+
+  // Если уже есть свои ставки в текущем раунде (после перезагрузки) — подтянуть.
+  useEffect(() => {
+    if (!isAuthed || !round) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const mine = await rouletteApi.myBets(20);
+        if (cancelled) return;
+        const here = mine.items.filter((b) => b.roundId === round.id).map((b) => b.color);
+        setMyColors(Array.from(new Set(here)));
+      } catch { /* */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthed, round?.id]);
 
   // ── polling: текущее состояние ──
   useEffect(() => {
@@ -83,29 +115,34 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
   }, []);
 
   // ── polling: история ──
+  const reloadHistory = useCallback(async (): Promise<void> => {
+    try {
+      const res = await rouletteApi.history(30);
+      setHistory(res.items);
+    } catch { /* */ }
+  }, []);
   useEffect(() => {
     let cancelled = false;
     const pull = async (): Promise<void> => {
-      try {
-        const res = await rouletteApi.history(30);
-        if (!cancelled) setHistory(res.items);
-      } catch { /* */ } finally {
-        if (!cancelled) setTimeout(pull, 15000);
-      }
+      await reloadHistory();
+      if (!cancelled) setTimeout(pull, 15000);
     };
     pull();
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadHistory]);
 
-  // ── real-time ──
+  // ── real-time + отложенный результат ──
   useRouletteSocket((r) => {
     setRound(r);
-    if (r.status === 'COMPLETED' && prevRound.current?.status !== 'COMPLETED') {
-      if (r.winningColor) {
-        const c = r.winningColor;
-        const mul = r.multipliers?.[c] ?? (c === 'GREEN' ? 14 : 2);
+    const wasNotCompleted = prevStatusRef.current !== 'COMPLETED';
+    prevStatusRef.current = r.status;
 
-        // Запросим свои ставки в этом раунде, чтобы посчитать итог
+    if (r.status === 'COMPLETED' && wasNotCompleted && r.winningColor) {
+      const c = r.winningColor;
+      const mul = r.multipliers?.[c] ?? (c === 'GREEN' ? 14 : 2);
+
+      // Ждём окончания визуальной анимации колеса и только потом показываем результат.
+      setTimeout(() => {
         if (isAuthed) {
           void (async () => {
             try {
@@ -133,27 +170,26 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
                   playLose();
                 }
                 void reloadBalance();
+                void reloadHistory();
                 return;
               }
             } catch { /* */ }
-            // если своих ставок нет — просто показываем результат
             toast(`Выпал ${c} ×${mul}`, {
               duration: 4000,
               style: { background: COLOR_FILL[c], color: COLOR_TEXT[c], fontWeight: 700 },
             });
+            void reloadHistory();
           })();
         } else {
           toast(`Выпал ${c} ×${mul}`, {
             duration: 4000,
             style: { background: COLOR_FILL[c], color: COLOR_TEXT[c], fontWeight: 700 },
           });
+          void reloadHistory();
         }
-      }
+      }, VISUAL_SPIN_MS);
     }
-    prevRound.current = r;
   });
-
-  // когда пользователь делает ставку — обновляем баланс
 
   if (loading) {
     return (
@@ -185,13 +221,24 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
     GREEN: safeMultiplier(round, 'GREEN'),
   };
 
-  // Центр колеса: таймер / статус / результат
+  const totalBetsInRound =
+    (round.totals?.RED.betsCount ?? 0) +
+    (round.totals?.BLACK.betsCount ?? 0) +
+    (round.totals?.GREEN.betsCount ?? 0);
+
+  // Центр колеса
   const centerNode = (
-    <div className="flex flex-col items-center justify-center text-center">
-      {round.status === 'BETTING' && round.bettingEndsAt ? (
+    <div className="flex flex-col items-center justify-center text-center px-2">
+      {round.status === 'BETTING' && totalBetsInRound === 0 ? (
+        <>
+          <span className="text-[10px] uppercase tracking-[0.25em] text-text-muted">Раунд</span>
+          <span className="mt-1 text-sm font-bold text-text-secondary">Ожидание ставок</span>
+          <span className="mt-0.5 text-[10px] text-text-muted">сделайте первую</span>
+        </>
+      ) : round.status === 'BETTING' && round.bettingEndsAt ? (
         <>
           <span className="text-[10px] uppercase tracking-[0.25em] text-text-muted">
-            Принимаются ставки
+            До закрытия
           </span>
           <span className="mt-1 font-black text-4xl sm:text-5xl tabular-nums text-brand drop-shadow-[0_0_12px_rgba(0,255,136,0.5)]">
             <CountdownTimer endsAt={round.bettingEndsAt} />
@@ -230,30 +277,10 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
 
       {/* Основная панель колеса */}
       <div className="rounded-2xl border border-border bg-bg-card overflow-hidden">
-        {/* Статистика */}
-        <div className="flex items-center justify-between gap-4 px-4 pt-3 pb-2 text-xs text-text-muted border-b border-border/40">
-          <div className="flex items-center gap-4">
-            <span className="font-medium">Статистика ({history.length}):</span>
-            {COLOR_ORDER.map((c) => {
-              const cnt = history.filter((r) => r.winningColor === c).length;
-              const pct = history.length ? Math.round((cnt / history.length) * 100) : 0;
-              return (
-                <span key={c} className="flex items-center gap-1">
-                  <span
-                    className="inline-block w-2.5 h-2.5 rounded-full"
-                    style={{ background: COLOR_FILL[c], boxShadow: `0 0 8px ${COLOR_FILL[c]}60` }}
-                  />
-                  <span style={{ color: COLOR_FILL[c] }} className="font-semibold">{cnt}</span>
-                  <span className="text-text-muted">({pct}%)</span>
-                </span>
-              );
-            })}
-          </div>
+        <div className="flex items-center justify-end gap-2 px-4 pt-3 pb-1">
           <SoundToggle />
         </div>
-
-        {/* Колесо */}
-        <div className="flex justify-center py-4 px-4">
+        <div className="flex justify-center pb-4 px-4">
           <RouletteWheel
             winningSlot={round.winningSlot}
             status={round.status}
@@ -268,7 +295,11 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
           balanceMinor={balance}
           disabled={!canBet}
           multipliers={safeMultipliers}
-          onBetPlaced={() => { void reloadBalance(); }}
+          placedColors={myColors}
+          onBetPlaced={(color) => {
+            setMyColors((prev) => (prev.includes(color) ? prev : [...prev, color]));
+            void reloadBalance();
+          }}
         />
       ) : (
         <div className="rounded-2xl border border-border bg-bg-card p-4 text-sm text-text-secondary text-center">
@@ -276,7 +307,7 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
         </div>
       )}
 
-      {/* 3 колонки ставок по цвету */}
+      {/* 3 колонки ставок по цвету (RED ─ GREEN ─ BLACK) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {COLOR_ORDER.map((color) => {
           const bets = betsByColor[color];
@@ -292,7 +323,10 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
               style={{ borderColor: fill + '40', background: fill + '0d' }}
             >
               <div className="flex items-center justify-between px-3 py-2" style={{ background: fill, color: textColor }}>
-                <span className="font-bold text-sm">{color}</span>
+                <span className="font-bold text-sm flex items-center gap-1">
+                  {color === 'GREEN' ? <span>👑</span> : null}
+                  {color}
+                </span>
                 <span className="font-mono text-xs opacity-90">×{mul}</span>
               </div>
               <div className="px-3 py-2 flex items-center justify-between text-xs">
