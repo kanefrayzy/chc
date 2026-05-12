@@ -15,6 +15,7 @@ import { RouletteModule } from './modules/roulette/roulette.module';
 import { ReferralsModule } from './modules/referrals/referrals.module';
 import { RanksModule } from './modules/ranks/ranks.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { AdminModule } from './modules/admin/admin.module';
     RouletteModule,
     ReferralsModule,
     RanksModule,
+    SettingsModule,
     AdminModule,
   ],
   controllers: [HealthController],

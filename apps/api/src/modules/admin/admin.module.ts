@@ -11,6 +11,7 @@ import { AdminWithdrawalsController } from './admin-withdrawals.controller';
 import { AdminTicketsController } from './admin-tickets.controller';
 import { AdminAuditController } from './admin-audit.controller';
 import { AdminDashboardController } from './admin-dashboard.controller';
+import { AdminSettingsController } from './admin-settings.controller';
 
 @Module({
   imports: [AuthModule],
@@ -21,6 +22,7 @@ import { AdminDashboardController } from './admin-dashboard.controller';
     AdminWithdrawalsController,
     AdminTicketsController,
     AdminAuditController,
+    AdminSettingsController,
   ],
   providers: [
     AdminAuditService,

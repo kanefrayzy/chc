@@ -18,6 +18,7 @@ const NAV: NavItem[] = [
   { href: '/tickets', label: 'Тикеты' },
   { href: '/users', label: 'Пользователи' },
   { href: '/audit', label: 'Аудит-лог' },
+  { href: '/settings', label: 'Настройки', superAdminOnly: true },
 ];
 
 export function Sidebar({
@@ -43,7 +44,7 @@ export function Sidebar({
         </div>
       </div>
       <nav className="flex-1 px-2 py-3 space-y-0.5">
-        {NAV.map((item) => {
+        {NAV.filter((item) => !item.superAdminOnly || role === 'SUPER_ADMIN').map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <Link

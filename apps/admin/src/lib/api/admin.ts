@@ -129,6 +129,20 @@ export interface AdminAuditRow {
   createdAt: string;
 }
 
+// ─── Settings ────────────────────────────────────────────────────────────
+
+export type SettingType = 'boolean' | 'string' | 'number' | 'json';
+
+export interface AdminSettingRow {
+  key: string;
+  value: unknown;
+  type: SettingType;
+  isPublic: boolean;
+  description: string;
+  isDefault: boolean;
+  updatedAt: string | null;
+}
+
 // ─── API client ──────────────────────────────────────────────────────────
 
 interface FetchOptions {
@@ -227,5 +241,15 @@ export const adminApi = {
       const q = qs.toString();
       return apiFetch<Page<AdminAuditRow>>(`/admin/audit${q ? `?${q}` : ''}`, { ...withCookie(opts) });
     },
+  },
+
+  settings: {
+    list: (opts?: FetchOptions) =>
+      apiFetch<{ items: AdminSettingRow[] }>('/admin/settings', { ...withCookie(opts) }),
+    set: (key: string, value: unknown) =>
+      apiFetch<AdminSettingRow>(`/admin/settings/${encodeURIComponent(key)}`, {
+        method: 'POST',
+        body: { value },
+      }),
   },
 };
