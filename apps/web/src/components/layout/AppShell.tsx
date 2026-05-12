@@ -4,23 +4,27 @@ import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { MobileBottomNav, type MobileBottomNavItem } from './MobileBottomNav';
 import { AuthModal } from './AuthModal';
+import { DepositModal } from './DepositModal';
+import { WithdrawModal } from './WithdrawModal';
 import { UiProvider } from './ui-context';
 import { getServerUser } from '@/lib/api/server';
 import { getPublicSettings } from '@/lib/api/settings';
+import { walletApi } from '@/lib/api/wallet';
 
 export interface AppShellProps {
   locale: string;
   children: ReactNode;
 }
 
-/**
- * Главная клиентская оболочка: фиксированный сайдбар слева, верхняя панель
- * с балансом, основной контент. На мобильных — сайдбар-drawer + bottom-nav.
- */
 export async function AppShell({ locale, children }: AppShellProps): Promise<JSX.Element> {
   const localePrefix = locale === 'ru' ? '' : `/${locale}`;
   const tNav = await getTranslations({ locale, namespace: 'nav' });
   const [user, settings] = await Promise.all([getServerUser(), getPublicSettings()]);
+
+  let balanceMinor: string | null = null;
+  if (user) {
+    try { balanceMinor = (await walletApi.balance()).balanceMinor; } catch { /* */ }
+  }
 
   const bottomItems: MobileBottomNavItem[] = [
     { href: '/', label: tNav('home'), icon: '🏠' },
@@ -50,6 +54,8 @@ export async function AppShell({ locale, children }: AppShellProps): Promise<JSX
         </div>
         <MobileBottomNav items={bottomItems} localePrefix={localePrefix} />
         <AuthModal />
+        <DepositModal locale={locale} />
+        <WithdrawModal locale={locale} balanceMinor={balanceMinor} />
       </div>
     </UiProvider>
   );

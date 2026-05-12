@@ -14,9 +14,10 @@ const DEFAULT_MAX_MINOR = 1_000_000n; // 10 000 AZN
 
 export interface DepositFormProps {
   locale: string;
+  onSuccess?: () => void;
 }
 
-export function DepositForm({ locale }: DepositFormProps): JSX.Element {
+export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Element {
   const t = useTranslations('deposit.form');
   const router = useRouter();
   const [provider, setProvider] = useState<PaymentProviderId>('BETRA_H2H');
@@ -47,6 +48,7 @@ export function DepositForm({ locale }: DepositFormProps): JSX.Element {
         await depositsApi.create({ provider, amountMinor: minor.toString() });
         router.refresh();
         setAmount('');
+        if (onSuccess) onSuccess();
       } catch (e) {
         if (e instanceof ApiException) {
           setErrorMessage(e.message || t('errors.createFailed'));

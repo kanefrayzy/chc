@@ -3,17 +3,15 @@
 import { useState, useTransition, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Alert, Button, Checkbox, FormField, Input } from '@chcgreen/ui';
+import { IMaskInput } from 'react-imask';
+import { Alert, Button, Checkbox, FormField, Input, cn } from '@chcgreen/ui';
 import { registerSchema, type RegisterDto } from '@chcgreen/shared';
 import { authApi } from '@/lib/api/auth';
 import { ApiException } from '@/lib/api/client';
 
 export interface RegisterFormProps {
-  /** Реферальный код, подставленный из ?ref=... */
   initialReferralCode?: string;
-  /** Куда редиректить после успеха */
   onSuccessRedirect?: string;
-  /** Если задан — после успеха вызывается callback (без редиректа). */
   onSuccess?: () => void;
 }
 
@@ -27,7 +25,7 @@ interface FieldErrors {
   termsAccepted?: string;
 }
 
-const initialState = {
+const emptyValues = {
   email: '',
   phone: '',
   username: '',
@@ -43,13 +41,14 @@ export function RegisterForm({
 }: RegisterFormProps): JSX.Element {
   const t = useTranslations('auth');
   const router = useRouter();
-  const [values, setValues] = useState(initialState);
+  const [values, setValues] = useState(emptyValues);
   const [referralCode, setReferralCode] = useState(initialReferralCode);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [regMethod, setRegMethod] = useState<'email' | 'phone'>('email');
 
-  const update = <K extends keyof typeof values>(key: K, value: (typeof values)[K]): void => {
+  const update = <K extends keyof typeof emptyValues>(key: K, value: (typeof emptyValues)[K]): void => {
     setValues((s) => ({ ...s, [key]: value }));
   };
 
@@ -59,8 +58,8 @@ export function RegisterForm({
     setErrors({});
 
     const dto: RegisterDto = {
-      email: values.email.trim(),
-      phone: values.phone.trim(),
+      email: regMethod === 'email' ? values.email.trim() : '',
+      phone: regMethod === 'phone' ? values.phone.trim() : '',
       username: values.username.trim(),
       password: values.password,
       ageConfirmed: values.ageConfirmed as true,
@@ -101,33 +100,70 @@ export function RegisterForm({
     <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
       {formError ? <Alert variant="danger">{formError}</Alert> : null}
 
-      <FormField label={t('fields.email')} required error={errors.email}>
-        {(id) => (
-          <Input
-            id={id}
-            type="email"
-            autoComplete="email"
-            value={values.email}
-            onChange={(e) => update('email', e.target.value)}
-            invalid={Boolean(errors.email)}
-            disabled={isPending}
-          />
-        )}
-      </FormField>
+      {/* Переключатель Email / Телефон */}
+      <div className="flex rounded-lg border border-border bg-bg-elevated p-1 gap-1">
+        <button
+          type="button"
+          onClick={() => setRegMethod('email')}
+          className={cn(
+            'flex-1 rounded-md py-1.5 text-sm font-medium transition',
+            regMethod === 'email'
+              ? 'bg-bg-card text-text-primary shadow-sm'
+              : 'text-text-muted hover:text-text-secondary',
+          )}
+        >
+          {t('fields.email')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setRegMethod('phone')}
+          className={cn(
+            'flex-1 rounded-md py-1.5 text-sm font-medium transition',
+            regMethod === 'phone'
+              ? 'bg-bg-card text-text-primary shadow-sm'
+              : 'text-text-muted hover:text-text-secondary',
+          )}
+        >
+          {t('fields.phone')}
+        </button>
+      </div>
 
-      <FormField label={t('fields.phone')} required error={errors.phone} hint="+994...">
-        {(id) => (
-          <Input
-            id={id}
-            type="tel"
-            autoComplete="tel"
-            value={values.phone}
-            onChange={(e) => update('phone', e.target.value)}
-            invalid={Boolean(errors.phone)}
-            disabled={isPending}
-          />
-        )}
-      </FormField>
+      {regMethod === 'email' ? (
+        <FormField label={t('fields.email')} required error={errors.email}>
+          {(id) => (
+            <Input
+              id={id}
+              type="email"
+              autoComplete="email"
+              value={values.email}
+              onChange={(e) => update('email', e.target.value)}
+              invalid={Boolean(errors.email)}
+              disabled={isPending}
+            />
+          )}
+        </FormField>
+      ) : (
+        <FormField label={t('fields.phone')} required error={errors.phone} hint="+994 (XX) XXX-XX-XX">
+          {(id) => (
+            <IMaskInput
+              id={id}
+              mask="+994 (00) 000-00-00"
+              value={values.phone}
+              onAccept={(val: string) => update('phone', val)}
+              autoComplete="tel"
+              inputMode="tel"
+              disabled={isPending}
+              className={cn(
+                'w-full rounded-lg border bg-bg-elevated px-4 py-2.5 text-sm font-mono text-text-primary placeholder:text-text-muted transition',
+                'focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand',
+                errors.phone ? 'border-danger' : 'border-border',
+                isPending && 'opacity-50',
+              )}
+              placeholder="+994 (XX) XXX-XX-XX"
+            />
+          )}
+        </FormField>
+      )}
 
       <FormField label={t('fields.username')} required error={errors.username}>
         {(id) => (
@@ -183,9 +219,7 @@ export function RegisterForm({
           disabled={isPending}
         />
         {errors.ageConfirmed ? (
-          <p className="text-xs text-danger" role="alert">
-            {errors.ageConfirmed}
-          </p>
+          <p className="text-xs text-danger" role="alert">{errors.ageConfirmed}</p>
         ) : null}
 
         <Checkbox
@@ -196,9 +230,7 @@ export function RegisterForm({
           disabled={isPending}
         />
         {errors.termsAccepted ? (
-          <p className="text-xs text-danger" role="alert">
-            {errors.termsAccepted}
-          </p>
+          <p className="text-xs text-danger" role="alert">{errors.termsAccepted}</p>
         ) : null}
       </div>
 

@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import { Card, CardBody, Spinner } from '@chcgreen/ui';
+import { Spinner } from '@chcgreen/ui';
+import { toast } from 'sonner';
 import { RouletteWheel, ColorTotalsBadge } from './RouletteWheel';
-import { RoundInfoCard } from './RoundInfoCard';
 import { BetPanel } from './BetPanel';
-import { BetsList } from './BetsList';
 import { HistoryStrip } from './HistoryStrip';
+import { CountdownTimer } from './CountdownTimer';
 import {
   rouletteApi,
   type RouletteBetDto,
@@ -15,12 +15,26 @@ import {
   type RouletteRoundDto,
 } from '@/lib/api/roulette';
 import { useRouletteSocket } from '@/lib/realtime/useRouletteSocket';
+import { cn } from '@chcgreen/ui';
 
-const HISTORY_POLL_MS = 15000;
-const MY_BETS_POLL_MS = 10000;
-const RECENT_BETS_POLL_MS = 3000;
-
-const COLOR_ORDER: RouletteColor[] = ['BLACK', 'GREEN', 'RED'];
+const COLOR_ORDER: RouletteColor[] = ['BLACK', 'RED', 'GREEN'];
+const COLOR_LABELS: Record<RouletteColor, string> = { BLACK: 'Black ×2', RED: 'Red ×2', GREEN: 'Green ×14' };
+const COLOR_ICON: Record<RouletteColor, string> = { BLACK: '🦅', RED: '⚔️', GREEN: '💣' };
+const COLOR_BG: Record<RouletteColor, string> = {
+  BLACK: 'bg-[#141b2d] border-[#2a3350]',
+  RED: 'bg-danger/10 border-danger/40',
+  GREEN: 'bg-brand/10 border-brand/40',
+};
+const COLOR_HEADER_BG: Record<RouletteColor, string> = {
+  BLACK: 'bg-[#1a2035]',
+  RED: 'bg-danger',
+  GREEN: 'bg-brand',
+};
+const COLOR_TEXT: Record<RouletteColor, string> = {
+  BLACK: 'text-white',
+  RED: 'text-white',
+  GREEN: 'text-black',
+};
 
 export interface RouletteLayoutProps {
   isAuthed: boolean;
@@ -28,88 +42,63 @@ export interface RouletteLayoutProps {
   locale: string;
 }
 
-export function RouletteLayout({ isAuthed, balanceMinor }: RouletteLayoutProps): JSX.Element {
+export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: RouletteLayoutProps): JSX.Element {
   const t = useTranslations('roulette');
   const [round, setRound] = useState<RouletteRoundDto | null>(null);
   const [recentBets, setRecentBets] = useState<RouletteBetDto[]>([]);
   const [history, setHistory] = useState<RouletteRoundDto[]>([]);
-  const [myBets, setMyBets] = useState<RouletteBetDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [balance, setBalance] = useState(initialBalance);
+  const prevRound = useRef<RouletteRoundDto | null>(null);
 
+  // Polls
   useEffect(() => {
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
     const pull = async (): Promise<void> => {
       try {
         const s = await rouletteApi.state();
         if (cancelled) return;
         setRound(s.round);
         setRecentBets(s.recentBets);
-      } catch {
-        /* silent */
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-          timer = setTimeout(pull, RECENT_BETS_POLL_MS);
-        }
+      } catch { /* */ } finally {
+        if (!cancelled) setLoading(false);
+        if (!cancelled) setTimeout(pull, 2500);
       }
     };
     pull();
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
+    return () => { cancelled = true; };
   }, []);
 
-  // Real-time обновление статуса раунда через WebSocket
+  useEffect(() => {
+    let cancelled = false;
+    const pull = async (): Promise<void> => {
+      try {
+        const res = await rouletteApi.history(30);
+        if (!cancelled) setHistory(res.items);
+      } catch { /* */ } finally {
+        if (!cancelled) setTimeout(pull, 15000);
+      }
+    };
+    pull();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Real-time socket
   useRouletteSocket((r) => {
     setRound(r);
+    // Уведомление о выигрыше
+    if (r.status === 'COMPLETED' && prevRound.current?.status !== 'COMPLETED') {
+      if (r.winningColor) {
+        const emoji = COLOR_ICON[r.winningColor];
+        toast(`${emoji} Раунд завершён! Выпал ${r.winningColor}`, { duration: 4000 });
+      }
+    }
+    prevRound.current = r;
   });
-
-  useEffect(() => {
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const pull = async (): Promise<void> => {
-      try {
-        const res = await rouletteApi.history(20);
-        if (!cancelled) setHistory(res.items);
-      } catch {
-        /* silent */
-      } finally {
-        if (!cancelled) timer = setTimeout(pull, HISTORY_POLL_MS);
-      }
-    };
-    pull();
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isAuthed) return;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const pull = async (): Promise<void> => {
-      try {
-        const res = await rouletteApi.myBets(30);
-        if (!cancelled) setMyBets(res.items);
-      } catch {
-        /* silent */
-      } finally {
-        if (!cancelled) timer = setTimeout(pull, MY_BETS_POLL_MS);
-      }
-    };
-    pull();
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  }, [isAuthed]);
 
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
+      <div className="flex justify-center py-16">
         <Spinner />
       </div>
     );
@@ -117,60 +106,135 @@ export function RouletteLayout({ isAuthed, balanceMinor }: RouletteLayoutProps):
 
   if (!round) {
     return (
-      <Card variant="elevated">
-        <CardBody className="text-center text-text-secondary">{t('noRound')}</CardBody>
-      </Card>
+      <div className="rounded-2xl border border-border bg-bg-card p-8 text-center text-text-secondary">
+        {t('noRound')}
+      </div>
     );
   }
 
   const canBet = isAuthed && round.status === 'BETTING';
 
+  // Ставки сгруппированные по цвету
+  const betsByColor: Record<RouletteColor, RouletteBetDto[]> = {
+    BLACK: recentBets.filter((b) => b.color === 'BLACK'),
+    RED: recentBets.filter((b) => b.color === 'RED'),
+    GREEN: recentBets.filter((b) => b.color === 'GREEN'),
+  };
+
   return (
-    <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-      <div className="space-y-4">
-        <RouletteWheel winningSlot={round.winningSlot} status={round.status} />
-        <div className="grid grid-cols-3 gap-2">
-          {COLOR_ORDER.map((color) => (
-            <ColorTotalsBadge
-              key={color}
-              color={color}
-              amountMinor={round.totals[color].amountMinor}
-              betsCount={round.totals[color].betsCount}
-              multiplier={round.multipliers[color]}
-            />
-          ))}
+    <div className="space-y-4">
+      {/* История раундов */}
+      <HistoryStrip rounds={history} />
+
+      {/* Колесо */}
+      <div className="relative rounded-2xl border border-border bg-bg-card overflow-hidden">
+        {/* Статистика сверху */}
+        <div className="flex items-center gap-4 px-4 pt-3 pb-0 text-xs text-text-muted">
+          <span>Статистика за {history.length}</span>
+          {(['RED', 'GREEN', 'BLACK'] as RouletteColor[]).map((c) => {
+            const cnt = history.filter((r) => r.winningColor === c).length;
+            return (
+              <span key={c} className="flex items-center gap-1">
+                <span className={cn(
+                  'inline-block w-2.5 h-2.5 rounded-full',
+                  c === 'GREEN' ? 'bg-brand' : c === 'RED' ? 'bg-danger' : 'bg-bg-elevated border border-border',
+                )} />
+                {cnt}
+              </span>
+            );
+          })}
         </div>
-        <HistoryStrip rounds={history} />
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
-              {t('bets.recentTitle')}
-            </h3>
-            <BetsList bets={recentBets} emptyKey="recent" />
-          </div>
-          {isAuthed ? (
+
+        <div className="px-4 pt-2 pb-4">
+          <RouletteWheel winningSlot={round.winningSlot} status={round.status} />
+        </div>
+
+        {/* Таймер / статус */}
+        <div className="border-t border-border px-4 py-3 text-center">
+          {round.status === 'BETTING' && round.bettingEndsAt ? (
             <div>
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
-                {t('bets.mineTitle')}
-              </h3>
-              <BetsList bets={myBets} emptyKey="mine" />
+              <div className="text-xs text-text-muted mb-0.5">Принимаются ставки</div>
+              <div className="text-3xl font-bold tabular-nums text-text-primary">
+                <CountdownTimer endsAt={round.bettingEndsAt} />
+              </div>
             </div>
-          ) : null}
+          ) : round.status === 'ROLLING' ? (
+            <div className="text-sm font-semibold text-brand animate-pulse">⟳ Крутим колесо…</div>
+          ) : round.status === 'COMPLETED' ? (
+            <div className="text-sm font-semibold text-text-secondary">Раунд завершён</div>
+          ) : (
+            <div className="text-sm text-text-muted">Ожидаем следующий раунд…</div>
+          )}
         </div>
       </div>
-      <div className="space-y-4">
-        <RoundInfoCard round={round} />
-        {isAuthed && balanceMinor !== null ? (
-          <BetPanel
-            balanceMinor={balanceMinor}
-            disabled={!canBet}
-            multipliers={round.multipliers}
-          />
-        ) : (
-          <Card variant="elevated">
-            <CardBody className="text-sm text-text-secondary">{t('loginToBet')}</CardBody>
-          </Card>
-        )}
+
+      {/* BetPanel */}
+      {isAuthed && balance !== null ? (
+        <BetPanel
+          balanceMinor={balance}
+          disabled={!canBet}
+          multipliers={round.multipliers}
+        />
+      ) : (
+        <div className="rounded-2xl border border-border bg-bg-card p-4 text-sm text-text-secondary text-center">
+          {t('loginToBet')}
+        </div>
+      )}
+
+      {/* Ставки по 4 колонкам (как на скриншоте: BLACK RED GREEN + JOKER) */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {(COLOR_ORDER as RouletteColor[]).map((color) => {
+          const bets = betsByColor[color];
+          const totals = round.totals[color];
+          return (
+            <div key={color} className={cn('rounded-xl border overflow-hidden', COLOR_BG[color])}>
+              {/* Заголовок */}
+              <div className={cn('flex items-center justify-between px-3 py-2', COLOR_HEADER_BG[color], COLOR_TEXT[color])}>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm">{COLOR_ICON[color]}</span>
+                  <span className="text-xs font-bold">Place a bet</span>
+                </div>
+                <span className="text-sm font-extrabold">×{round.multipliers[color]}</span>
+              </div>
+              {/* Итоги */}
+              <div className="flex items-center justify-between px-3 py-1.5 text-xs text-text-muted border-b border-border/50">
+                <span>игроков: {totals.betsCount}</span>
+                <span className="font-semibold text-text-secondary">{(Number(totals.amountMinor) / 100).toFixed(2)}</span>
+              </div>
+              {/* Список ставок */}
+              <div className="divide-y divide-border/30 max-h-48 overflow-y-auto">
+                {bets.length === 0 ? (
+                  <div className="px-3 py-3 text-center text-xs text-text-muted">—</div>
+                ) : (
+                  bets.slice(0, 10).map((b) => (
+                    <div key={b.id} className="flex items-center justify-between px-3 py-1.5 text-xs">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="h-5 w-5 rounded-full bg-bg-elevated border border-border shrink-0 flex items-center justify-center text-[9px] font-bold text-text-muted">
+                          {(b.username ?? '?').charAt(0).toUpperCase()}
+                        </div>
+                        <span className="truncate text-text-secondary">{b.username ?? 'Аноним'}</span>
+                      </div>
+                      <span className="tabular-nums font-semibold text-text-primary shrink-0 ml-1">
+                        {(Number(b.amountMinor) / 100).toFixed(2)}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {/* 4-я колонка — джокер (задел на будущее) */}
+        <div className="rounded-xl border border-[#2a3350] overflow-hidden bg-[#0d1120] opacity-60">
+          <div className="flex items-center justify-between px-3 py-2 bg-[#1a1f3a] text-text-muted">
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm">🃏</span>
+              <span className="text-xs font-bold">Jackpot</span>
+            </div>
+            <span className="text-sm font-extrabold">×7</span>
+          </div>
+          <div className="px-3 py-3 text-center text-xs text-text-muted">Скоро</div>
+        </div>
       </div>
     </div>
   );

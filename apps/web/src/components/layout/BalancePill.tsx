@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { cn } from '@chcgreen/ui';
 import { walletApi } from '@/lib/api/wallet';
@@ -20,11 +19,9 @@ export interface BalancePillProps {
 export function BalancePill({
   locale,
   initialBalanceMinor,
-  depositHref,
-  withdrawHref,
 }: BalancePillProps): JSX.Element {
   const t = useTranslations('topbar');
-  const { balanceVersion } = useUi();
+  const { balanceVersion, openDeposit, openWithdraw } = useUi();
   const [balance, setBalance] = useState<string | null>(initialBalanceMinor);
   const [loading, setLoading] = useState(false);
 
@@ -98,18 +95,20 @@ export function BalancePill({
         </span>
         <span className="text-[10px] font-semibold text-brand">AZN</span>
       </div>
-      <Link
-        href={depositHref}
+      <button
+        type="button"
+        onClick={openDeposit}
         className="ml-2 inline-flex h-8 items-center gap-1 rounded-lg bg-brand px-3 text-xs font-bold text-bg-base shadow-glow hover:bg-brand-dim"
       >
         + {t('deposit')}
-      </Link>
-      <Link
-        href={withdrawHref}
+      </button>
+      <button
+        type="button"
+        onClick={openWithdraw}
         className="hidden sm:inline-flex h-8 items-center rounded-lg border border-border bg-bg-card px-3 text-xs font-medium text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
       >
         {t('withdraw')}
-      </Link>
+      </button>
     </div>
   );
 }

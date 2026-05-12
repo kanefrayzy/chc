@@ -4,6 +4,9 @@
 
 :root {
   color-scheme: dark;
+  --color-bg-card: #111419;
+  --color-border: #1e2530;
+  --color-text-primary: #e9eef5;
 }
 
 html,

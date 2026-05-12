@@ -28,6 +28,7 @@ const EMPTY_DESTINATIONS: Record<WithdrawalMethod, CreateWithdrawalDestination> 
 
 export interface WithdrawFormProps {
   balanceMinor: string;
+  onSuccess?: () => void;
 }
 
 function validateDestination(d: CreateWithdrawalDestination): boolean {
@@ -36,7 +37,7 @@ function validateDestination(d: CreateWithdrawalDestination): boolean {
   return d.details.length >= 2;
 }
 
-export function WithdrawForm({ balanceMinor }: WithdrawFormProps): JSX.Element {
+export function WithdrawForm({ balanceMinor, onSuccess }: WithdrawFormProps): JSX.Element {
   const t = useTranslations('withdraw.form');
   const router = useRouter();
   const [method, setMethod] = useState<WithdrawalMethod>('AUTO_BETRA_H2H');
@@ -90,6 +91,7 @@ export function WithdrawForm({ balanceMinor }: WithdrawFormProps): JSX.Element {
         router.refresh();
         setAmount('');
         setDestination(EMPTY_DESTINATIONS[method]);
+        if (onSuccess) onSuccess();
       } catch (err) {
         if (err instanceof ApiException) {
           setErrorMessage(err.message || t('errors.createFailed'));
