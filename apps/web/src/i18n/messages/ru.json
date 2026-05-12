@@ -3,6 +3,7 @@
     "siteName": "CHCGREEN",
     "login": "Войти",
     "register": "Регистрация",
+    "logout": "Выйти",
     "online": "онлайн"
   },
   "nav": {
@@ -81,6 +82,60 @@
     "errors": {
       "invalidCredentials": "Неверный email/username или пароль",
       "unknown": "Что-то пошло не так. Попробуйте ещё раз."
+    }
+  },
+  "profile": {
+    "pageTitle": "Профиль",
+    "header": {
+      "role": "Роль",
+      "referral": "Реферальный код",
+      "memberSince": "На сайте с"
+    },
+    "tabs": {
+      "overview": "Обзор",
+      "wallet": "Кошелёк",
+      "referrals": "Партнёрка"
+    },
+    "overview": {
+      "title": "Обзор",
+      "placeholder": "Здесь появится сводка по аккаунту: ранг, активность, бонусы."
+    },
+    "referrals": {
+      "title": "Партнёрская программа",
+      "description": "Делитесь ссылкой и получайте % с проигрышей приглашённых игроков.",
+      "codeLabel": "Ваш код",
+      "linkLabel": "Реферальная ссылка"
+    }
+  },
+  "wallet": {
+    "balance": {
+      "title": "Баланс",
+      "wagered": "Всего поставлено"
+    },
+    "history": {
+      "title": "История операций"
+    },
+    "empty": "Операций пока нет.",
+    "loadMore": "Загрузить ещё",
+    "errors": {
+      "loadFailed": "Не удалось загрузить данные кошелька."
+    },
+    "tx": {
+      "DEPOSIT": "Пополнение",
+      "WITHDRAW": "Вывод",
+      "BET_PLACE": "Ставка",
+      "BET_WIN": "Выигрыш",
+      "BET_REFUND": "Возврат ставки",
+      "CODE_HOLD": "Резерв по коду",
+      "CODE_RELEASE": "Возврат кода",
+      "CODE_REFUND": "Возврат покупки",
+      "REFERRAL_EARNING": "Реферальное начисление",
+      "ADMIN_ADJUSTMENT": "Корректировка администратора",
+      "CASE_OPEN": "Открытие кейса",
+      "CASE_WIN": "Приз из кейса",
+      "JACKPOT_BET": "Ставка в джекпоте",
+      "JACKPOT_WIN": "Выигрыш джекпота",
+      "JACKPOT_COMMISSION": "Комиссия джекпота"
     }
   }
 }

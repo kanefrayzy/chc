@@ -3,6 +3,7 @@
     "siteName": "CHCGREEN",
     "login": "Daxil ol",
     "register": "Qeydiyyat",
+    "logout": "Çıxış",
     "online": "onlayn"
   },
   "nav": {
@@ -81,6 +82,60 @@
     "errors": {
       "invalidCredentials": "Yanlış email/istifadəçi adı və ya şifrə",
       "unknown": "Xəta baş verdi. Yenidən cəhd edin."
+    }
+  },
+  "profile": {
+    "pageTitle": "Profil",
+    "header": {
+      "role": "Rol",
+      "referral": "Referal kodu",
+      "memberSince": "Qoşulma tarixi"
+    },
+    "tabs": {
+      "overview": "İcmal",
+      "wallet": "Cüzdan",
+      "referrals": "Tərəfdaşlıq"
+    },
+    "overview": {
+      "title": "İcmal",
+      "placeholder": "Burada hesabın xülasəsi görünəcək: rütbə, fəaliyyət, bonuslar."
+    },
+    "referrals": {
+      "title": "Tərəfdaşlıq proqramı",
+      "description": "Linki paylaşın və dəvət etdiyiniz oyunçuların itkilərindən % qazanın.",
+      "codeLabel": "Sizin kodunuz",
+      "linkLabel": "Referal link"
+    }
+  },
+  "wallet": {
+    "balance": {
+      "title": "Balans",
+      "wagered": "Ümumi mərc edilmişdir"
+    },
+    "history": {
+      "title": "Əməliyyat tarixi"
+    },
+    "empty": "Əməliyyat hələ yoxdur.",
+    "loadMore": "Daha çox yüklə",
+    "errors": {
+      "loadFailed": "Cüzdan məlumatlarını yükləmək alınmadı."
+    },
+    "tx": {
+      "DEPOSIT": "Doldurma",
+      "WITHDRAW": "Çıxarış",
+      "BET_PLACE": "Mərc",
+      "BET_WIN": "Uduş",
+      "BET_REFUND": "Mərcin qaytarılması",
+      "CODE_HOLD": "Kod üzrə rezerv",
+      "CODE_RELEASE": "Kodun qaytarılması",
+      "CODE_REFUND": "Alış qaytarılması",
+      "REFERRAL_EARNING": "Referal gəliri",
+      "ADMIN_ADJUSTMENT": "Admin düzəlişi",
+      "CASE_OPEN": "Keys açılışı",
+      "CASE_WIN": "Keys mükafatı",
+      "JACKPOT_BET": "Cekpot mərci",
+      "JACKPOT_WIN": "Cekpot uduşu",
+      "JACKPOT_COMMISSION": "Cekpot komissiyası"
     }
   }
 }

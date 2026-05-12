@@ -19,11 +19,11 @@ const FEATURES: readonly FeatureItem[] = [
   { key: 'ssl' },
 ] as const;
 
-export default function HomePage({
+export default async function HomePage({
   params,
 }: {
   params: { locale: string };
-}): JSX.Element {
+}): Promise<JSX.Element> {
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <SiteHeader locale={params.locale} />

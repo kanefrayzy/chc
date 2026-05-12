@@ -30,6 +30,22 @@ module.exports = {
           purple: '#a259ff',
           black: '#1a1f28',
         },
+        success: {
+          DEFAULT: '#00ff88',
+          dim: '#00cc6e',
+        },
+        warning: {
+          DEFAULT: '#ffb547',
+          dim: '#e69835',
+        },
+        danger: {
+          DEFAULT: '#ff3b5c',
+          dim: '#e02c4c',
+        },
+        info: {
+          DEFAULT: '#5aa9ff',
+          dim: '#3d8de8',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
