@@ -7,7 +7,7 @@ RUN apk add --no-cache libc6-compat
 ARG PNPM_VERSION
 RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 WORKDIR /repo
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* turbo.json tsconfig.base.json .npmrc ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* turbo.json tsconfig.base.json ./
 COPY apps/realtime/package.json apps/realtime/
 COPY packages/shared/package.json packages/shared/
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
@@ -19,7 +19,7 @@ ARG PNPM_VERSION
 RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 WORKDIR /repo
 COPY --from=deps /repo/node_modules ./node_modules
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* turbo.json tsconfig.base.json .npmrc ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* turbo.json tsconfig.base.json ./
 COPY packages/shared ./packages/shared
 COPY apps/realtime ./apps/realtime
 RUN pnpm --filter @chcgreen/shared build
@@ -32,7 +32,7 @@ RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 WORKDIR /repo
 ENV NODE_ENV=production
 
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* .npmrc ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY apps/realtime/package.json apps/realtime/
 COPY packages/shared/package.json packages/shared/
 

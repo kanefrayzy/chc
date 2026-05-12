@@ -9,7 +9,7 @@ module.exports = {
           base: '#07090c',
           elevated: '#0d1116',
           card: '#12171e',
-          cardHover: '#171d26',
+          'card-hover': '#171d26',
         },
         border: {
           DEFAULT: '#1e2530',

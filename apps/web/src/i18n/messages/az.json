@@ -46,5 +46,41 @@
       "title": "SSL qoruma",
       "subtitle": "Məlumatlarınız qorunur"
     }
+  },
+  "auth": {
+    "login": {
+      "title": "CHCGREEN-ə daxil ol",
+      "subtitle": "Daxil olmaq üçün məlumatlarınızı daxil edin",
+      "noAccount": "Hesabınız yoxdur?"
+    },
+    "register": {
+      "title": "Qeydiyyat",
+      "subtitle": "Bir dəqiqəyə hesab yaradın",
+      "hasAccount": "Artıq hesabınız var?"
+    },
+    "fields": {
+      "identifier": "Email və ya istifadəçi adı",
+      "email": "Email",
+      "phone": "Telefon",
+      "username": "İstifadəçi adı",
+      "password": "Şifrə",
+      "referralCode": "Referal kodu"
+    },
+    "hints": {
+      "password": "Ən azı 8 simvol, böyük hərf və rəqəm"
+    },
+    "checkboxes": {
+      "age": "Mən 21+ yaşımdayam, təsdiq edirəm",
+      "terms": "İstifadə Şərtlərini və Məxfilik Siyasətini qəbul edirəm"
+    },
+    "actions": {
+      "login": "Daxil ol",
+      "register": "Qeydiyyatdan keç",
+      "logout": "Çıxış"
+    },
+    "errors": {
+      "invalidCredentials": "Yanlış email/istifadəçi adı və ya şifrə",
+      "unknown": "Xəta baş verdi. Yenidən cəhd edin."
+    }
   }
 }

@@ -46,5 +46,41 @@
       "title": "SSL защита",
       "subtitle": "Ваши данные под защитой"
     }
+  },
+  "auth": {
+    "login": {
+      "title": "Вход в CHCGREEN",
+      "subtitle": "Введите ваши данные для входа",
+      "noAccount": "Нет аккаунта?"
+    },
+    "register": {
+      "title": "Регистрация",
+      "subtitle": "Создайте аккаунт за минуту",
+      "hasAccount": "Уже есть аккаунт?"
+    },
+    "fields": {
+      "identifier": "Email или username",
+      "email": "Email",
+      "phone": "Телефон",
+      "username": "Username",
+      "password": "Пароль",
+      "referralCode": "Реферальный код"
+    },
+    "hints": {
+      "password": "Минимум 8 символов, заглавная буква и цифра"
+    },
+    "checkboxes": {
+      "age": "Мне 21+ год, я подтверждаю",
+      "terms": "Я принимаю Условия использования и Политику конфиденциальности"
+    },
+    "actions": {
+      "login": "Войти",
+      "register": "Зарегистрироваться",
+      "logout": "Выйти"
+    },
+    "errors": {
+      "invalidCredentials": "Неверный email/username или пароль",
+      "unknown": "Что-то пошло не так. Попробуйте ещё раз."
+    }
   }
 }
