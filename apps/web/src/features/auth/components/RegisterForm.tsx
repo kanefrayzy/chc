@@ -13,6 +13,8 @@ export interface RegisterFormProps {
   initialReferralCode?: string;
   /** Куда редиректить после успеха */
   onSuccessRedirect?: string;
+  /** Если задан — после успеха вызывается callback (без редиректа). */
+  onSuccess?: () => void;
 }
 
 interface FieldErrors {
@@ -36,7 +38,8 @@ const initialState = {
 
 export function RegisterForm({
   initialReferralCode = '',
-  onSuccessRedirect = '/',
+  onSuccessRedirect,
+  onSuccess,
 }: RegisterFormProps): JSX.Element {
   const t = useTranslations('auth');
   const router = useRouter();
@@ -78,8 +81,12 @@ export function RegisterForm({
     startTransition(async () => {
       try {
         await authApi.register(parsed.data);
-        router.push(onSuccessRedirect);
-        router.refresh();
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          router.push(onSuccessRedirect ?? '/');
+          router.refresh();
+        }
       } catch (err) {
         if (err instanceof ApiException) {
           setFormError(err.message);

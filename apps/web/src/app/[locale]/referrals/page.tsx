@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { SiteHeader } from '@/components/layout/SiteHeader';
+import { AppShell } from '@/components/layout/AppShell';
 import { ReferralCodeCard } from '@/features/referrals/components/ReferralCodeCard';
 import { ReferralStats } from '@/features/referrals/components/ReferralStats';
 import { EarningsSection } from '@/features/referrals/components/EarningsSection';
@@ -44,9 +44,8 @@ export default async function ReferralsPage({ params }: ReferralsPageProps): Pro
   const t = await getTranslations({ locale: params.locale, namespace: 'referrals' });
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-      <SiteHeader locale={params.locale} />
-      <h1 className="mt-8 text-2xl font-bold text-text-primary">{t('pageTitle')}</h1>
+    <AppShell locale={params.locale}>
+      <h1 className="text-2xl font-bold text-text-primary">{t('pageTitle')}</h1>
       <p className="mt-1 text-sm text-text-secondary">{t('pageSubtitle')}</p>
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
@@ -64,6 +63,6 @@ export default async function ReferralsPage({ params }: ReferralsPageProps): Pro
           />
         </aside>
       </div>
-    </main>
+    </AppShell>
   );
 }

@@ -4,7 +4,44 @@
     "login": "Daxil ol",
     "register": "Qeydiyyat",
     "logout": "Çıxış",
-    "online": "onlayn"
+    "online": "onlayn",
+    "profileMenu": "Profilim",
+    "depositMenu": "Balansı artır",
+    "withdrawMenu": "Vasitələri çıxar"
+  },
+  "sidebar": {
+    "games": "Oyunlar",
+    "account": "Hesab",
+    "payments": "Ödənişlər",
+    "promoTitle": "Bonus +100%",
+    "promoText": "İlk depozit üçün. 10 AZN-dən artır — bonusu qazan."
+  },
+  "topbar": {
+    "balance": "Balans",
+    "deposit": "Artır",
+    "withdraw": "Çıxar"
+  },
+  "landing": {
+    "gamesTitle": "Oyunlarımız",
+    "gamesSubtitle": "Dürüst və yoxlanan (provably fair) rejimlər",
+    "playNow": "Oyna",
+    "games": {
+      "roulette": {
+        "title": "Rulet",
+        "subtitle": "Qara ×2 · Qırmızı ×2 · Yaşıl ×14",
+        "badge": "LIVE"
+      },
+      "ranks": {
+        "title": "Rütbələr",
+        "subtitle": "Aktivlik üçün tərəqqi və mükafatlar",
+        "badge": "VIP"
+      },
+      "referrals": {
+        "title": "Tərəfdaşlıq",
+        "subtitle": "Rəfəral itkilərindən 10%, qaliblikdən 3%",
+        "badge": "BONUS"
+      }
+    }
   },
   "nav": {
     "home": "Əsas",
@@ -27,7 +64,9 @@
     "title2": "QAZAN.",
     "title3": "AVTOMATİK",
     "subtitle": "Ədalətli oyunlar, sürətli ödənişlər və maksimum qazanclar!",
-    "cta": "Oyuna başla"
+    "cta": "Oyuna başla",
+    "ctaAlt": "Artıq hesabın var?",
+    "ctaPlay": "Ruletdə oyna"
   },
   "stats": {
     "playersOnline": "oyunçu onlayn",

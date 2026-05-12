@@ -1,7 +1,9 @@
-import { SiteHeader } from '@/components/layout/SiteHeader';
+import { AppShell } from '@/components/layout/AppShell';
 import { Hero } from '@/components/landing/Hero';
+import { GameTiles } from '@/components/landing/GameTiles';
 import { StatsGrid, type StatItem } from '@/components/landing/StatsGrid';
 import { FeaturesFooter, type FeatureItem } from '@/components/landing/FeaturesFooter';
+import { getServerUser } from '@/lib/api/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,12 +26,13 @@ export default async function HomePage({
 }: {
   params: { locale: string };
 }): Promise<JSX.Element> {
+  const user = await getServerUser();
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <SiteHeader locale={params.locale} />
-      <Hero locale={params.locale} />
+    <AppShell locale={params.locale}>
+      <Hero locale={params.locale} isAuthed={Boolean(user)} />
+      <GameTiles locale={params.locale} />
       <StatsGrid items={STATS} />
       <FeaturesFooter items={FEATURES} />
-    </main>
+    </AppShell>
   );
 }

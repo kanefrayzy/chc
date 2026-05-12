@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
-import { SiteHeader } from '@/components/layout/SiteHeader';
+import { AppShell } from '@/components/layout/AppShell';
 import { RouletteLayout } from '@/features/roulette/components/RouletteLayout';
 import { getServerUser } from '@/lib/api/server';
 import { apiFetch } from '@/lib/api/client';
@@ -33,9 +33,8 @@ export default async function RoulettePage({ params }: RoulettePageProps): Promi
   const t = await getTranslations({ locale: params.locale, namespace: 'roulette' });
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <SiteHeader locale={params.locale} />
-      <h1 className="mt-8 text-2xl font-bold text-text-primary">{t('pageTitle')}</h1>
+    <AppShell locale={params.locale}>
+      <h1 className="text-2xl font-bold text-text-primary">{t('pageTitle')}</h1>
       <p className="mt-1 text-sm text-text-secondary">{t('description')}</p>
       <div className="mt-6">
         <RouletteLayout
@@ -44,6 +43,6 @@ export default async function RoulettePage({ params }: RoulettePageProps): Promi
           locale={params.locale}
         />
       </div>
-    </main>
+    </AppShell>
   );
 }

@@ -10,6 +10,8 @@ import { ApiException } from '@/lib/api/client';
 
 export interface LoginFormProps {
   onSuccessRedirect?: string;
+  /** Если задан — после успеха просто вызывается callback (без редиректа). */
+  onSuccess?: () => void;
 }
 
 interface FieldErrors {
@@ -17,7 +19,7 @@ interface FieldErrors {
   password?: string;
 }
 
-export function LoginForm({ onSuccessRedirect = '/' }: LoginFormProps): JSX.Element {
+export function LoginForm({ onSuccessRedirect, onSuccess }: LoginFormProps): JSX.Element {
   const t = useTranslations('auth');
   const router = useRouter();
   const [identifier, setIdentifier] = useState('');
@@ -46,8 +48,12 @@ export function LoginForm({ onSuccessRedirect = '/' }: LoginFormProps): JSX.Elem
     startTransition(async () => {
       try {
         await authApi.login(parsed.data);
-        router.push(onSuccessRedirect);
-        router.refresh();
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          router.push(onSuccessRedirect ?? '/');
+          router.refresh();
+        }
       } catch (err) {
         if (err instanceof ApiException) {
           setFormError(err.status === 401 ? t('errors.invalidCredentials') : err.message);

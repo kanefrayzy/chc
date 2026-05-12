@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getServerUser } from '@/lib/api/server';
-import { SiteHeader } from '@/components/layout/SiteHeader';
+import { AppShell } from '@/components/layout/AppShell';
 import { ProfileHeader } from '@/features/profile/components/ProfileHeader';
 import { ProfileTabs } from '@/features/profile/components/ProfileTabs';
 import { ProfileOverviewPanel } from '@/features/profile/components/panels/ProfileOverviewPanel';
@@ -29,10 +29,9 @@ export default async function ProfilePage({ params }: ProfilePageProps): Promise
   const t = await getTranslations({ locale: params.locale, namespace: 'profile' });
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-      <SiteHeader locale={params.locale} />
-      <div className="mt-8 flex items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold text-text-primary">{t('pageTitle')}</h1>
+    <AppShell locale={params.locale}>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-text-primary">{t('pageTitle')}</h1>
         <LogoutButton redirectTo={params.locale === 'ru' ? '/' : `/${params.locale}`} />
       </div>
       <div className="mt-6 space-y-6">
@@ -59,6 +58,6 @@ export default async function ProfilePage({ params }: ProfilePageProps): Promise
           ]}
         />
       </div>
-    </main>
+    </AppShell>
   );
 }
