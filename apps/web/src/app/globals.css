@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background-color: #07090c;
+  color: #e9eef5;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(0, 255, 136, 0.08), transparent 40%),
+    radial-gradient(circle at 80% 100%, rgba(162, 89, 255, 0.06), transparent 50%);
+  min-height: 100vh;
+}
+
+.btn-brand {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-6 py-3 font-semibold text-bg-base transition hover:bg-brand-dim hover:shadow-glow;
+}
+
+.card {
+  @apply rounded-2xl border border-border bg-bg-card p-6 shadow-card;
+}

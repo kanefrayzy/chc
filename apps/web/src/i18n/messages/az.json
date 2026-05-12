@@ -1,0 +1,50 @@
+{
+  "common": {
+    "siteName": "CHCGREEN",
+    "login": "Daxil ol",
+    "register": "Qeydiyyat",
+    "online": "onlayn"
+  },
+  "nav": {
+    "home": "Əsas",
+    "roulette": "Rulet",
+    "jackpot": "Cekpot",
+    "cases": "Keyslər",
+    "referral": "Tərəfdaşlıq",
+    "bonuses": "Bonuslar",
+    "support": "Dəstək",
+    "faq": "FAQ"
+  },
+  "hero": {
+    "badge": "Avtomatik oyunlar",
+    "title1": "OYNA.",
+    "title2": "QAZAN.",
+    "title3": "AVTOMATİK",
+    "subtitle": "Ədalətli oyunlar, sürətli ödənişlər və maksimum qazanclar!",
+    "cta": "Oyuna başla"
+  },
+  "stats": {
+    "playersOnline": "oyunçu onlayn",
+    "gamesPlayed": "oyun oynanılıb",
+    "totalWon": "ümumi qazanc",
+    "paidToday": "bu gün ödənildi"
+  },
+  "features": {
+    "fair": {
+      "title": "Ədalətli oyun",
+      "subtitle": "Ədaləti zəmanət edirik"
+    },
+    "fast": {
+      "title": "Sürətli ödənişlər",
+      "subtitle": "Anında ödənişlər"
+    },
+    "support": {
+      "title": "Dəstək 24/7",
+      "subtitle": "Həmişə əlaqədəyik"
+    },
+    "ssl": {
+      "title": "SSL qoruma",
+      "subtitle": "Məlumatlarınız qorunur"
+    }
+  }
+}

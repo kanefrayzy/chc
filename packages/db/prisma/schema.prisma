@@ -1,0 +1,534 @@
+// CHCGREEN — Prisma schema
+// Денежные значения хранятся в минорных единицах (qəpik, 1 AZN = 100) как BigInt.
+// См. docs/decisions.md ADR-0003.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =========================================================
+// USERS & AUTH
+// =========================================================
+
+enum UserRole {
+  USER
+  MODERATOR
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+  MUTED
+}
+
+model User {
+  id              String     @id @default(cuid())
+  email           String     @unique
+  phone           String     @unique
+  username        String     @unique
+  passwordHash    String
+  role            UserRole   @default(USER)
+  status          UserStatus @default(ACTIVE)
+  language        String     @default("ru") // 'ru' | 'az'
+  // referral
+  referralCode    String     @unique
+  referredById    String?
+  referredBy      User?      @relation("UserReferrals", fields: [referredById], references: [id])
+  referrals       User[]     @relation("UserReferrals")
+  // wallet
+  balanceMinor    BigInt     @default(0) // qəpik
+  // metrics
+  totalWageredMinor BigInt   @default(0)
+  rankId          String?
+  rank            Rank?      @relation(fields: [rankId], references: [id])
+  // misc
+  lastLoginAt     DateTime?
+  lastLoginIp     String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  refreshTokens   RefreshToken[]
+  transactions    Transaction[]
+  deposits        Deposit[]
+  withdrawals     Withdrawal[]
+  codePurchases   CodePurchase[]
+  tickets         Ticket[]         @relation("TicketUser")
+  assignedTickets Ticket[]         @relation("TicketModerator")
+  messages        Message[]
+  rouletteBets    RouletteBet[]
+  jackpotBets     JackpotBet[]
+  caseOpenings    CaseOpening[]
+  auditLogs       AuditLog[]
+  referralEarnings ReferralEarning[] @relation("EarningReferrer")
+  referralFromMe   ReferralEarning[] @relation("EarningReferred")
+
+  @@index([email])
+  @@index([username])
+  @@index([referralCode])
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String   @unique
+  userAgent   String?
+  ip          String?
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+// =========================================================
+// FINANCE (immutable ledger)
+// =========================================================
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAW
+  BET_PLACE
+  BET_WIN
+  BET_REFUND
+  CODE_HOLD
+  CODE_RELEASE
+  CODE_REFUND
+  REFERRAL_EARNING
+  ADMIN_ADJUSTMENT
+  CASE_OPEN
+  CASE_WIN
+  JACKPOT_BET
+  JACKPOT_WIN
+  JACKPOT_COMMISSION
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  REVERSED
+  FAILED
+}
+
+model Transaction {
+  id            String            @id @default(cuid())
+  userId        String
+  user          User              @relation(fields: [userId], references: [id])
+  type          TransactionType
+  status        TransactionStatus @default(COMPLETED)
+  amountMinor   BigInt            // знаковая сумма: + поступление, - списание
+  balanceAfterMinor BigInt
+  // idempotency / связь с источником
+  idempotencyKey String?          @unique
+  referenceType String?           // 'deposit' | 'withdrawal' | 'roulette_bet' | ...
+  referenceId   String?
+  // meta
+  description   String?
+  metadata      Json?
+  createdAt     DateTime          @default(now())
+
+  @@index([userId, createdAt])
+  @@index([referenceType, referenceId])
+  @@index([type])
+}
+
+// =========================================================
+// PAYMENTS
+// =========================================================
+
+enum PaymentProvider {
+  BETRA_H2H // отображается в UI как "Limpay" (см. ADR-0004)
+  WESTWALLET
+}
+
+enum DepositStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+model Deposit {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  provider      PaymentProvider
+  status        DepositStatus   @default(PENDING)
+  // суммы в минорных единицах AZN
+  amountMinor   BigInt
+  // оригинальные суммы провайдера (для крипты: USDT и т.п.)
+  originalAmount     String?    // строковое представление (Decimal)
+  originalCurrency   String?
+  exchangeRate       String?    // курс на момент зачисления
+  // внешние идентификаторы
+  externalId    String?         @unique
+  externalAddress String?       // адрес кошелька для крипты
+  paymentUrl    String?
+  // webhook-данные
+  rawWebhookPayload Json?
+  // авторство (если ручная корректировка)
+  createdAt     DateTime        @default(now())
+  completedAt   DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([provider, externalId])
+}
+
+enum WithdrawalStatus {
+  PENDING       // в очереди
+  PROCESSING    // взято модератором / отправляется
+  COMPLETED
+  REJECTED
+  FAILED
+  CANCELLED
+}
+
+enum WithdrawalMethod {
+  AUTO_BETRA_H2H
+  AUTO_WESTWALLET
+  MANUAL_MODERATOR
+}
+
+model Withdrawal {
+  id            String           @id @default(cuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id])
+  method        WithdrawalMethod
+  status        WithdrawalStatus @default(PENDING)
+  amountMinor   BigInt
+  destination   Json             // адрес/реквизиты (карта, кошелёк), маскированные
+  // обработка
+  processedByModeratorId String?
+  externalId    String?
+  rawWebhookPayload Json?
+  reason        String?          // причина отказа
+  createdAt     DateTime         @default(now())
+  completedAt   DateTime?
+
+  @@index([userId])
+  @@index([status])
+}
+
+// =========================================================
+// CODE PURCHASES (покупка кода для стороннего казино через чат)
+// =========================================================
+
+enum CodePurchaseStatus {
+  CREATED            // юзер нажал "купить код"
+  AWAITING_MODERATOR // ждёт ответа в чате
+  CODE_ISSUED        // модератор прислал код
+  COMPLETED          // средства списаны, тикет закрыт
+  CANCELLED          // отмена, hold возвращён
+}
+
+model CodePurchase {
+  id            String             @id @default(cuid())
+  userId        String
+  user          User               @relation(fields: [userId], references: [id])
+  ticketId      String?            @unique
+  ticket        Ticket?            @relation(fields: [ticketId], references: [id])
+  amountMinor   BigInt             // сумма hold
+  status        CodePurchaseStatus @default(CREATED)
+  code          String?            // выданный код
+  issuedByModeratorId String?
+  createdAt     DateTime           @default(now())
+  completedAt   DateTime?
+
+  @@index([userId])
+  @@index([status])
+}
+
+// =========================================================
+// CHAT (тикеты с модератором)
+// =========================================================
+
+enum TicketType {
+  CODE_PURCHASE
+  WITHDRAWAL
+  SUPPORT
+}
+
+enum TicketStatus {
+  OPEN
+  WAITING_USER
+  WAITING_MODERATOR
+  CLOSED
+}
+
+model Ticket {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation("TicketUser", fields: [userId], references: [id])
+  moderatorId   String?
+  moderator     User?         @relation("TicketModerator", fields: [moderatorId], references: [id])
+  type          TicketType
+  status        TicketStatus  @default(OPEN)
+  subject       String?
+  metadata      Json?
+  closedAt      DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  messages      Message[]
+  codePurchase  CodePurchase?
+
+  @@index([userId])
+  @@index([moderatorId])
+  @@index([status])
+}
+
+enum MessageKind {
+  TEXT
+  FILE
+  SYSTEM
+  ACTION   // действие модератора (списание, выдача кода и т.п.)
+}
+
+model Message {
+  id          String      @id @default(cuid())
+  ticketId    String
+  ticket      Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId    String?
+  author      User?       @relation(fields: [authorId], references: [id])
+  kind        MessageKind @default(TEXT)
+  body        String
+  attachmentUrl String?
+  attachmentMime String?
+  attachmentSize Int?
+  readByUserAt    DateTime?
+  readByModeratorAt DateTime?
+  createdAt   DateTime    @default(now())
+
+  @@index([ticketId, createdAt])
+}
+
+model ChatTemplate {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  language  String   @default("ru")
+  createdAt DateTime @default(now())
+}
+
+// =========================================================
+// GAMES: ROULETTE BATTLE (MVP)
+// =========================================================
+
+enum RouletteColor {
+  BLACK
+  RED
+  GREEN
+}
+
+enum RouletteRoundStatus {
+  BETTING
+  ROLLING
+  COMPLETED
+  CANCELLED
+}
+
+model RouletteRound {
+  id              String              @id @default(cuid())
+  status          RouletteRoundStatus @default(BETTING)
+  serverSeedHash  String              // публикуется до раунда
+  serverSeed      String?             // раскрывается после
+  publicSeed      String?             // например, hash блока + nonce
+  winningColor    RouletteColor?
+  winningSlot     Int?
+  startedAt       DateTime            @default(now())
+  bettingEndsAt   DateTime
+  completedAt     DateTime?
+
+  bets            RouletteBet[]
+
+  @@index([status])
+  @@index([startedAt])
+}
+
+model RouletteBet {
+  id          String        @id @default(cuid())
+  roundId     String
+  round       RouletteRound @relation(fields: [roundId], references: [id])
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  color       RouletteColor
+  amountMinor BigInt
+  payoutMinor BigInt        @default(0)
+  isWinner    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+
+  @@index([roundId])
+  @@index([userId])
+}
+
+// =========================================================
+// GAMES: JACKPOT (Phase 2)
+// =========================================================
+
+enum JackpotRoundStatus {
+  OPEN
+  ROLLING
+  COMPLETED
+  CANCELLED
+}
+
+model JackpotRound {
+  id              String             @id @default(cuid())
+  status          JackpotRoundStatus @default(OPEN)
+  serverSeedHash  String
+  serverSeed      String?
+  publicSeed      String?
+  bankMinor       BigInt             @default(0)
+  commissionRateBps Int              @default(700) // 7% по умолчанию
+  winnerId        String?
+  winningTicket   Int?
+  startedAt       DateTime           @default(now())
+  endsAt          DateTime
+  completedAt     DateTime?
+
+  bets            JackpotBet[]
+
+  @@index([status])
+}
+
+model JackpotBet {
+  id          String       @id @default(cuid())
+  roundId     String
+  round       JackpotRound @relation(fields: [roundId], references: [id])
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  amountMinor BigInt
+  ticketsFrom Int          // диапазон билетов для расчёта победителя
+  ticketsTo   Int
+  createdAt   DateTime     @default(now())
+
+  @@index([roundId])
+  @@index([userId])
+}
+
+// =========================================================
+// GAMES: CASES (Phase 3)
+// =========================================================
+
+model Case {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  nameRu      String
+  nameAz      String
+  priceMinor  BigInt
+  imageUrl    String?
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+
+  items       CaseItem[]
+  openings    CaseOpening[]
+}
+
+model CaseItem {
+  id              String   @id @default(cuid())
+  caseId          String
+  case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  nameRu          String
+  nameAz          String
+  prizeMinor      BigInt   // выплачивается на баланс
+  probabilityBps  Int      // 1..10000 (basis points)
+  imageUrl        String?
+
+  @@index([caseId])
+}
+
+model CaseOpening {
+  id          String   @id @default(cuid())
+  caseId      String
+  case        Case     @relation(fields: [caseId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  prizeMinor  BigInt
+  itemId      String?
+  serverSeed  String
+  publicSeed  String
+  resultHash  String
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([caseId])
+}
+
+// =========================================================
+// REFERRALS
+// =========================================================
+
+enum ReferralEarningKind {
+  FROM_LOSS  // 10%
+  FROM_WIN   // 3%
+}
+
+model ReferralEarning {
+  id            String              @id @default(cuid())
+  referrerId    String
+  referrer      User                @relation("EarningReferrer", fields: [referrerId], references: [id])
+  referredId    String
+  referred      User                @relation("EarningReferred", fields: [referredId], references: [id])
+  kind          ReferralEarningKind
+  sourceAmountMinor BigInt
+  earningMinor  BigInt
+  rateBps       Int
+  // ссылка на источник (bet/transaction)
+  referenceType String?
+  referenceId   String?
+  createdAt     DateTime            @default(now())
+
+  @@index([referrerId, createdAt])
+  @@index([referredId])
+}
+
+// =========================================================
+// RANKS / VIP
+// =========================================================
+
+model Rank {
+  id                String  @id @default(cuid())
+  order             Int     @unique
+  slug              String  @unique
+  nameRu            String
+  nameAz            String
+  minWageredMinor   BigInt
+  iconUrl           String?
+
+  users             User[]
+}
+
+// =========================================================
+// ADMIN / SETTINGS / AUDIT
+// =========================================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorId     String?
+  actor       User?    @relation(fields: [actorId], references: [id])
+  action      String   // 'wallet.adjust' | 'ticket.assign' | ...
+  entityType  String?
+  entityId    String?
+  payload     Json?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}

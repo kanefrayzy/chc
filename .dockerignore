@@ -1,0 +1,21 @@
+**/node_modules
+**/.next
+**/dist
+**/build
+**/.turbo
+**/coverage
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.gitignore
+**/*.log
+**/.DS_Store
+docker/data
+data
+README.md
+docs
+**/Dockerfile
+**/.dockerignore
+example frame.html
+example frame.js
