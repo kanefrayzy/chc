@@ -150,40 +150,33 @@ export function BetPanel({ balanceMinor, disabled, multipliers }: BetPanelProps)
         </button>
       </div>
 
-      {/* Кнопки ставки по цвету */}
-      <div className="grid grid-cols-4 gap-2">
-        {(['BLACK', 'RED', 'GREEN'] as RouletteColor[]).map((color) => (
-          <button
-            key={color}
-            type="button"
-            onClick={() => handleBet(color)}
-            disabled={disabled || isLoading}
-            className={cn(
-              'col-span-1 flex flex-col items-center justify-center gap-1 rounded-xl py-3 font-bold transition',
-              'border-2 border-transparent disabled:opacity-40',
-              color === 'GREEN'
-                ? 'col-span-1 bg-brand text-black border-brand/60 hover:brightness-110'
-                : color === 'RED'
-                ? 'bg-danger text-white border-danger/60 hover:brightness-110'
-                : 'bg-[#1a2035] text-white border-[#2a3350] hover:border-brand/40',
-              pendingColor === color && 'ring-2 ring-white/40',
-            )}
-          >
-            <span className="text-lg">{COLOR_ICONS[color]}</span>
-            <span className="text-xs font-semibold">Place a bet</span>
-            <span className="text-[11px] opacity-80">×{multipliers[color]}</span>
-          </button>
-        ))}
-        {/* Джокер слот (черно-синий x7 как на скрине) */}
-        <button
-          type="button"
-          disabled
-          className="col-span-1 flex flex-col items-center justify-center gap-1 rounded-xl py-3 font-bold bg-[#1a1f3a] text-text-muted border-2 border-[#2a3350] opacity-50 cursor-not-allowed"
-        >
-          <span className="text-lg">🃏</span>
-          <span className="text-xs font-semibold">Jackpot</span>
-          <span className="text-[11px]">×7</span>
-        </button>
+      {/* Кнопки ставки по цвету (3 цвета) */}
+      <div className="grid grid-cols-3 gap-2">
+        {(['BLACK', 'RED', 'GREEN'] as RouletteColor[]).map((color) => {
+          const mul = multipliers[color] ?? (color === 'GREEN' ? 14 : 2);
+          return (
+            <button
+              key={color}
+              type="button"
+              onClick={() => handleBet(color)}
+              disabled={disabled || isLoading}
+              className={cn(
+                'flex flex-col items-center justify-center gap-1 rounded-xl py-3 font-bold transition',
+                'border-2 border-transparent disabled:opacity-40',
+                color === 'GREEN'
+                  ? 'bg-brand text-black border-brand/60 hover:brightness-110'
+                  : color === 'RED'
+                  ? 'bg-danger text-white border-danger/60 hover:brightness-110'
+                  : 'bg-[#1a2035] text-white border-[#2a3350] hover:border-brand/40',
+                pendingColor === color && 'ring-2 ring-white/40',
+              )}
+            >
+              <span className="text-lg">{COLOR_ICONS[color]}</span>
+              <span className="text-xs font-semibold">{color}</span>
+              <span className="text-[11px] opacity-80">×{mul}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

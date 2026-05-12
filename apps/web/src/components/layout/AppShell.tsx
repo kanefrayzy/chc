@@ -6,6 +6,8 @@ import { MobileBottomNav, type MobileBottomNavItem } from './MobileBottomNav';
 import { AuthModal } from './AuthModal';
 import { DepositModal } from './DepositModal';
 import { WithdrawModal } from './WithdrawModal';
+import { RanksModal } from './RanksModal';
+import { ChatWidget } from './ChatWidget';
 import { UiProvider } from './ui-context';
 import { getServerUser } from '@/lib/api/server';
 import { getPublicSettings } from '@/lib/api/settings';
@@ -33,12 +35,12 @@ export async function AppShell({ locale, children }: AppShellProps): Promise<JSX
     bottomItems.push({ href: '/roulette', label: tNav('roulette'), icon: '🎰' });
   }
   if (user) {
-    bottomItems.push({ href: '/deposit', label: tNav('deposit'), icon: '💰' });
+    bottomItems.push({ href: '/deposit', label: tNav('deposit'), icon: '💰', action: 'deposit' });
     if (settings['gameplay.chat_enabled']) {
-      bottomItems.push({ href: '/chat', label: tNav('chat'), icon: '💬' });
+      bottomItems.push({ href: '/chat', label: tNav('chat'), icon: '💬', action: 'chat' });
     }
     bottomItems.push({ href: '/profile', label: tNav('profile'), icon: '👤' });
-  } else if (settings['gameplay.ranks_enabled']) {
+  } else {
     bottomItems.push({ href: '/ranks', label: tNav('ranks'), icon: '🏆' });
   }
 
@@ -56,6 +58,8 @@ export async function AppShell({ locale, children }: AppShellProps): Promise<JSX
         <AuthModal />
         <DepositModal locale={locale} />
         <WithdrawModal locale={locale} balanceMinor={balanceMinor} />
+        <RanksModal locale={locale} isAuthed={Boolean(user)} />
+        <ChatWidget viewerId={user?.id ?? null} />
       </div>
     </UiProvider>
   );

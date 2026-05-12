@@ -8,6 +8,8 @@ interface UiState {
   authModalTab: 'login' | 'register';
   depositModalOpen: boolean;
   withdrawModalOpen: boolean;
+  ranksModalOpen: boolean;
+  chatOpen: boolean;
   toggleSidebar: () => void;
   closeSidebar: () => void;
   openAuth: (tab?: 'login' | 'register') => void;
@@ -16,7 +18,10 @@ interface UiState {
   closeDeposit: () => void;
   openWithdraw: () => void;
   closeWithdraw: () => void;
-  /** Триггер «перезагрузить баланс» — на него подписаны BalancePill и др. */
+  openRanks: () => void;
+  closeRanks: () => void;
+  toggleChat: () => void;
+  closeChat: () => void;
   refreshBalance: () => void;
   balanceVersion: number;
 }
@@ -29,6 +34,8 @@ export function UiProvider({ children }: { children: ReactNode }): JSX.Element {
   const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [ranksModalOpen, setRanksModalOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [balanceVersion, setBalanceVersion] = useState(0);
 
   const toggleSidebar = useCallback((): void => { setSidebarOpen((v) => !v); }, []);
@@ -42,6 +49,10 @@ export function UiProvider({ children }: { children: ReactNode }): JSX.Element {
   const closeDeposit = useCallback((): void => setDepositModalOpen(false), []);
   const openWithdraw = useCallback((): void => setWithdrawModalOpen(true), []);
   const closeWithdraw = useCallback((): void => setWithdrawModalOpen(false), []);
+  const openRanks = useCallback((): void => setRanksModalOpen(true), []);
+  const closeRanks = useCallback((): void => setRanksModalOpen(false), []);
+  const toggleChat = useCallback((): void => setChatOpen((v) => !v), []);
+  const closeChat = useCallback((): void => setChatOpen(false), []);
   const refreshBalance = useCallback((): void => { setBalanceVersion((v) => v + 1); }, []);
 
   useEffect(() => {
@@ -54,11 +65,13 @@ export function UiProvider({ children }: { children: ReactNode }): JSX.Element {
     <UiContext.Provider
       value={{
         sidebarOpen, authModalOpen, authModalTab,
-        depositModalOpen, withdrawModalOpen,
+        depositModalOpen, withdrawModalOpen, ranksModalOpen, chatOpen,
         toggleSidebar, closeSidebar,
         openAuth, closeAuth,
         openDeposit, closeDeposit,
         openWithdraw, closeWithdraw,
+        openRanks, closeRanks,
+        toggleChat, closeChat,
         refreshBalance, balanceVersion,
       }}
     >

@@ -56,4 +56,10 @@ export const ticketsApi = {
       body: { body },
       credentials: 'include',
     }),
+  create: (args: { subject: string; type?: string }) =>
+    apiFetch<TicketDto>('/tickets', {
+      method: 'POST',
+      body: { subject: args.subject, type: args.type ?? 'SUPPORT' },
+      credentials: 'include',
+    }),
 };
