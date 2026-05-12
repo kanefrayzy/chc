@@ -14,6 +14,7 @@ import { CodePurchasesModule } from './modules/code-purchases/code-purchases.mod
 import { RouletteModule } from './modules/roulette/roulette.module';
 import { ReferralsModule } from './modules/referrals/referrals.module';
 import { RanksModule } from './modules/ranks/ranks.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { RanksModule } from './modules/ranks/ranks.module';
     RouletteModule,
     ReferralsModule,
     RanksModule,
+    AdminModule,
   ],
   controllers: [HealthController],
 })

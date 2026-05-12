@@ -1,10 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 html,
 body {
-  background-color: #07090c;
-  color: #e9eef5;
-  font-family: 'Inter', system-ui, sans-serif;
+  height: 100%;
+}
+
+body {
+  background-color: theme('colors.page');
+  color: theme('colors.ink.900');
+  font-family: theme('fontFamily.sans');
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'ss01' on, 'cv11' on;
+}
+
+*:focus-visible {
+  outline: 2px solid theme('colors.primary.DEFAULT');
+  outline-offset: 2px;
+}
+
+::selection {
+  background: theme('colors.primary.tint');
+  color: theme('colors.primary.dark');
+}
+
+/* Brand stripe — узнаваемая «административная» полоса наверху */
+.admin-brand-stripe {
+  background: linear-gradient(
+    90deg,
+    theme('colors.primary.DEFAULT') 0%,
+    theme('colors.primary.light') 50%,
+    theme('colors.accent.DEFAULT') 100%
+  );
 }
