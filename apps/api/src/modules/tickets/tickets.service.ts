@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import type { Message, Ticket, TicketType } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 @Injectable()
 export class TicketsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtime: RealtimeGateway,
+  ) {}
 
   async createTicket(params: {
     userId: string;
@@ -96,6 +100,18 @@ export class TicketsService {
         },
       }),
     ]);
+    try {
+      this.realtime.emitToTicket(ticket.id, 'ticket:message', {
+        id: message.id,
+        ticketId: message.ticketId,
+        authorId: message.authorId,
+        kind: message.kind,
+        body: message.body,
+        createdAt: message.createdAt.toISOString(),
+      });
+    } catch {
+      // не блокируем основной поток
+    }
     return message;
   }
 }

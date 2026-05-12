@@ -12,6 +12,7 @@ import { PrismaService } from '../../common/prisma/prisma.module';
 import { ReferralsService } from '../referrals/referrals.service';
 import { RanksService } from '../ranks/ranks.service';
 import { SettingsService } from '../settings/settings.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
 import {
   ROULETTE_TOTAL_SLOTS,
   calculatePayout,
@@ -42,6 +43,7 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
     private readonly referrals: ReferralsService,
     private readonly ranks: RanksService,
     private readonly settings: SettingsService,
+    private readonly realtime: RealtimeGateway,
   ) {
     this.minBetMinor = BigInt(process.env.ROULETTE_MIN_BET_MINOR || DEFAULT_MIN_BET.toString());
     this.maxBetMinor = BigInt(process.env.ROULETTE_MAX_BET_MINOR || DEFAULT_MAX_BET.toString());
@@ -59,6 +61,24 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
   onModuleDestroy(): void {
     this.running = false;
     if (this.loopTimer) clearTimeout(this.loopTimer);
+  }
+
+  private emitRound(round: RouletteRound): void {
+    try {
+      this.realtime.emitRoulette('roulette:round', {
+        id: round.id,
+        status: round.status,
+        startedAt: round.startedAt.toISOString(),
+        bettingEndsAt: round.bettingEndsAt.toISOString(),
+        serverSeedHash: round.serverSeedHash,
+        publicSeed: round.publicSeed,
+        winningSlot: round.winningSlot,
+        winningColor: round.winningColor,
+        completedAt: round.completedAt?.toISOString() ?? null,
+      });
+    } catch {
+      // не блокируем игровой цикл
+    }
   }
 
   // ============== PUBLIC API ==============
@@ -195,6 +215,7 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
       },
     });
     this.logger.log(`Started roulette round ${round.id}`);
+    this.emitRound(round);
     this.scheduleNextTick(round);
   }
 
@@ -228,6 +249,7 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
         data: { status: 'ROLLING', publicSeed: generatePublicSeed() },
       });
       this.logger.log(`Round ${round.id} → ROLLING`);
+      this.emitRound(rolling);
       this.scheduleNextTick(rolling);
       return;
     }
@@ -317,6 +339,8 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
     });
 
     this.logger.log(`Round ${round.id} settled → slot=${slot} color=${color}`);
+    const completed = await this.prisma.rouletteRound.findUnique({ where: { id: round.id } });
+    if (completed) this.emitRound(completed);
   }
 
   private async cancelRound(roundId: string): Promise<void> {

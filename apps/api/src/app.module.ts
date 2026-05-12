@@ -16,6 +16,7 @@ import { ReferralsModule } from './modules/referrals/referrals.module';
 import { RanksModule } from './modules/ranks/ranks.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { SettingsModule } from './modules/settings/settings.module';
     ReferralsModule,
     RanksModule,
     SettingsModule,
+    RealtimeModule,
     AdminModule,
   ],
   controllers: [HealthController],

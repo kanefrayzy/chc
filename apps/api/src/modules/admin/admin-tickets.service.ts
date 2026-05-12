@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.module';
 import { AdminAuditService } from './admin-audit.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 @Injectable()
 export class AdminTicketsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
+    private readonly realtime: RealtimeGateway,
   ) {}
 
   async list(params: { status?: string; type?: string; limit: number; cursor?: string }) {
@@ -94,6 +96,19 @@ export class AdminTicketsService {
       userAgent: params.userAgent,
     });
 
+    try {
+      this.realtime.emitToTicket(ticket.id, 'ticket:message', {
+        id: message.id,
+        ticketId: message.ticketId,
+        authorId: message.authorId,
+        kind: message.kind,
+        body: message.body,
+        createdAt: message.createdAt.toISOString(),
+      });
+    } catch {
+      // не блокируем
+    }
+
     return message;
   }
 
@@ -113,6 +128,15 @@ export class AdminTicketsService {
       ip: params.ip,
       userAgent: params.userAgent,
     });
+    try {
+      this.realtime.emitToTicket(t.id, 'ticket:status', {
+        ticketId: t.id,
+        status: 'CLOSED',
+        closedAt: updated.closedAt?.toISOString() ?? null,
+      });
+    } catch {
+      // не блокируем
+    }
     return updated;
   }
 }
