@@ -14,7 +14,12 @@
     "referral": "Партнёрка",
     "bonuses": "Бонусы",
     "support": "Поддержка",
-    "faq": "FAQ"
+    "faq": "FAQ",
+    "ranks": "Ранги",
+    "chat": "Чат",
+    "deposit": "Пополнить",
+    "withdraw": "Вывести",
+    "profile": "Профиль"
   },
   "hero": {
     "badge": "Автоматические игры",
