@@ -6,11 +6,14 @@ import type { ReactNode } from 'react';
 import { cn } from '@chcgreen/ui';
 import { useUi } from './ui-context';
 
+export type SidebarAction = 'deposit' | 'withdraw' | 'ranks' | 'chat';
+
 export interface SidebarItem {
   href: string;
   label: string;
   icon: ReactNode;
   badge?: string;
+  action?: SidebarAction;
 }
 
 export interface SidebarSection {
@@ -25,12 +28,20 @@ export interface SidebarNavProps {
 
 export function SidebarNav({ sections, localePrefix }: SidebarNavProps): JSX.Element {
   const pathname = usePathname();
-  const { closeSidebar } = useUi();
+  const { closeSidebar, openDeposit, openWithdraw, openRanks, toggleChat } = useUi();
 
   function isActive(href: string): boolean {
     const full = `${localePrefix}${href}`;
     if (href === '/') return pathname === localePrefix || pathname === `${localePrefix}/`;
     return pathname === full || pathname.startsWith(`${full}/`);
+  }
+
+  function runAction(action: SidebarAction): void {
+    closeSidebar();
+    if (action === 'deposit') openDeposit();
+    else if (action === 'withdraw') openWithdraw();
+    else if (action === 'ranks') openRanks();
+    else if (action === 'chat') toggleChat();
   }
 
   return (
@@ -41,19 +52,15 @@ export function SidebarNav({ sections, localePrefix }: SidebarNavProps): JSX.Ele
             {section.title}
           </div>
           {section.items.map((item) => {
-            const active = isActive(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={`${localePrefix}${item.href}`}
-                onClick={closeSidebar}
-                className={cn(
-                  'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                  active
-                    ? 'bg-brand/12 text-brand shadow-[inset_2px_0_0_0_theme(colors.brand.DEFAULT)]'
-                    : 'text-text-secondary hover:bg-bg-card-hover hover:text-text-primary',
-                )}
-              >
+            const active = !item.action && isActive(item.href);
+            const baseClass = cn(
+              'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors',
+              active
+                ? 'bg-brand/12 text-brand shadow-[inset_2px_0_0_0_theme(colors.brand.DEFAULT)]'
+                : 'text-text-secondary hover:bg-bg-card-hover hover:text-text-primary',
+            );
+            const inner = (
+              <>
                 <span
                   aria-hidden
                   className={cn(
@@ -69,6 +76,28 @@ export function SidebarNav({ sections, localePrefix }: SidebarNavProps): JSX.Ele
                     {item.badge}
                   </span>
                 ) : null}
+              </>
+            );
+            if (item.action) {
+              return (
+                <button
+                  key={item.action}
+                  type="button"
+                  onClick={() => runAction(item.action!)}
+                  className={baseClass}
+                >
+                  {inner}
+                </button>
+              );
+            }
+            return (
+              <Link
+                key={item.href}
+                href={`${localePrefix}${item.href}`}
+                onClick={closeSidebar}
+                className={baseClass}
+              >
+                {inner}
               </Link>
             );
           })}
@@ -77,3 +106,4 @@ export function SidebarNav({ sections, localePrefix }: SidebarNavProps): JSX.Ele
     </nav>
   );
 }
+

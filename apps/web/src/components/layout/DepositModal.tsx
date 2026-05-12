@@ -16,16 +16,36 @@ export function DepositModal({ locale }: DepositModalProps): JSX.Element {
     <Modal
       open={depositModalOpen}
       onClose={closeDeposit}
-      title="Пополнение баланса"
-      size="lg"
+      size="2xl"
+      title={
+        <span className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="flex h-7 w-7 items-center justify-center rounded-md bg-brand/15 text-brand"
+          >
+            ↓
+          </span>
+          <span>Пополнение баланса</span>
+        </span>
+      }
+      description="Выберите способ оплаты и сумму"
     >
-      <div className="grid gap-6 lg:grid-cols-2 p-1">
-        <DepositForm locale={locale} onSuccess={() => { refreshBalance(); }} />
-        <div>
-          <h3 className="mb-3 text-sm font-semibold text-text-secondary">История пополнений</h3>
-          <DepositsList locale={locale} />
+      <div className="-mx-6 -my-5 bg-bg-elevated px-6 py-5">
+        <div className="grid gap-5 lg:grid-cols-[1.05fr_1fr]">
+          <div>
+            <DepositForm locale={locale} onSuccess={() => { refreshBalance(); }} />
+          </div>
+          <div className="flex min-w-0 flex-col">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
+              История пополнений
+            </h3>
+            <div className="rounded-xl border border-border bg-bg-card p-4">
+              <DepositsList locale={locale} />
+            </div>
+          </div>
         </div>
       </div>
     </Modal>
   );
 }
+

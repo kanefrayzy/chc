@@ -89,7 +89,7 @@ async function buildSections(locale: string): Promise<SidebarSection[]> {
     games.push({ href: '/roulette', label: tNav('roulette'), icon: ICONS.roulette, badge: 'LIVE' });
   }
   if (settings['gameplay.ranks_enabled']) {
-    games.push({ href: '/ranks', label: tNav('ranks'), icon: ICONS.ranks });
+    games.push({ href: '/ranks', label: tNav('ranks'), icon: ICONS.ranks, action: 'ranks' });
   }
 
   const sections: SidebarSection[] = [{ title: tSidebar('games'), items: games }];
@@ -99,7 +99,7 @@ async function buildSections(locale: string): Promise<SidebarSection[]> {
       { href: '/profile', label: tNav('profile'), icon: ICONS.profile },
     ];
     if (settings['gameplay.chat_enabled']) {
-      account.push({ href: '/chat', label: tNav('chat'), icon: ICONS.chat });
+      account.push({ href: '/chat', label: tNav('chat'), icon: ICONS.chat, action: 'chat' });
     }
     if (settings['gameplay.referrals_enabled']) {
       account.push({ href: '/referrals', label: tNav('referral'), icon: ICONS.referral });
@@ -109,8 +109,8 @@ async function buildSections(locale: string): Promise<SidebarSection[]> {
     sections.push({
       title: tSidebar('payments'),
       items: [
-        { href: '/deposit', label: tNav('deposit'), icon: ICONS.deposit },
-        { href: '/withdraw', label: tNav('withdraw'), icon: ICONS.withdraw },
+        { href: '/deposit', label: tNav('deposit'), icon: ICONS.deposit, action: 'deposit' },
+        { href: '/withdraw', label: tNav('withdraw'), icon: ICONS.withdraw, action: 'withdraw' },
       ],
     });
   }
