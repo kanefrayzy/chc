@@ -20,7 +20,7 @@ export async function getServerUser(): Promise<AuthResponse['user'] | null> {
     });
     return res.user;
   } catch (e) {
-    if (e instanceof ApiException && (e.status === 401 || e.status === 403)) {
+    if (e instanceof ApiException && (e.status === 401 || e.status === 403 || e.status === 404)) {
       return null;
     }
     throw e;
