@@ -23,6 +23,11 @@ RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 WORKDIR /repo
 ENV NEXT_TELEMETRY_DISABLED=1
 
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_SITE_NAME
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_SITE_NAME=${NEXT_PUBLIC_SITE_NAME}
+
 COPY --from=deps /repo/node_modules ./node_modules
 COPY --from=deps /repo/apps/admin/node_modules ./apps/admin/node_modules
 COPY --from=deps /repo/packages/shared/node_modules ./packages/shared/node_modules
