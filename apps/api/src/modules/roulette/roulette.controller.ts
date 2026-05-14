@@ -27,6 +27,12 @@ export class RouletteController {
     return { items: rounds.map((r) => toPublicRound(r, [])) };
   }
 
+  @Get('recent-winners')
+  async recentWinners(@Query('limit') limit?: string) {
+    const items = await this.service.listRecentWinners(Math.min(Number(limit) || 5, 20));
+    return { items };
+  }
+
   @Get('my-bets')
   @UseGuards(JwtAuthGuard)
   async myBets(@CurrentUser() user: AccessTokenPayload, @Query('limit') limit?: string) {

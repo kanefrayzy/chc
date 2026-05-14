@@ -311,7 +311,16 @@ function CrownIcon({ size = 14 }: { size?: number }): JSX.Element {
 }
 
 // ── ColorTotalsBadge (совместимость) ─────────────────────────────────────────
-const ICON: Record<RouletteColor, string> = { GREEN: '★', RED: '♦', BLACK: '♠' };
+function ColorMarker({ color }: { color: RouletteColor }): JSX.Element {
+  if (color === 'GREEN') return <CrownIcon size={12} />;
+  return (
+    <span
+      aria-hidden
+      className="inline-block h-2 w-2 rounded-full"
+      style={{ background: 'currentColor' }}
+    />
+  );
+}
 
 export interface ColorTotalsBadgeProps {
   color: RouletteColor;
@@ -327,7 +336,10 @@ export function ColorTotalsBadge({ color, amountMinor, betsCount, multiplier }: 
       className="flex items-center justify-between rounded-lg px-3 py-1.5 text-xs font-semibold"
       style={{ background: fill + '22', border: `1px solid ${fill}55` }}
     >
-      <span style={{ color: fill }}>{ICON[color]} ×{multiplier}</span>
+      <span style={{ color: fill }} className="flex items-center gap-1">
+        <ColorMarker color={color} />
+        ×{multiplier}
+      </span>
       <span className="text-text-secondary">{betsCount} ставок</span>
       <span className="text-text-primary font-mono">{(Number(amountMinor) / 100).toFixed(2)} AZN</span>
     </div>

@@ -17,7 +17,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AccessTokenPayload } from '../auth/auth.service';
 import { AdminTicketsService } from './admin-tickets.service';
-import { TicketMessageDto } from './admin.dto';
+import { TicketMessageDto, BalanceAdjustDto } from './admin.dto';
 import {
   toAdminTicket,
   toAdminMessage,
@@ -55,8 +55,13 @@ export class AdminTicketsController {
   }
 
   @Get(':id/messages')
-  async messages(@Param('id') id: string): Promise<AdminMessageDto[]> {
-    const msgs = await this.service.listMessages(id);
+  async messages(
+    @Param('id') id: string,
+    @Query('beforeId') beforeId?: string,
+    @Query('afterId') afterId?: string,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit?: number,
+  ): Promise<AdminMessageDto[]> {
+    const msgs = await this.service.listMessages(id, { beforeId, afterId, limit: limit ?? 30 });
     return msgs.map(toAdminMessage);
   }
 
@@ -92,5 +97,23 @@ export class AdminTicketsController {
       userAgent: meta.userAgent,
     });
     return toAdminTicket(t as never);
+  }
+
+  @Post(':id/balance-adjust')
+  async balanceAdjust(
+    @CurrentUser() actor: AccessTokenPayload,
+    @Param('id') id: string,
+    @Body() body: BalanceAdjustDto,
+    @Req() req: Request,
+  ): Promise<{ balanceAfterMinor: string }> {
+    const meta = clientMeta(req);
+    return this.service.adjustBalance({
+      actorId: actor.sub,
+      ticketId: id,
+      amountMinor: BigInt(body.amountMinor),
+      reason: body.reason,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
   }
 }

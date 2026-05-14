@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { Card, CardBody, CardHeader, Button, Alert } from '@chcgreen/ui';
-import { ProviderSelector, type ProviderOption } from './ProviderSelector';
+import { Button, Alert } from '@chcgreen/ui';
 import { AmountInput, parseAmountToMinor } from './AmountInput';
-import { depositsApi, type PaymentProviderId } from '@/lib/api/deposits';
+import { depositsApi } from '@/lib/api/deposits';
+import { paymentMethodsApi, type PublicPaymentMethod } from '@/lib/api/payment-methods';
 import { ApiException } from '@/lib/api/client';
 
-const DEFAULT_MIN_MINOR = 100n; // 1 AZN
-const DEFAULT_MAX_MINOR = 1_000_000n; // 10 000 AZN
+const FALLBACK_MIN = 100n;
+const FALLBACK_MAX = 1_000_000n;
 
 export interface DepositFormProps {
   locale: string;
@@ -20,38 +20,75 @@ export interface DepositFormProps {
 export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Element {
   const t = useTranslations('deposit.form');
   const router = useRouter();
-  const [provider, setProvider] = useState<PaymentProviderId>('BETRA_H2H');
+  const [methods, setMethods] = useState<PublicPaymentMethod[]>([]);
+  const [methodsLoading, setMethodsLoading] = useState(true);
+  const [methodsError, setMethodsError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const options: readonly ProviderOption[] = [
-    { id: 'BETRA_H2H', label: 'Limpay', description: t('providerLimpay') },
-    { id: 'WESTWALLET', label: 'WestWallet (USDT)', description: t('providerWest') },
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    setMethodsLoading(true);
+    paymentMethodsApi
+      .list('DEPOSIT')
+      .then((res) => {
+        if (cancelled) return;
+        setMethods(res.items);
+        if (res.items.length > 0) setSelectedId(res.items[0]!.id);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setMethodsError(e instanceof ApiException ? e.message : t('errors.loadMethods'));
+      })
+      .finally(() => {
+        if (!cancelled) setMethodsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
+
+  const selected = methods.find((m) => m.id === selectedId) ?? null;
+  const minMinor =
+    selected && BigInt(selected.minAmountMinor) > 0n
+      ? BigInt(selected.minAmountMinor)
+      : FALLBACK_MIN;
+  const maxMinor =
+    selected && BigInt(selected.maxAmountMinor) > 0n
+      ? BigInt(selected.maxAmountMinor)
+      : FALLBACK_MAX;
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     setErrorMessage(null);
+    if (!selected) {
+      setErrorMessage(t('errors.selectMethod'));
+      return;
+    }
     const minor = parseAmountToMinor(amount);
     if (minor === null) {
       setErrorMessage(t('errors.invalidAmount'));
       return;
     }
-    if (minor < DEFAULT_MIN_MINOR || minor > DEFAULT_MAX_MINOR) {
+    if (minor < minMinor || minor > maxMinor) {
       setErrorMessage(t('errors.outOfRange'));
       return;
     }
 
     startTransition(async () => {
       try {
-        await depositsApi.create({ provider, amountMinor: minor.toString() });
+        await depositsApi.create({
+          paymentMethodId: selected.id,
+          amountMinor: minor.toString(),
+        });
         router.refresh();
         setAmount('');
         if (onSuccess) onSuccess();
-      } catch (e) {
-        if (e instanceof ApiException) {
-          setErrorMessage(e.message || t('errors.createFailed'));
+      } catch (err) {
+        if (err instanceof ApiException) {
+          setErrorMessage(err.message || t('errors.createFailed'));
         } else {
           setErrorMessage(t('errors.createFailed'));
         }
@@ -60,39 +97,76 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
   };
 
   return (
-    <Card variant="elevated" padding="lg">
-      <CardHeader>
-        <h2 className="text-xl font-semibold text-text-primary">{t('title')}</h2>
-      </CardHeader>
-      <CardBody>
-        <form onSubmit={handleSubmit} className="space-y-5">
+    <div>
+      <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <div className="mb-2 text-sm font-medium text-text-secondary">{t('selectProvider')}</div>
-            <ProviderSelector
-              options={options}
-              value={provider}
-              onChange={setProvider}
-              disabled={isPending}
-            />
+            <div className="mb-2 text-sm font-medium text-text-secondary">
+              {t('selectProvider')}
+            </div>
+            {methodsLoading ? (
+              <div className="text-sm text-text-muted">{t('loading')}</div>
+            ) : methodsError ? (
+              <Alert variant="danger">{methodsError}</Alert>
+            ) : methods.length === 0 ? (
+              <Alert variant="warning">{t('errors.noMethods')}</Alert>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {methods.map((m) => {
+                  const active = m.id === selectedId;
+                  return (
+                    <button
+                      type="button"
+                      key={m.id}
+                      onClick={() => setSelectedId(m.id)}
+                      disabled={isPending}
+                      className={[
+                        'flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition',
+                        active
+                          ? 'border-brand bg-brand/10 text-text-primary'
+                          : 'border-border-default bg-bg-surface text-text-secondary hover:border-border-strong',
+                      ].join(' ')}
+                    >
+                      {m.iconUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={m.iconUrl}
+                          alt=""
+                          className="h-8 w-8 rounded-md object-contain bg-black/20"
+                        />
+                      ) : (
+                        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-brand/20 text-xs font-semibold text-brand">
+                          {m.name.slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{m.name}</span>
+                        <span className="block truncate text-xs text-text-muted">
+                          {m.description ?? m.currency}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <AmountInput
             label={t('amountLabel')}
             value={amount}
             onChange={setAmount}
-            disabled={isPending}
-            minMinor={DEFAULT_MIN_MINOR}
-            maxMinor={DEFAULT_MAX_MINOR}
+            disabled={isPending || !selected}
+            minMinor={minMinor}
+            maxMinor={maxMinor}
           />
 
           {errorMessage ? <Alert variant="danger">{errorMessage}</Alert> : null}
 
-          <Button type="submit" variant="primary" disabled={isPending}>
-            {isPending ? t('submitting') : t('submit')}
-          </Button>
-        </form>
-        <p className="mt-4 text-xs text-text-muted">{t('hintLocale', { locale })}</p>
-      </CardBody>
-    </Card>
+        <Button type="submit" variant="primary" disabled={isPending || !selected}>
+          {isPending ? t('submitting') : t('submit')}
+        </Button>
+      </form>
+      <p className="mt-4 text-xs text-text-muted">{t('hintLocale', { locale })}</p>
+    </div>
   );
 }

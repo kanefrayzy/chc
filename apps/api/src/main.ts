@@ -12,7 +12,10 @@ async function bootstrap(): Promise<void> {
     rawBody: true,
   });
 
-  app.use(helmet());
+  app.use(helmet({
+    // Позволяет загружать статику (/uploads/*) с других origin (Next.js app)
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }));
   app.use(cookieParser());
   app.enableCors({
     origin: [

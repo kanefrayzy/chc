@@ -59,7 +59,7 @@ export function RegisterForm({
 
     const dto: RegisterDto = {
       email: regMethod === 'email' ? values.email.trim() : '',
-      phone: regMethod === 'phone' ? values.phone.trim() : '',
+      phone: regMethod === 'phone' ? values.phone.replace(/[^+0-9]/g, '').trim() : '',
       username: values.username.trim(),
       password: values.password,
       ageConfirmed: values.ageConfirmed as true,

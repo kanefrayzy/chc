@@ -9,57 +9,41 @@ import type { CodePurchase } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
 import { SettingsService } from '../settings/settings.service';
 
-const DEFAULT_MIN_MINOR = 100n;
-const DEFAULT_MAX_MINOR = 1_000_000n;
-
 /**
- * Покупка кода: пользователь резервирует средства, в чате модератор присылает код.
- * На MVP: создание → hold → отмена → возврат. Сам факт выдачи/списания добавится
- * через админ-эндпоинт в следующей итерации.
+ * Покупка кода: пользователь оставляет заявку, в чате модератор присылает код
+ * и сам списывает баланс через админ-эндпоинт `adminDebit`. На момент создания
+ * заявки баланс **не** удерживается — сумму определяет модератор.
  */
 @Injectable()
 export class CodePurchasesService {
-  private readonly minMinor: bigint;
-  private readonly maxMinor: bigint;
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly settings: SettingsService,
-  ) {
-    this.minMinor = BigInt(process.env.CODE_PURCHASE_MIN_MINOR || DEFAULT_MIN_MINOR.toString());
-    this.maxMinor = BigInt(process.env.CODE_PURCHASE_MAX_MINOR || DEFAULT_MAX_MINOR.toString());
-  }
+  ) {}
 
   async create(params: {
     userId: string;
-    amountMinor: bigint;
     comment?: string;
   }): Promise<{ purchase: CodePurchase; ticketId: string }> {
-    const { userId, amountMinor, comment } = params;
+    const { userId, comment } = params;
     const enabled = await this.settings.get<boolean>('gameplay.code_purchase_enabled');
     if (!enabled) {
       throw new BadRequestException('CODE_PURCHASE_DISABLED');
-    }
-    if (amountMinor < this.minMinor || amountMinor > this.maxMinor) {
-      throw new BadRequestException(
-        `Amount must be between ${this.minMinor} and ${this.maxMinor} qəpik`,
-      );
     }
 
     return this.prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
         where: { id: userId },
-        select: { balanceMinor: true },
+        select: { id: true },
       });
       if (!user) throw new NotFoundException('USER_NOT_FOUND');
-      if (user.balanceMinor < amountMinor) throw new ConflictException('INSUFFICIENT_FUNDS');
 
       const ticket = await tx.ticket.create({
         data: {
           userId,
           type: 'CODE_PURCHASE',
           status: 'WAITING_MODERATOR',
-          subject: `Покупка кода ${amountMinor.toString()}`,
+          subject: 'Покупка кода',
           messages: comment
             ? {
                 create: {
@@ -72,7 +56,7 @@ export class CodePurchasesService {
                 create: {
                   authorId: null,
                   kind: 'SYSTEM',
-                  body: `Создана заявка на покупку кода на сумму ${(Number(amountMinor) / 100).toFixed(2)} AZN`,
+                  body: 'Создана заявка на покупку кода. Дождитесь ответа модератора.',
                 },
               },
         },
@@ -82,28 +66,8 @@ export class CodePurchasesService {
         data: {
           userId,
           ticketId: ticket.id,
-          amountMinor,
+          amountMinor: 0n,
           status: 'AWAITING_MODERATOR',
-        },
-      });
-
-      const updated = await tx.user.update({
-        where: { id: userId },
-        data: { balanceMinor: { decrement: amountMinor } },
-        select: { balanceMinor: true },
-      });
-
-      await tx.transaction.create({
-        data: {
-          userId,
-          type: 'CODE_HOLD',
-          status: 'PENDING',
-          amountMinor: -amountMinor,
-          balanceAfterMinor: updated.balanceMinor,
-          idempotencyKey: `code:${purchase.id}:hold`,
-          referenceType: 'code_purchase',
-          referenceId: purchase.id,
-          description: 'Code purchase hold',
         },
       });
 
@@ -142,32 +106,84 @@ export class CodePurchasesService {
         throw new ConflictException('CODE_PURCHASE_NOT_CANCELLABLE');
       }
 
-      const refundKey = `code:${p.id}:release`;
-      const existing = await tx.transaction.findUnique({ where: { idempotencyKey: refundKey } });
-      if (existing) {
-        return tx.codePurchase.update({
-          where: { id: p.id },
-          data: { status: 'CANCELLED', completedAt: new Date() },
+      if (p.ticketId) {
+        await tx.ticket.update({
+          where: { id: p.ticketId },
+          data: { status: 'CLOSED', closedAt: new Date() },
+        });
+        await tx.message.create({
+          data: {
+            ticketId: p.ticketId,
+            authorId: null,
+            kind: 'SYSTEM',
+            body: 'Заявка отменена пользователем.',
+          },
         });
       }
 
+      return tx.codePurchase.update({
+        where: { id: p.id },
+        data: { status: 'CANCELLED', completedAt: new Date() },
+      });
+    });
+  }
+
+  /**
+   * Списание баланса пользователя модератором при выдаче кода.
+   * Гарантирует, что баланс не уйдёт в минус.
+   */
+  async adminDebit(params: {
+    purchaseId: string;
+    moderatorId: string;
+    amountMinor: bigint;
+    code?: string;
+  }): Promise<CodePurchase> {
+    const { purchaseId, moderatorId, amountMinor, code } = params;
+    if (amountMinor <= 0n) throw new BadRequestException('AMOUNT_MUST_BE_POSITIVE');
+
+    return this.prisma.$transaction(async (tx) => {
+      const p = await tx.codePurchase.findUnique({ where: { id: purchaseId } });
+      if (!p) throw new NotFoundException('CODE_PURCHASE_NOT_FOUND');
+      if (p.status === 'COMPLETED' || p.status === 'CANCELLED') {
+        throw new ConflictException('CODE_PURCHASE_NOT_DEBITABLE');
+      }
+
+      const user = await tx.user.findUnique({
+        where: { id: p.userId },
+        select: { balanceMinor: true },
+      });
+      if (!user) throw new NotFoundException('USER_NOT_FOUND');
+      if (user.balanceMinor < amountMinor) {
+        throw new ConflictException('INSUFFICIENT_FUNDS');
+      }
+
       const updated = await tx.user.update({
-        where: { id: userId },
-        data: { balanceMinor: { increment: p.amountMinor } },
+        where: { id: p.userId },
+        data: { balanceMinor: { decrement: amountMinor } },
         select: { balanceMinor: true },
       });
 
       await tx.transaction.create({
         data: {
-          userId,
-          type: 'CODE_RELEASE',
+          userId: p.userId,
+          type: 'ADMIN_DEBIT',
           status: 'COMPLETED',
-          amountMinor: p.amountMinor,
+          amountMinor: -amountMinor,
           balanceAfterMinor: updated.balanceMinor,
-          idempotencyKey: refundKey,
+          idempotencyKey: `code:${p.id}:debit`,
           referenceType: 'code_purchase',
           referenceId: p.id,
-          description: 'Code purchase cancelled — refund',
+          description: `Code purchase debit by moderator ${moderatorId}`,
+        },
+      });
+
+      const purchase = await tx.codePurchase.update({
+        where: { id: p.id },
+        data: {
+          amountMinor,
+          status: 'COMPLETED',
+          ...(code ? { code, issuedByModeratorId: moderatorId } : {}),
+          completedAt: new Date(),
         },
       });
 
@@ -179,17 +195,14 @@ export class CodePurchasesService {
         await tx.message.create({
           data: {
             ticketId: p.ticketId,
-            authorId: null,
+            authorId: moderatorId,
             kind: 'SYSTEM',
-            body: 'Заявка отменена пользователем, средства возвращены.',
+            body: `Списано ${(Number(amountMinor) / 100).toFixed(2)} AZN. Код выдан.`,
           },
         });
       }
 
-      return tx.codePurchase.update({
-        where: { id: p.id },
-        data: { status: 'CANCELLED', completedAt: new Date() },
-      });
+      return purchase;
     });
   }
 }

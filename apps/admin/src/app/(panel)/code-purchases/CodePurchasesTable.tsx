@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   adminApi,
@@ -45,6 +45,21 @@ export function CodePurchasesTable({
   const [rejectTarget, setRejectTarget] = useState<AdminCodePurchaseRow | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Авто-обновление каждые 10 секунд
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const res = await adminApi.codePurchases.list({ status, limit: 50 });
+        if (!cancelled) setItems(res.items);
+      } catch { /* silent */ }
+      finally { if (!cancelled) timer = setTimeout(poll, 10_000); }
+    };
+    timer = setTimeout(poll, 10_000);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [status]);
+
   async function refresh() {
     try {
       const res = await adminApi.codePurchases.list({ status, limit: 50 });
@@ -54,10 +69,10 @@ export function CodePurchasesTable({
     }
   }
 
-  async function onIssue(id: string, code: string) {
+  async function onIssue(id: string, code: string, amountMinor: string) {
     setError(null);
     try {
-      await adminApi.codePurchases.issue(id, { code });
+      await adminApi.codePurchases.issue(id, { code, amountMinor });
       setIssueTarget(null);
       await refresh();
     } catch (e) {
@@ -114,6 +129,16 @@ export function CodePurchasesTable({
             align: 'right',
             cell: (r) => (
               <span className="font-mono tabular-nums">{minorToAzn(r.amountMinor)}</span>
+            ),
+          },
+          {
+            key: 'balance',
+            header: 'Баланс юзера',
+            align: 'right',
+            cell: (r) => (
+              <span className="font-mono tabular-nums text-ink-700">
+                {r.userBalanceMinor ? minorToAzn(r.userBalanceMinor) : '—'}
+              </span>
             ),
           },
           {

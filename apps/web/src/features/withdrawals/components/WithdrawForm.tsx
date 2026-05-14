@@ -1,34 +1,29 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { Card, CardBody, CardHeader, Button, Alert } from '@chcgreen/ui';
-import {
-  WithdrawMethodSelector,
-  type WithdrawMethodOption,
-} from './WithdrawMethodSelector';
+import { Button, Alert } from '@chcgreen/ui';
 import { DestinationFields } from './DestinationFields';
 import { AmountInput, parseAmountToMinor } from '@/features/deposits/components/AmountInput';
+import { withdrawalsApi, type CreateWithdrawalDestination } from '@/lib/api/withdrawals';
 import {
-  withdrawalsApi,
-  type WithdrawalMethod,
-  type CreateWithdrawalDestination,
-} from '@/lib/api/withdrawals';
+  paymentMethodsApi,
+  type PublicPaymentMethod,
+  type PaymentProviderId,
+} from '@/lib/api/payment-methods';
 import { ApiException } from '@/lib/api/client';
 
-const DEFAULT_MIN_MINOR = 500n;
-const DEFAULT_MAX_MINOR = 1_000_000n;
+const FALLBACK_MIN = 500n;
+const FALLBACK_MAX = 1_000_000n;
 
-const EMPTY_DESTINATIONS: Record<WithdrawalMethod, CreateWithdrawalDestination> = {
-  AUTO_BETRA_H2H: { kind: 'card', cardNumber: '' },
-  AUTO_WESTWALLET: { kind: 'crypto', walletAddress: '', network: 'TRC20' },
-  MANUAL_MODERATOR: { kind: 'manual', details: '' },
-};
+function defaultDestinationForProvider(p: PaymentProviderId): CreateWithdrawalDestination {
+  if (p === 'WESTWALLET') return { kind: 'crypto', walletAddress: '', network: 'TRC20' };
+  return { kind: 'card', cardNumber: '' };
+}
 
-export interface WithdrawFormProps {
-  balanceMinor: string;
-  onSuccess?: () => void;
+function destinationKindForProvider(p: PaymentProviderId): 'card' | 'crypto' {
+  return p === 'WESTWALLET' ? 'crypto' : 'card';
 }
 
 function validateDestination(d: CreateWithdrawalDestination): boolean {
@@ -37,38 +32,85 @@ function validateDestination(d: CreateWithdrawalDestination): boolean {
   return d.details.length >= 2;
 }
 
+export interface WithdrawFormProps {
+  balanceMinor: string;
+  onSuccess?: () => void;
+}
+
 export function WithdrawForm({ balanceMinor, onSuccess }: WithdrawFormProps): JSX.Element {
   const t = useTranslations('withdraw.form');
   const router = useRouter();
-  const [method, setMethod] = useState<WithdrawalMethod>('AUTO_BETRA_H2H');
-  const [destination, setDestination] = useState<CreateWithdrawalDestination>(
-    EMPTY_DESTINATIONS.AUTO_BETRA_H2H,
-  );
+  const [methods, setMethods] = useState<PublicPaymentMethod[]>([]);
+  const [methodsLoading, setMethodsLoading] = useState(true);
+  const [methodsError, setMethodsError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [destination, setDestination] = useState<CreateWithdrawalDestination>({
+    kind: 'card',
+    cardNumber: '',
+  });
   const [amount, setAmount] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const options: readonly WithdrawMethodOption[] = [
-    { id: 'AUTO_BETRA_H2H', label: 'Limpay', description: t('methodCard') },
-    { id: 'AUTO_WESTWALLET', label: 'USDT (TRC20)', description: t('methodCrypto') },
-    { id: 'MANUAL_MODERATOR', label: t('methodManualLabel'), description: t('methodManual') },
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    setMethodsLoading(true);
+    paymentMethodsApi
+      .list('WITHDRAWAL')
+      .then((res) => {
+        if (cancelled) return;
+        setMethods(res.items);
+        if (res.items.length > 0) {
+          const first = res.items[0]!;
+          setSelectedId(first.id);
+          setDestination(defaultDestinationForProvider(first.provider));
+        }
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setMethodsError(e instanceof ApiException ? e.message : t('errors.loadMethods'));
+      })
+      .finally(() => {
+        if (!cancelled) setMethodsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
 
-  const handleMethodChange = (next: WithdrawalMethod): void => {
-    setMethod(next);
-    setDestination(EMPTY_DESTINATIONS[next]);
+  const selected = methods.find((m) => m.id === selectedId) ?? null;
+  const minMinor =
+    selected && BigInt(selected.minAmountMinor) > 0n
+      ? BigInt(selected.minAmountMinor)
+      : FALLBACK_MIN;
+  const maxMinor =
+    selected && BigInt(selected.maxAmountMinor) > 0n
+      ? BigInt(selected.maxAmountMinor)
+      : FALLBACK_MAX;
+  const destinationKind = selected
+    ? destinationKindForProvider(selected.provider)
+    : 'card';
+
+  const handleSelect = (m: PublicPaymentMethod): void => {
+    setSelectedId(m.id);
+    setDestination(defaultDestinationForProvider(m.provider));
   };
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     setErrorMessage(null);
 
+    if (!selected) {
+      setErrorMessage(t('errors.selectMethod'));
+      return;
+    }
+
     const minor = parseAmountToMinor(amount);
     if (minor === null) {
       setErrorMessage(t('errors.invalidAmount'));
       return;
     }
-    if (minor < DEFAULT_MIN_MINOR || minor > DEFAULT_MAX_MINOR) {
+    if (minor < minMinor || minor > maxMinor) {
       setErrorMessage(t('errors.outOfRange'));
       return;
     }
@@ -84,13 +126,13 @@ export function WithdrawForm({ balanceMinor, onSuccess }: WithdrawFormProps): JS
     startTransition(async () => {
       try {
         await withdrawalsApi.create({
-          method,
+          paymentMethodId: selected.id,
           amountMinor: minor.toString(),
           destination,
         });
         router.refresh();
         setAmount('');
-        setDestination(EMPTY_DESTINATIONS[method]);
+        setDestination(defaultDestinationForProvider(selected.provider));
         if (onSuccess) onSuccess();
       } catch (err) {
         if (err instanceof ApiException) {
@@ -103,51 +145,89 @@ export function WithdrawForm({ balanceMinor, onSuccess }: WithdrawFormProps): JS
   };
 
   return (
-    <Card variant="elevated" padding="lg">
-      <CardHeader>
-        <h2 className="text-xl font-semibold text-text-primary">{t('title')}</h2>
-      </CardHeader>
-      <CardBody>
-        <form onSubmit={handleSubmit} className="space-y-5">
+    <div>
+      <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <div className="mb-2 text-sm font-medium text-text-secondary">{t('selectMethod')}</div>
-            <WithdrawMethodSelector
-              options={options}
-              value={method}
-              onChange={handleMethodChange}
-              disabled={isPending}
-            />
+            <div className="mb-2 text-sm font-medium text-text-secondary">
+              {t('selectMethod')}
+            </div>
+            {methodsLoading ? (
+              <div className="text-sm text-text-muted">{t('loading')}</div>
+            ) : methodsError ? (
+              <Alert variant="danger">{methodsError}</Alert>
+            ) : methods.length === 0 ? (
+              <Alert variant="warning">{t('errors.noMethods')}</Alert>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {methods.map((m) => {
+                  const active = m.id === selectedId;
+                  return (
+                    <button
+                      type="button"
+                      key={m.id}
+                      onClick={() => handleSelect(m)}
+                      disabled={isPending}
+                      className={[
+                        'flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition',
+                        active
+                          ? 'border-brand bg-brand/10 text-text-primary'
+                          : 'border-border-default bg-bg-surface text-text-secondary hover:border-border-strong',
+                      ].join(' ')}
+                    >
+                      {m.iconUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={m.iconUrl}
+                          alt=""
+                          className="h-8 w-8 rounded-md object-contain bg-black/20"
+                        />
+                      ) : (
+                        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-brand/20 text-xs font-semibold text-brand">
+                          {m.name.slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{m.name}</span>
+                        <span className="block truncate text-xs text-text-muted">
+                          {m.description ?? m.currency}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          <DestinationFields
-            method={method}
-            destination={destination}
-            onChange={setDestination}
-            disabled={isPending}
-            labels={{
-              cardNumber: t('cardNumber'),
-              cardHolder: t('cardHolder'),
-              walletAddress: t('walletAddress'),
-              manualDetails: t('manualDetails'),
-            }}
-          />
+          {selected ? (
+            <DestinationFields
+              kind={destinationKind}
+              destination={destination}
+              onChange={setDestination}
+              disabled={isPending}
+              labels={{
+                cardNumber: t('cardNumber'),
+                cardHolder: t('cardHolder'),
+                walletAddress: t('walletAddress'),
+              }}
+            />
+          ) : null}
 
           <AmountInput
             label={t('amountLabel')}
             value={amount}
             onChange={setAmount}
-            disabled={isPending}
-            minMinor={DEFAULT_MIN_MINOR}
-            maxMinor={DEFAULT_MAX_MINOR}
+            disabled={isPending || !selected}
+            minMinor={minMinor}
+            maxMinor={maxMinor}
           />
 
           {errorMessage ? <Alert variant="danger">{errorMessage}</Alert> : null}
 
-          <Button type="submit" variant="primary" disabled={isPending}>
-            {isPending ? t('submitting') : t('submit')}
-          </Button>
-        </form>
-      </CardBody>
-    </Card>
+        <Button type="submit" variant="primary" disabled={isPending || !selected}>
+          {isPending ? t('submitting') : t('submit')}
+        </Button>
+      </form>
+    </div>
   );
 }

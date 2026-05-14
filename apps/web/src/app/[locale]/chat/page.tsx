@@ -1,13 +1,10 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
 import { ChatLayout } from '@/features/chat/components/ChatLayout';
 import { CodePurchaseForm } from '@/features/code-purchases/components/CodePurchaseForm';
 import { getServerUser } from '@/lib/api/server';
-import { apiFetch } from '@/lib/api/client';
-import type { WalletBalanceDto } from '@/lib/api/wallet';
 
 interface ChatPageProps {
   params: { locale: string };
@@ -26,14 +23,6 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps):
     redirect(`${prefix}/login`);
   }
 
-  const cookieHeader = cookies()
-    .getAll()
-    .map((c) => `${c.name}=${c.value}`)
-    .join('; ');
-  const balance = await apiFetch<WalletBalanceDto>('/wallet/balance', {
-    headers: { Cookie: cookieHeader },
-  });
-
   const t = await getTranslations({ locale: params.locale, namespace: 'chat' });
 
   return (
@@ -42,7 +31,7 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps):
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
         <ChatLayout locale={params.locale} viewerId={user!.id} initialTicketId={searchParams.ticket ?? null} />
         <aside>
-          <CodePurchaseForm locale={params.locale} balanceMinor={balance.balanceMinor} />
+          <CodePurchaseForm locale={params.locale} />
         </aside>
       </div>
     </AppShell>

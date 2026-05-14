@@ -4,22 +4,16 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Card, CardBody, CardHeader, Button, Alert, FormField, Input } from '@chcgreen/ui';
-import { AmountInput, parseAmountToMinor } from '@/features/deposits/components/AmountInput';
 import { codePurchasesApi } from '@/lib/api/code-purchases';
 import { ApiException } from '@/lib/api/client';
 
-const DEFAULT_MIN_MINOR = 100n;
-const DEFAULT_MAX_MINOR = 1_000_000n;
-
 export interface CodePurchaseFormProps {
   locale: string;
-  balanceMinor: string;
 }
 
-export function CodePurchaseForm({ locale, balanceMinor }: CodePurchaseFormProps): JSX.Element {
+export function CodePurchaseForm({ locale }: CodePurchaseFormProps): JSX.Element {
   const t = useTranslations('codePurchase.form');
   const router = useRouter();
-  const [amount, setAmount] = useState('');
   const [comment, setComment] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -27,25 +21,18 @@ export function CodePurchaseForm({ locale, balanceMinor }: CodePurchaseFormProps
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     setErrorMessage(null);
-    const minor = parseAmountToMinor(amount);
-    if (minor === null) return setErrorMessage(t('errors.invalidAmount'));
-    if (minor < DEFAULT_MIN_MINOR || minor > DEFAULT_MAX_MINOR) {
-      return setErrorMessage(t('errors.outOfRange'));
-    }
-    if (minor > BigInt(balanceMinor)) return setErrorMessage(t('errors.insufficient'));
 
     startTransition(async () => {
       try {
-        const res = await codePurchasesApi.create({
-          amountMinor: minor.toString(),
-          ...(comment.trim() ? { comment: comment.trim() } : {}),
-        });
-        setAmount('');
+        const res = await codePurchasesApi.create(
+          comment.trim() ? { comment: comment.trim() } : {},
+        );
         setComment('');
         const prefix = locale === 'ru' ? '' : `/${locale}`;
         router.push(res.ticketId ? `${prefix}/chat?ticket=${res.ticketId}` : `${prefix}/chat`);
       } catch (err) {
-        if (err instanceof ApiException) setErrorMessage(err.message || t('errors.createFailed'));
+        if (err instanceof ApiException)
+          setErrorMessage(err.message || t('errors.createFailed'));
         else setErrorMessage(t('errors.createFailed'));
       }
     });
@@ -59,14 +46,6 @@ export function CodePurchaseForm({ locale, balanceMinor }: CodePurchaseFormProps
       </CardHeader>
       <CardBody>
         <form onSubmit={handleSubmit} className="space-y-5">
-          <AmountInput
-            label={t('amountLabel')}
-            value={amount}
-            onChange={setAmount}
-            disabled={isPending}
-            minMinor={DEFAULT_MIN_MINOR}
-            maxMinor={DEFAULT_MAX_MINOR}
-          />
           <FormField label={t('commentLabel')} hint={t('commentHint')}>
             {(id) => (
               <Input

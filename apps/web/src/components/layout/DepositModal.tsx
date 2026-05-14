@@ -2,6 +2,7 @@
 
 import { Modal } from '@chcgreen/ui';
 import { useUi } from './ui-context';
+import { ArrowDownIcon } from '@/components/icons';
 import { DepositForm } from '@/features/deposits/components/DepositForm';
 
 export interface DepositModalProps {
@@ -22,7 +23,7 @@ export function DepositModal({ locale }: DepositModalProps): JSX.Element {
             aria-hidden
             className="flex h-7 w-7 items-center justify-center rounded-md bg-brand/15 text-brand"
           >
-            ↓
+            <ArrowDownIcon className="h-4 w-4" />
           </span>
           <span>Пополнение</span>
         </span>

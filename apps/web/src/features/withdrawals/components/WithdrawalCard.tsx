@@ -71,7 +71,7 @@ export function WithdrawalCard({ withdrawal, locale }: WithdrawalCardProps): JSX
             <div className="text-xs text-danger">{withdrawal.reason}</div>
           </div>
         ) : null}
-        <div className="text-xs text-text-muted">
+        <div className="text-xs text-text-muted" suppressHydrationWarning>
           {new Date(withdrawal.createdAt).toLocaleString(locale === 'az' ? 'az-AZ' : 'ru-RU')}
         </div>
         {withdrawal.status === 'PENDING' ? (

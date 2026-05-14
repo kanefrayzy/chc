@@ -9,6 +9,7 @@ import { BetPanel } from './BetPanel';
 import { HistoryStrip } from './HistoryStrip';
 import { CountdownTimer } from './CountdownTimer';
 import { useUi } from '@/components/layout/ui-context';
+import { CrownIcon } from '@/components/icons';
 import {
   rouletteApi,
   type RouletteBetDto,
@@ -68,6 +69,8 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
 
   const prevRoundIdRef = useRef<string | null>(null);
   const processedResultsRef = useRef<Set<string>>(new Set());
+  // Раунды, для которых анимация уже была запущена из ROLLING-события.
+  const processedRollingRef = useRef<Set<string>>(new Set());
 
   const reloadBalance = useCallback(async (): Promise<void> => {
     if (!isAuthed) return;
@@ -104,65 +107,91 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthed, round?.id]);
 
-  // Универсальная обработка увиденного COMPLETED-раунда.
-  const handleCompleted = useCallback((r: RouletteRoundDto) => {
-    if (r.status !== 'COMPLETED' || r.winningSlot === null || !r.winningColor) return;
-    if (processedResultsRef.current.has(r.id)) return;
-    processedResultsRef.current.add(r.id);
-
-    const mul = r.multipliers?.[r.winningColor] ?? (r.winningColor === 'GREEN' ? 14 : 2);
-    setResult({ roundId: r.id, slot: r.winningSlot, color: r.winningColor, multiplier: mul });
-
-    // По окончании визуальной анимации — показать результат и сыграть звук.
-    setTimeout(() => {
-      setHighlightWinner(true);
-      const c = r.winningColor!;
-      const cmul = mul;
-      if (isAuthed) {
-        void (async () => {
-          try {
-            const mine = await rouletteApi.myBets(20);
-            const myBets = mine.items.filter((b) => b.roundId === r.id);
-            if (myBets.length > 0) {
-              const totalBet = myBets.reduce((s, b) => s + BigInt(b.amountMinor), 0n);
-              const totalWin = myBets
-                .filter((b) => b.color === c)
-                .reduce((s, b) => s + BigInt(b.amountMinor) * BigInt(cmul), 0n);
-              const net = totalWin - totalBet;
-              if (totalWin > 0n) {
-                toast.success(`🎉 Победа! +${(Number(net) / 100).toFixed(2)} AZN`, {
-                  duration: 6000,
-                  style: {
-                    background: COLOR_FILL[c],
-                    color: COLOR_TEXT[c],
-                    fontWeight: 700,
-                    boxShadow: `0 0 28px ${COLOR_FILL[c]}80`,
-                  },
-                });
-                playWin();
-              } else {
-                toast.error(`Не повезло — ${(Number(totalBet) / 100).toFixed(2)} AZN ушло`, { duration: 5000 });
-                playLose();
-              }
-              void reloadBalance();
-              return;
+  // Хелпер: показать тост о результате раунда и обновить историю.
+  const showRoundResult = useCallback((r: RouletteRoundDto): void => {
+    const c = r.winningColor!;
+    const mul = r.multipliers?.[c] ?? (c === 'GREEN' ? 14 : 2);
+    setHighlightWinner(true);
+    if (isAuthed) {
+      void (async () => {
+        try {
+          const mine = await rouletteApi.myBets(20);
+          const myBets = mine.items.filter((b) => b.roundId === r.id);
+          if (myBets.length > 0) {
+            const totalBet = myBets.reduce((s, b) => s + BigInt(b.amountMinor), 0n);
+            const totalWin = myBets
+              .filter((b) => b.color === c)
+              .reduce((s, b) => s + BigInt(b.amountMinor) * BigInt(mul), 0n);
+            const net = totalWin - totalBet;
+            if (totalWin > 0n) {
+              toast.success(`Победа! +${(Number(net) / 100).toFixed(2)} AZN`, {
+                duration: 6000,
+                style: {
+                  background: COLOR_FILL[c],
+                  color: COLOR_TEXT[c],
+                  fontWeight: 700,
+                  boxShadow: `0 0 28px ${COLOR_FILL[c]}80`,
+                },
+              });
+              playWin();
+            } else {
+              toast.error(`Не повезло — ${(Number(totalBet) / 100).toFixed(2)} AZN ушло`, { duration: 5000 });
+              playLose();
             }
-          } catch { /* */ }
-          toast(`Выпал ${c} ×${cmul}`, {
-            duration: 4000,
-            style: { background: COLOR_FILL[c], color: COLOR_TEXT[c], fontWeight: 700 },
-          });
-        })();
-      } else {
-        toast(`Выпал ${c} ×${cmul}`, {
+            return;
+          }
+        } catch { /* */ }
+        toast(`Выпал ${c} ×${mul}`, {
           duration: 4000,
           style: { background: COLOR_FILL[c], color: COLOR_TEXT[c], fontWeight: 700 },
         });
-      }
-      // обновим историю
-      rouletteApi.history(30).then((res) => setHistory(res.items)).catch(() => undefined);
-    }, ROULETTE_SPIN_MS + 200);
-  }, [isAuthed, reloadBalance]);
+      })();
+    } else {
+      toast(`Выпал ${c} ×${mul}`, {
+        duration: 4000,
+        style: { background: COLOR_FILL[c], color: COLOR_TEXT[c], fontWeight: 700 },
+      });
+    }
+    rouletteApi.history(30).then((res) => setHistory(res.items)).catch(() => undefined);
+  }, [isAuthed]);
+
+  // Обрабатываем ROLLING-событие: сервер уже рассчитал winningSlot, клиент сразу крутит барабан.
+  const handleRolling = useCallback((r: RouletteRoundDto) => {
+    if (r.status !== 'ROLLING' || r.winningSlot === null || r.winningSlot === undefined || !r.winningColor) return;
+    if (processedRollingRef.current.has(r.id)) return;
+    processedRollingRef.current.add(r.id);
+
+    const mul = r.multipliers?.[r.winningColor] ?? (r.winningColor === 'GREEN' ? 14 : 2);
+    setResult({ roundId: r.id, slot: r.winningSlot, color: r.winningColor, multiplier: mul });
+    // Подсвечиваем победную ячейку по окончании анимации.
+    setTimeout(() => setHighlightWinner(true), ROULETTE_SPIN_MS + 200);
+  }, []);
+
+  // Обрабатываем COMPLETED-событие.
+  // • Если анимация уже запущена из ROLLING → обновляем баланс + тост сразу (анимация закончилась).
+  // • Если ROLLING-событие было пропущено (напр. перезагрузка страницы) → запускаем анимацию сейчас.
+  const handleCompleted = useCallback((r: RouletteRoundDto) => {
+    if (r.status !== 'COMPLETED' || r.winningSlot === null || r.winningSlot === undefined || !r.winningColor) return;
+    if (processedResultsRef.current.has(r.id)) return;
+    processedResultsRef.current.add(r.id);
+
+    const animAlreadyDone = processedRollingRef.current.has(r.id);
+
+    if (!animAlreadyDone) {
+      // Пользователь пропустил ROLLING → запускаем анимацию сейчас, результат после неё.
+      const mul = r.multipliers?.[r.winningColor] ?? (r.winningColor === 'GREEN' ? 14 : 2);
+      setResult({ roundId: r.id, slot: r.winningSlot, color: r.winningColor, multiplier: mul });
+      processedRollingRef.current.add(r.id);
+      setTimeout(() => {
+        showRoundResult(r);
+        void reloadBalance();
+      }, ROULETTE_SPIN_MS + 200);
+    } else {
+      // Анимация уже идёт / завершилась из ROLLING — показываем результат сразу.
+      showRoundResult(r);
+      void reloadBalance();
+    }
+  }, [showRoundResult, reloadBalance]);
 
   // ── polling: текущее состояние ──
   useEffect(() => {
@@ -173,7 +202,10 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
         if (cancelled) return;
         setRound(s.round);
         setRecentBets(s.recentBets);
-        if (s.round) handleCompleted(s.round);
+        if (s.round) {
+          handleRolling(s.round);
+          handleCompleted(s.round);
+        }
       } catch { /* */ } finally {
         if (!cancelled) setLoading(false);
         if (!cancelled) setTimeout(pull, 2500);
@@ -181,7 +213,7 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
     };
     pull();
     return () => { cancelled = true; };
-  }, [handleCompleted]);
+  }, [handleCompleted, handleRolling]);
 
   // ── polling: история ──
   useEffect(() => {
@@ -201,6 +233,7 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
   // ── real-time ──
   useRouletteSocket((r) => {
     setRound(r);
+    handleRolling(r);
     handleCompleted(r);
   });
 
@@ -362,7 +395,7 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
             >
               <div className="flex items-center justify-between px-3 py-2" style={{ background: fill, color: textColor }}>
                 <span className="font-bold text-sm flex items-center gap-1">
-                  {color === 'GREEN' ? <span>👑</span> : null}
+                  {color === 'GREEN' ? <CrownIcon className="h-3.5 w-3.5" /> : null}
                   {color}
                 </span>
                 <span className="font-mono text-xs opacity-90">×{mul}</span>

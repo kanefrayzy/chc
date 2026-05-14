@@ -4,6 +4,7 @@ import { minorToJson } from '@chcgreen/shared';
 export interface PublicDepositDto {
   id: string;
   provider: Deposit['provider'];
+  paymentMethodId: string | null;
   status: Deposit['status'];
   amountMinor: string;
   externalId: string | null;
@@ -19,6 +20,7 @@ export function toPublicDeposit(d: Deposit): PublicDepositDto {
   return {
     id: d.id,
     provider: d.provider,
+    paymentMethodId: d.paymentMethodId,
     status: d.status,
     amountMinor: minorToJson(d.amountMinor),
     externalId: d.externalId,

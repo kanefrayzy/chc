@@ -22,6 +22,9 @@ COPY --from=deps /repo/node_modules ./node_modules
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* turbo.json tsconfig.base.json ./
 COPY packages/shared ./packages/shared
 COPY apps/realtime ./apps/realtime
+# Восстанавливаем workspace симлинки после COPY (BuildKit дереференсит).
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile=false --prefer-offline
 RUN pnpm --filter @chcgreen/shared build
 RUN pnpm --filter @chcgreen/realtime build
 

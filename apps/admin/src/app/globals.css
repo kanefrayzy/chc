@@ -1,11 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html,
-body {
+html, body {
   height: 100%;
 }
 
@@ -14,12 +13,15 @@ body {
   color: theme('colors.ink.900');
   font-family: theme('fontFamily.sans');
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: 'ss01' on, 'cv11' on;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
 
+/* ─── Focus ─────────────────────────────────────────────────────────── */
 *:focus-visible {
   outline: 2px solid theme('colors.primary.DEFAULT');
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
 ::selection {
@@ -27,12 +29,41 @@ body {
   color: theme('colors.primary.dark');
 }
 
-/* Brand stripe — узнаваемая «административная» полоса наверху */
+/* ─── Scrollbars ─────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: theme('colors.ink.300');
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: theme('colors.ink.400');
+}
+
+/* ─── Sidebar scrollbar ───────────────────────────────────────────────── */
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.22);
+}
+
+/* ─── Brand gradient stripe ──────────────────────────────────────────── */
 .admin-brand-stripe {
   background: linear-gradient(
     90deg,
-    theme('colors.primary.DEFAULT') 0%,
-    theme('colors.primary.light') 50%,
-    theme('colors.accent.DEFAULT') 100%
+    theme('colors.primary.dark') 0%,
+    theme('colors.primary.DEFAULT') 50%,
+    theme('colors.primary.light') 100%
   );
+}
+
+/* ─── Smooth transitions for interactive elements ─────────────────────── */
+button, a, [role="button"] {
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
 }

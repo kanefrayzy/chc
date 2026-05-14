@@ -6,9 +6,9 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={cn(
-        'w-full h-10 px-3 rounded-md bg-surface border border-border text-sm text-ink-900',
-        'placeholder:text-ink-300 focus:outline-none focus:border-primary focus:shadow-focus',
-        'disabled:bg-page disabled:text-ink-400',
+        'w-full h-9 px-3 rounded-lg bg-surface border border-border text-sm text-ink-900',
+        'placeholder:text-ink-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10',
+        'disabled:bg-page disabled:text-ink-400 transition-shadow',
         props.className,
       )}
     />
@@ -20,9 +20,9 @@ export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
     <textarea
       {...props}
       className={cn(
-        'w-full min-h-[80px] px-3 py-2 rounded-md bg-surface border border-border text-sm text-ink-900',
-        'placeholder:text-ink-300 focus:outline-none focus:border-primary focus:shadow-focus',
-        'disabled:bg-page disabled:text-ink-400 resize-y',
+        'w-full min-h-[80px] px-3 py-2.5 rounded-lg bg-surface border border-border text-sm text-ink-900',
+        'placeholder:text-ink-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10',
+        'disabled:bg-page disabled:text-ink-400 resize-y transition-shadow',
         props.className,
       )}
     />

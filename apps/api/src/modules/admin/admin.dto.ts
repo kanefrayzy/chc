@@ -15,6 +15,7 @@ export class UserStatusDto extends createZodDto(UserStatusSchema) {}
 
 export const IssueCodeSchema = z.object({
   code: z.string().trim().min(1).max(200),
+  amountMinor: z.string().regex(/^\d+$/, 'amountMinor must be a non-negative integer string'),
 });
 export class IssueCodeDto extends createZodDto(IssueCodeSchema) {}
 

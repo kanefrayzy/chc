@@ -2,6 +2,7 @@
 
 import { Modal } from '@chcgreen/ui';
 import { useUi } from './ui-context';
+import { ArrowUpIcon } from '@/components/icons';
 import { WithdrawForm } from '@/features/withdrawals/components/WithdrawForm';
 
 export interface WithdrawModalProps {
@@ -20,7 +21,7 @@ export function WithdrawModal({ balanceMinor }: WithdrawModalProps): JSX.Element
       title={
         <span className="flex items-center gap-2">
           <span aria-hidden className="flex h-7 w-7 items-center justify-center rounded-md bg-accent-purple/15 text-accent-purple">
-            ↑
+            <ArrowUpIcon className="h-4 w-4" />
           </span>
           <span>Вывод</span>
         </span>

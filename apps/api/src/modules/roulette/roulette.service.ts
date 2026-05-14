@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   Logger,
   BadRequestException,
@@ -27,7 +27,7 @@ import {
 
 const BETTING_DURATION_MS = Number(process.env.ROULETTE_BETTING_MS || 30_000);
 // ROLLING-\u0444\u0430\u0437\u0430 \u043d\u0430 \u0431\u044d\u043a\u0435 \u043a\u043e\u0440\u043e\u0442\u043a\u0430\u044f: \u0432\u0438\u0437\u0443\u0430\u043b\u044c\u043d\u0443\u044e \u0438\u043d\u0442\u0440\u0438\u0433\u0443 (~10\u0441) \u0440\u0438\u0441\u0443\u0435\u0442 \u0444\u0440\u043e\u043d\u0442 \u043f\u043e \u0444\u0438\u043a\u0441\u0438\u0440\u043e\u0432\u0430\u043d\u043d\u043e\u043c\u0443 winningSlot.
-const ROLLING_DURATION_MS = Number(process.env.ROULETTE_ROLLING_MS || 1_500);
+const ROLLING_DURATION_MS = Number(process.env.ROULETTE_ROLLING_MS || 10_500);
 const DEFAULT_MIN_BET = 100n;
 const DEFAULT_MAX_BET = 100_000n;
 
@@ -117,6 +117,27 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: limit,
+    });
+  }
+
+  async listRecentWinners(
+    limit = 5,
+  ): Promise<{ username: string; amountMinor: string; color: RouletteColor; createdAt: string }[]> {
+    const rows = await this.prisma.rouletteBet.findMany({
+      where: { isWinner: true, payoutMinor: { gt: 0n } },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit, 20),
+      include: { user: { select: { username: true } } } as never,
+    });
+    return rows.map((b) => {
+      const username =
+        (b as RouletteBet & { user?: { username: string } }).user?.username ?? 'player';
+      return {
+        username,
+        amountMinor: (b.payoutMinor ?? 0n).toString(),
+        color: b.color,
+        createdAt: b.createdAt.toISOString(),
+      };
     });
   }
 
@@ -285,11 +306,18 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
         this.scheduleNextTick(extended);
         return;
       }
+      // Рассчитываем результат сразу при старте ROLLING, чтобы клиент мог
+      // анимировать барабан с реальным winningSlot, не дожидаясь COMPLETED.
+      // Выплаты происходят только при COMPLETED (после окончания анимации).
+      const publicSeed = generatePublicSeed();
+      const serverSeed = round.serverSeed!;
+      const earlySlot = pickSlot(serverSeed, publicSeed, ROULETTE_TOTAL_SLOTS);
+      const earlyColor = slotToColor(earlySlot);
       const rolling = await this.prisma.rouletteRound.update({
         where: { id: round.id },
-        data: { status: 'ROLLING', publicSeed: generatePublicSeed() },
+        data: { status: 'ROLLING', publicSeed, winningSlot: earlySlot, winningColor: earlyColor },
       });
-      this.logger.log(`Round ${round.id} → ROLLING`);
+      this.logger.log(`Round ${round.id} → ROLLING slot=${earlySlot} color=${earlyColor}`);
       this.emitRound(rolling);
       this.scheduleNextTick(rolling);
       return;
@@ -306,13 +334,15 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async settleRound(round: RouletteRound): Promise<void> {
-    if (!round.serverSeed || !round.publicSeed) {
-      this.logger.error(`Round ${round.id} missing seeds; cancelling`);
+    // winningSlot и winningColor уже рассчитаны и сохранены при переходе в ROLLING.
+    // settleRound только обрабатывает выплаты по известному результату.
+    if (round.winningSlot === null || round.winningSlot === undefined || !round.winningColor) {
+      this.logger.error(`Round ${round.id} missing winningSlot/winningColor; cancelling`);
       await this.cancelRound(round.id);
       return;
     }
-    const slot = pickSlot(round.serverSeed, round.publicSeed, ROULETTE_TOTAL_SLOTS);
-    const color = slotToColor(slot);
+    const slot = round.winningSlot;
+    const color = round.winningColor;
 
     await this.prisma.$transaction(async (tx) => {
       const allBets = await tx.rouletteBet.findMany({
@@ -382,6 +412,14 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`Round ${round.id} settled → slot=${slot} color=${color}`);
     const completed = await this.prisma.rouletteRound.findUnique({ where: { id: round.id } });
     if (completed) this.emitRound(completed);
+
+    // Эмитим список последних победителей, чтобы лендинг мог обновляться в реальном времени.
+    try {
+      const winners = await this.listRecentWinners(5);
+      this.realtime.emitRoulette('roulette:winners', { items: winners });
+    } catch {
+      // не блокируем игровой цикл
+    }
   }
 
   private async cancelRound(roundId: string): Promise<void> {

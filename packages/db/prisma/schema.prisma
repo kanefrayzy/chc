@@ -30,8 +30,8 @@ enum UserStatus {
 
 model User {
   id              String     @id @default(cuid())
-  email           String     @unique
-  phone           String     @unique
+  email           String?    @unique
+  phone           String?    @unique
   username        String     @unique
   passwordHash    String
   role            UserRole   @default(USER)
@@ -49,6 +49,7 @@ model User {
   rankId          String?
   rank            Rank?      @relation(fields: [rankId], references: [id])
   // misc
+  avatarUrl       String?
   lastLoginAt     DateTime?
   lastLoginIp     String?
   createdAt       DateTime   @default(now())
@@ -103,6 +104,8 @@ enum TransactionType {
   CODE_REFUND
   REFERRAL_EARNING
   ADMIN_ADJUSTMENT
+  ADMIN_CREDIT
+  ADMIN_DEBIT
   CASE_OPEN
   CASE_WIN
   JACKPOT_BET
@@ -148,6 +151,41 @@ enum PaymentProvider {
   WESTWALLET
 }
 
+enum PaymentMethodKind {
+  DEPOSIT
+  WITHDRAWAL
+  BOTH
+}
+
+// Конфигурируемый платёжный метод. Создаётся в админке.
+// Один логический метод (например «Карта AZN», «USDT TRC-20», «BTC»)
+// маппится на конкретный агрегатор (`provider`) и хранит провайдер-специфичный
+// `config` (для BETRA_H2H: { aggregators: [...] }; для WESTWALLET: { ticker, dest_tag? }).
+model PaymentMethod {
+  id                String            @id @default(cuid())
+  name              String            // отображаемое название («Карта AZN», «USDT TRC-20»)
+  provider          PaymentProvider
+  kind              PaymentMethodKind @default(BOTH)
+  currency          String            // ISO-код («AZN», «RUB», «USDT», «BTC»)
+  iconUrl           String?           // URL в MinIO (или внешний)
+  description       String?
+  // отображаемые лимиты в минорных единицах ВНУТРЕННЕЙ валюты (AZN)
+  minAmountMinor    BigInt            @default(0)
+  maxAmountMinor    BigInt            @default(0) // 0 = без лимита
+  displayOrder      Int               @default(0)
+  enabled           Boolean           @default(true)
+  // провайдер-специфичные настройки (aggregators, ticker, dest_tag, и пр.)
+  config            Json              @default("{}")
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  deposits          Deposit[]
+  withdrawals       Withdrawal[]
+
+  @@index([enabled, kind])
+  @@index([provider])
+}
+
 enum DepositStatus {
   PENDING
   PROCESSING
@@ -161,6 +199,8 @@ model Deposit {
   userId        String
   user          User            @relation(fields: [userId], references: [id])
   provider      PaymentProvider
+  paymentMethodId String?
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
   status        DepositStatus   @default(PENDING)
   // суммы в минорных единицах AZN
   amountMinor   BigInt
@@ -181,6 +221,7 @@ model Deposit {
   @@index([userId])
   @@index([status])
   @@index([provider, externalId])
+  @@index([paymentMethodId])
 }
 
 enum WithdrawalStatus {
@@ -203,6 +244,8 @@ model Withdrawal {
   userId        String
   user          User             @relation(fields: [userId], references: [id])
   method        WithdrawalMethod
+  paymentMethodId String?
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
   status        WithdrawalStatus @default(PENDING)
   amountMinor   BigInt
   destination   Json             // адрес/реквизиты (карта, кошелёк), маскированные
@@ -216,6 +259,7 @@ model Withdrawal {
 
   @@index([userId])
   @@index([status])
+  @@index([paymentMethodId])
 }
 
 // =========================================================

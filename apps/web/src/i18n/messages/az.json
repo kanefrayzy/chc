@@ -11,25 +11,41 @@
   },
   "sidebar": {
     "games": "Oyunlar",
+    "more": "Daha çox",
     "account": "Hesab",
     "payments": "Ödənişlər",
+    "soon": "TEZLİKLƏ",
+    "insertCode": "Kodu daxil et",
     "promoTitle": "Bonus +100%",
     "promoText": "İlk depozit üçün. 10 AZN-dən artır — bonusu qazan."
   },
   "topbar": {
     "balance": "Balans",
     "deposit": "Artır",
-    "withdraw": "Çıxar"
+    "withdraw": "Çıxar",
+    "insertCode": "Kodu daxil et"
   },
   "landing": {
     "gamesTitle": "Oyunlarımız",
     "gamesSubtitle": "Dürüst və yoxlanan (provably fair) rejimlər",
     "playNow": "Oyna",
+    "badges": {
+      "live": "LIVE",
+      "soon": "TEZLİKLƏ"
+    },
     "games": {
       "roulette": {
         "title": "Rulet",
         "subtitle": "Qara ×2 · Qırmızı ×2 · Yaşıl ×14",
         "badge": "LIVE"
+      },
+      "classic": {
+        "title": "Klassik",
+        "subtitle": "Klassik zər oyunu — tezliklə başlayır"
+      },
+      "cases": {
+        "title": "Keyslər",
+        "subtitle": "Keysləri aç və mükafatları qazan"
       },
       "ranks": {
         "title": "Rütbələr",
@@ -46,6 +62,7 @@
   "nav": {
     "home": "Əsas",
     "roulette": "Rulet",
+    "classic": "Klassik",
     "jackpot": "Cekpot",
     "cases": "Keyslər",
     "referral": "Tərəfdaşlıq",
@@ -69,10 +86,20 @@
     "ctaPlay": "Ruletdə oyna"
   },
   "stats": {
+    "label": "Platforma statistikası",
     "playersOnline": "oyunçu onlayn",
     "gamesPlayed": "oyun oynanılıb",
     "totalWon": "ümumi qazanc",
     "paidToday": "bu gün ödənildi"
+  },
+  "promo": {
+    "title": "İlk depozit bonusu",
+    "subtitle": "10 AZN-dən artırmaya"
+  },
+  "winners": {
+    "title": "Son qaliblər",
+    "empty": "Hələ ki qəliblər yoxdur",
+    "viewAll": "Bütün qaliblər"
   },
   "features": {
     "fair": {
@@ -138,7 +165,22 @@
     "tabs": {
       "overview": "İcmal",
       "wallet": "Cüzdan",
-      "referrals": "Tərəfdaşlıq"
+      "history": "Tarixçə"
+    },
+    "history": {
+      "empty": "Hələ əməliyyat yoxdur.",
+      "cols": {
+        "date": "Tarix",
+        "type": "Növ",
+        "amount": "Məbləğ",
+        "status": "Status"
+      },
+      "types": {
+        "deposit": "Artırma",
+        "withdrawal": "Çıxarış",
+        "code": "Kod alışı"
+      },
+      "errors": { "loadFailed": "Tarixçəni yükləmək alınmadı." }
     },
     "overview": {
       "title": "İcmal",
@@ -194,10 +236,14 @@
       "submit": "Doldur",
       "submitting": "Yaradılır…",
       "hintLocale": "Ödəniş səhifəsi {locale} dilində açılacaq.",
+      "loading": "Ödəniş üsulları yüklənir…",
       "errors": {
         "invalidAmount": "Düzgün məbləğ daxil edin",
         "outOfRange": "Məbləğ icazə verilən diapazondan kənardadır",
-        "createFailed": "Doldurma yaratmaq alınmadı"
+        "createFailed": "Doldurma yaratmaq alınmadı",
+        "loadMethods": "Ödəniş üsulları yüklənmədi.",
+        "noMethods": "Ödəniş üsulları müvəqqəti əlyetişmir.",
+        "selectMethod": "Ödəniş üsulunu seçin"
       }
     },
     "list": {
@@ -237,12 +283,16 @@
       "amountLabel": "Məbləğ, AZN",
       "submit": "Müraciət yarat",
       "submitting": "Yaradılır…",
+      "loading": "Çıxarış üsulları yüklənir…",
       "errors": {
         "invalidAmount": "Düzgün məbləğ daxil edin",
         "outOfRange": "Məbləğ icazə verilən aralıqdan kənardadır",
         "insufficient": "Balansda kifayət qədər vəsait yoxdur",
         "invalidDestination": "Alıcının rekvizitlərini doldurun",
-        "createFailed": "Müraciət yaradıla bilmədi"
+        "createFailed": "Müraciət yaradıla bilmədi",
+        "loadMethods": "Çıxarış üsulları yüklənmədi.",
+        "noMethods": "Çıxarış üsulları müvəqqəti əlyetişmir.",
+        "selectMethod": "Çıxarış üsulunu seçin"
       }
     },
     "list": {
@@ -277,6 +327,9 @@
     "thread": {
       "empty": "Hələ mesaj yoxdur.",
       "selectHint": "Yazışmanı açmaq üçün soldakı müraciəti seçin."
+    },
+    "errors": {
+      "ticketClosed": "Çat bağlıdır. Bağlı çata mesaj göndərə bilməzsiniz."
     },
     "composer": {
       "placeholder": "Mesaj yazın…",
@@ -406,5 +459,13 @@
       "wagered": "Edilmiş mərclər",
       "max": "Maksimum"
     }
+  },
+  "faq": {
+    "pageTitle": "Tez-tez verilən suallar",
+    "subtitle": "Ödənişlər, kodlar və bonuslar haqqında əsas cavablar"
+  },
+  "bonuses": {
+    "pageTitle": "Bonuslar və aksiyalar",
+    "subtitle": "CHCGreen-in bütün aktual təklifləri bir yerdə"
   }
 }

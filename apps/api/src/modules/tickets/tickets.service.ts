@@ -17,7 +17,7 @@ export class TicketsService {
     metadata?: Record<string, unknown>;
     initialMessage?: string;
   }): Promise<Ticket> {
-    return this.prisma.ticket.create({
+    const ticket = await this.prisma.ticket.create({
       data: {
         userId: params.userId,
         type: params.type,
@@ -35,6 +35,16 @@ export class TicketsService {
           : undefined,
       },
     });
+    try {
+      this.realtime.emitNewTicket({
+        id: ticket.id,
+        userId: ticket.userId,
+        type: ticket.type,
+        status: ticket.status,
+        subject: ticket.subject,
+      });
+    } catch { /* non-blocking */ }
+    return ticket;
   }
 
   async listForUser(params: {
@@ -69,10 +79,22 @@ export class TicketsService {
     userId: string;
     ticketId: string;
     afterId?: string;
+    beforeId?: string;
     limit?: number;
   }): Promise<Message[]> {
     await this.getForUser({ userId: params.userId, ticketId: params.ticketId });
-    const take = Math.min(Math.max(params.limit ?? 50, 1), 200);
+    const take = Math.min(Math.max(params.limit ?? 30, 1), 100);
+    if (params.beforeId) {
+      // Загрузить более старые сообщения (cursor-up)
+      const msgs = await this.prisma.message.findMany({
+        where: { ticketId: params.ticketId },
+        orderBy: { createdAt: 'desc' },
+        take,
+        cursor: { id: params.beforeId },
+        skip: 1,
+      });
+      return msgs.reverse();
+    }
     return this.prisma.message.findMany({
       where: { ticketId: params.ticketId },
       orderBy: { createdAt: 'asc' },
@@ -108,6 +130,19 @@ export class TicketsService {
         kind: message.kind,
         body: message.body,
         createdAt: message.createdAt.toISOString(),
+      });
+      if (ticket.status !== 'WAITING_MODERATOR') {
+        this.realtime.emitToTicket(ticket.id, 'ticket:status', {
+          ticketId: ticket.id,
+          status: 'WAITING_MODERATOR',
+          closedAt: null,
+        });
+      }
+      // Уведомляем список тикетов в админке
+      this.realtime.emitTicketUpdated(ticket.id, {
+        status: 'WAITING_MODERATOR',
+        lastMessagePreview: message.body.slice(0, 100),
+        lastMessageAt: message.createdAt.toISOString(),
       });
     } catch {
       // не блокируем основной поток

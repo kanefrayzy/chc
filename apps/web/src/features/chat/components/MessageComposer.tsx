@@ -1,22 +1,39 @@
 'use client';
 
-import { useState, useTransition, type FormEvent, type KeyboardEvent } from 'react';
+import { useState, useTransition, useRef, useCallback, type FormEvent, type KeyboardEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@chcgreen/ui';
 
 export interface MessageComposerProps {
   onSend: (body: string) => Promise<void>;
   disabled?: boolean;
+  onTypingChange?: (isTyping: boolean) => void;
 }
 
-export function MessageComposer({ onSend, disabled }: MessageComposerProps): JSX.Element {
+export function MessageComposer({ onSend, disabled, onTypingChange }: MessageComposerProps): JSX.Element {
   const t = useTranslations('chat.composer');
   const [value, setValue] = useState('');
   const [isPending, startTransition] = useTransition();
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const emitTyping = useCallback((isTyping: boolean) => {
+    onTypingChange?.(isTyping);
+    if (isTyping) {
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      typingTimer.current = setTimeout(() => onTypingChange?.(false), 3000);
+    }
+  }, [onTypingChange]);
+
+  const handleChange = (v: string) => {
+    setValue(v);
+    emitTyping(v.length > 0);
+  };
 
   const submit = (): void => {
     const trimmed = value.trim();
     if (!trimmed) return;
+    emitTyping(false);
+    if (typingTimer.current) clearTimeout(typingTimer.current);
     startTransition(async () => {
       await onSend(trimmed);
       setValue('');
@@ -39,7 +56,7 @@ export function MessageComposer({ onSend, disabled }: MessageComposerProps): JSX
     <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t border-border p-3">
       <textarea
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => handleChange(e.target.value)}
         onKeyDown={handleKeyDown}
         disabled={disabled || isPending}
         placeholder={t('placeholder')}

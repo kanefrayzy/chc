@@ -19,6 +19,7 @@ export interface WithdrawalDestinationDto {
 export interface WithdrawalDto {
   id: string;
   method: WithdrawalMethod;
+  paymentMethodId: string | null;
   status: WithdrawalStatus;
   amountMinor: string;
   destination: WithdrawalDestinationDto;
@@ -38,7 +39,7 @@ export type CreateWithdrawalDestination =
   | { kind: 'manual'; details: string };
 
 export interface CreateWithdrawalRequest {
-  method: WithdrawalMethod;
+  paymentMethodId: string;
   amountMinor: string;
   destination: CreateWithdrawalDestination;
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@chcgreen/ui';
 import { useUi } from './ui-context';
+import { ChatIcon, CloseIcon, SendIcon } from '@/components/icons';
 import { ticketsApi, type TicketDto, type MessageDto } from '@/lib/api/tickets';
 
 const POLL_MS = 6000;
@@ -93,15 +94,16 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
         className={cn(
           'fixed bottom-20 right-4 z-40 lg:bottom-6 lg:right-6',
           'h-12 w-12 rounded-full shadow-xl transition-all',
-          'flex items-center justify-center text-xl',
+          'flex items-center justify-center',
           chatOpen
-            ? 'bg-danger text-white rotate-45 shadow-danger/40'
+            ? 'bg-danger text-white shadow-danger/40'
             : 'bg-brand text-black shadow-brand/40 hover:scale-110',
         )}
         style={{ boxShadow: chatOpen ? '0 4px 20px rgba(255,59,92,0.5)' : '0 4px 20px rgba(0,255,136,0.4)' }}
-        aria-label="Открыть чат"
+        aria-label={chatOpen ? 'Закрыть чат' : 'Открыть чат'}
+        aria-expanded={chatOpen}
       >
-        {chatOpen ? '✕' : '💬'}
+        {chatOpen ? <CloseIcon className="h-5 w-5" /> : <ChatIcon className="h-5 w-5" />}
       </button>
 
       {/* Панель чата */}
@@ -121,7 +123,13 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
               <span className="h-2 w-2 rounded-full bg-brand animate-pulse" />
               <span className="text-sm font-semibold text-text-primary">Поддержка</span>
             </div>
-            <button onClick={closeChat} className="text-text-muted hover:text-text-primary text-xs px-1">✕</button>
+            <button
+              onClick={closeChat}
+              aria-label="Свернуть"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-bg-card hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            >
+              <CloseIcon className="h-4 w-4" />
+            </button>
           </div>
 
           {!viewerId ? (
@@ -154,7 +162,7 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
               <div className="flex-1 overflow-y-auto p-3 space-y-2">
                 {messages.length === 0 && tickets.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-                    <span className="text-3xl">💬</span>
+                    <ChatIcon className="h-10 w-10 text-text-muted opacity-60" />
                     <p className="text-sm text-text-muted">Нет активных обращений</p>
                     <button
                       onClick={createTicket}
@@ -203,9 +211,10 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
                   <button
                     onClick={() => void handleSend()}
                     disabled={sending || !input.trim()}
-                    className="h-8 w-8 rounded-lg bg-brand text-black flex items-center justify-center text-sm disabled:opacity-40 hover:brightness-110"
+                    aria-label="Отправить"
+                    className="h-8 w-8 rounded-lg bg-brand text-black flex items-center justify-center disabled:opacity-40 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
                   >
-                    ➤
+                    <SendIcon className="h-4 w-4" />
                   </button>
                 </div>
               )}

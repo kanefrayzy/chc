@@ -28,7 +28,6 @@ export class CodePurchasesController {
   ): Promise<PublicCodePurchaseDto & { ticketId: string }> {
     const { purchase, ticketId } = await this.purchases.create({
       userId: user.sub,
-      amountMinor: BigInt(body.amountMinor),
       ...(body.comment ? { comment: body.comment } : {}),
     });
     return { ...toPublicCodePurchase(purchase), ticketId };

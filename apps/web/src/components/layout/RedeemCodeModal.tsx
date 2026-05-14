@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Modal, Button, Alert } from '@chcgreen/ui';
 import { toast } from 'sonner';
 import { useUi } from './ui-context';
+import { TicketIcon, ArrowRightIcon } from '@/components/icons';
 
 export interface RedeemCodeModalProps {
   isAuthed: boolean;
@@ -75,7 +76,7 @@ export function RedeemCodeModal({ isAuthed }: RedeemCodeModalProps): JSX.Element
       title={
         <span className="flex items-center gap-2">
           <span aria-hidden className="flex h-7 w-7 items-center justify-center rounded-md bg-brand/15 text-brand">
-            🎫
+            <TicketIcon className="h-4 w-4" />
           </span>
           <span>Insert Code</span>
         </span>
@@ -105,9 +106,10 @@ export function RedeemCodeModal({ isAuthed }: RedeemCodeModalProps): JSX.Element
           <button
             type="button"
             onClick={buyNew}
-            className="block w-full text-center text-xs text-text-muted hover:text-brand underline-offset-2 hover:underline transition"
+            className="flex w-full items-center justify-center gap-1 text-center text-xs text-text-muted hover:text-brand underline-offset-2 hover:underline transition"
           >
-            Нет кода? Купить в чате →
+            <span>Нет кода? Купить в чате</span>
+            <ArrowRightIcon className="h-3.5 w-3.5" />
           </button>
         </form>
       </div>

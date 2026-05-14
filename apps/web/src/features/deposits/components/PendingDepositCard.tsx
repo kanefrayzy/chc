@@ -58,7 +58,7 @@ export function PendingDepositCard({ deposit, locale }: PendingDepositCardProps)
             {t('expectedAmount')}: {deposit.originalAmount} {deposit.originalCurrency}
           </div>
         ) : null}
-        <div className="text-xs text-text-muted">
+        <div className="text-xs text-text-muted" suppressHydrationWarning>
           {new Date(deposit.createdAt).toLocaleString(locale === 'az' ? 'az-AZ' : 'ru-RU')}
         </div>
       </CardBody>

@@ -23,7 +23,6 @@ export interface CodePurchasesPageDto {
 }
 
 export interface CreateCodePurchaseRequest {
-  amountMinor: string;
   comment?: string;
 }
 

@@ -7,6 +7,7 @@ import {
 import type { Deposit, PaymentProvider as PaymentProviderEnum, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
 import { PaymentProviderRegistry } from '../payments/payments.module';
+import { PaymentMethodsService } from '../payment-methods/payment-methods.service';
 import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
@@ -17,9 +18,10 @@ export class DepositsService {
     private readonly prisma: PrismaService,
     private readonly providers: PaymentProviderRegistry,
     private readonly settings: SettingsService,
+    private readonly methods: PaymentMethodsService,
   ) {}
 
-  private async getLimits(): Promise<{ minMinor: bigint; maxMinor: bigint }> {
+  private async getGlobalLimits(): Promise<{ minMinor: bigint; maxMinor: bigint }> {
     const [minStr, maxStr] = await Promise.all([
       this.settings.get<string>('deposit.min_amount_minor'),
       this.settings.get<string>('deposit.max_amount_minor'),
@@ -29,22 +31,35 @@ export class DepositsService {
 
   async createDeposit(params: {
     userId: string;
-    provider: PaymentProviderEnum;
+    paymentMethodId: string;
     amountMinor: bigint;
   }): Promise<Deposit> {
-    const { userId, provider, amountMinor } = params;
-    const { minMinor, maxMinor } = await this.getLimits();
+    const { userId, paymentMethodId, amountMinor } = params;
+
+    const method = await this.methods.getUsable(paymentMethodId, 'DEPOSIT');
+
+    // Лимиты: приоритет у метода (если заданы), иначе глобальные настройки.
+    const global = await this.getGlobalLimits();
+    const minMinor = method.minAmountMinor > 0n ? method.minAmountMinor : global.minMinor;
+    const maxMinor = method.maxAmountMinor > 0n ? method.maxAmountMinor : global.maxMinor;
     if (amountMinor < minMinor || amountMinor > maxMinor) {
       throw new BadRequestException(
         `Amount must be between ${minMinor} and ${maxMinor} qəpik`,
       );
     }
 
+    const provider: PaymentProviderEnum = method.provider;
     const provImpl = this.providers.get(provider);
 
     // создаём запись со статусом PENDING, чтобы получить depositId
     const draft = await this.prisma.deposit.create({
-      data: { userId, provider, amountMinor, status: 'PENDING' },
+      data: {
+        userId,
+        provider,
+        paymentMethodId: method.id,
+        amountMinor,
+        status: 'PENDING',
+      },
     });
 
     try {
@@ -52,6 +67,8 @@ export class DepositsService {
         depositId: draft.id,
         userId,
         amountMinor,
+        config: (method.config ?? {}) as Record<string, unknown>,
+        currency: method.currency,
       });
       const updated = await this.prisma.deposit.update({
         where: { id: draft.id },
@@ -132,7 +149,9 @@ export class DepositsService {
       return { ok: true, alreadyProcessed: false };
     }
 
-    // COMPLETED → атомарно: deposit + transaction + balance
+    // COMPLETED → атомарно: deposit + transaction + balance + бонус (если настроен)
+    const bonusBps = await this.settings.get<number>('deposit.bonus_bps');
+    const bonusMinor = bonusBps > 0 ? (deposit.amountMinor * BigInt(Math.round(bonusBps))) / 10_000n : 0n;
     const idempotencyKey = `deposit:${deposit.id}`;
     await this.prisma.$transaction(async (tx) => {
       const existingTx = await tx.transaction.findUnique({ where: { idempotencyKey } });
@@ -157,6 +176,33 @@ export class DepositsService {
           description: `Deposit via ${deposit.provider}`,
         },
       });
+
+      // Начисляем бонус отдельной транзакцией (идемпотентно)
+      if (bonusMinor > 0n) {
+        const bonusKey = `deposit:${deposit.id}:bonus`;
+        const existingBonus = await tx.transaction.findUnique({ where: { idempotencyKey: bonusKey } });
+        if (!existingBonus) {
+          const afterBonus = await tx.user.update({
+            where: { id: deposit.userId },
+            data: { balanceMinor: { increment: bonusMinor } },
+            select: { balanceMinor: true },
+          });
+          await tx.transaction.create({
+            data: {
+              userId: deposit.userId,
+              type: 'ADMIN_CREDIT',
+              status: 'COMPLETED',
+              amountMinor: bonusMinor,
+              balanceAfterMinor: afterBonus.balanceMinor,
+              idempotencyKey: bonusKey,
+              referenceType: 'deposit',
+              referenceId: deposit.id,
+              description: `Deposit bonus ${bonusBps / 100}% via ${deposit.provider}`,
+            },
+          });
+          this.logger.log(`Deposit ${deposit.id} bonus ${bonusMinor} qəpik (${bonusBps} bps) credited`);
+        }
+      }
 
       await tx.deposit.update({
         where: { id: deposit.id },

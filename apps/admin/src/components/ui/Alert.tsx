@@ -3,32 +3,37 @@ import { cn } from '../../lib/cn';
 
 type Tone = 'info' | 'success' | 'warning' | 'danger';
 
-const toneClass: Record<Tone, string> = {
-  info: 'bg-info-tint text-info border-info/20',
-  success: 'bg-success-tint text-success border-success/20',
-  warning: 'bg-warning-tint text-warning border-warning/20',
-  danger: 'bg-danger-tint text-danger border-danger/20',
+const toneConfig: Record<Tone, { bg: string; icon: string }> = {
+  info:    { bg: 'bg-info/8 text-info-dark border-info/20',       icon: 'ℹ️' },
+  success: { bg: 'bg-success/8 text-success-dark border-success/20', icon: '✓' },
+  warning: { bg: 'bg-warning/8 text-warning-dark border-warning/20', icon: '⚠' },
+  danger:  { bg: 'bg-danger/8 text-danger-dark border-danger/20',  icon: '✕' },
 };
 
 export function Alert({
   tone = 'info',
+  icon,
   children,
   className,
 }: {
   tone?: Tone;
+  icon?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
+  const cfg = toneConfig[tone];
   return (
     <div
       role="alert"
       className={cn(
-        'border rounded-md px-4 py-2.5 text-sm',
-        toneClass[tone],
+        'flex items-start gap-2.5 border rounded-xl px-4 py-3 text-sm font-medium',
+        cfg.bg,
         className,
       )}
     >
-      {children}
+      <span className="shrink-0 mt-px">{icon ?? cfg.icon}</span>
+      <div className="flex-1 leading-relaxed">{children}</div>
     </div>
   );
 }
+

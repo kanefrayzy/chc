@@ -5,8 +5,8 @@ import { toPublicDestination, type PublicWithdrawalDestination } from '../withdr
 export interface AdminUserRowDto {
   id: string;
   username: string;
-  email: string;
-  phone: string;
+  email: string | null;
+  phone: string | null;
   role: User['role'];
   status: User['status'];
   language: User['language'];
@@ -76,6 +76,7 @@ export interface AdminCodePurchaseRowDto {
   id: string;
   userId: string;
   username: string | null;
+  userBalanceMinor: string | null;
   ticketId: string | null;
   amountMinor: string;
   status: CodePurchase['status'];
@@ -86,12 +87,16 @@ export interface AdminCodePurchaseRowDto {
 }
 
 export function toAdminCodePurchase(
-  p: CodePurchase & { user?: { username: string } | null },
+  p: CodePurchase & { user?: { username: string; balanceMinor?: bigint } | null },
 ): AdminCodePurchaseRowDto {
   return {
     id: p.id,
     userId: p.userId,
     username: p.user?.username ?? null,
+    userBalanceMinor:
+      p.user?.balanceMinor !== undefined && p.user.balanceMinor !== null
+        ? minorToJson(p.user.balanceMinor)
+        : null,
     ticketId: p.ticketId,
     amountMinor: minorToJson(p.amountMinor),
     status: p.status,

@@ -26,6 +26,7 @@ export interface PublicWithdrawalDestination {
 export interface PublicWithdrawalDto {
   id: string;
   method: Withdrawal['method'];
+  paymentMethodId: string | null;
   status: Withdrawal['status'];
   amountMinor: string;
   destination: PublicWithdrawalDestination;
@@ -56,6 +57,7 @@ export function toPublicWithdrawal(w: Withdrawal): PublicWithdrawalDto {
   return {
     id: w.id,
     method: w.method,
+    paymentMethodId: w.paymentMethodId,
     status: w.status,
     amountMinor: minorToJson(w.amountMinor),
     destination: toPublicDestination(w.destination),

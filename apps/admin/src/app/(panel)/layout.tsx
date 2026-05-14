@@ -13,11 +13,11 @@ export default async function PanelLayout({ children }: { children: ReactNode })
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-page">
       <Sidebar username={user.username} role={user.role} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Topbar email={user.email} />
-        <main className="flex-1 overflow-y-auto px-8 py-8 bg-page">
+        <main className="flex-1 overflow-y-auto px-8 py-7">
           {children}
         </main>
       </div>

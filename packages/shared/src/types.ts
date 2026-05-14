@@ -7,6 +7,7 @@ export interface PublicUser {
   balanceMinor: string; // bigint as string
   rankSlug?: string;
   referralCode: string;
+  avatarUrl?: string | null;
   createdAt: string;
 }
 

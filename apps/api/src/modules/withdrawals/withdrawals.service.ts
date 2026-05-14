@@ -5,8 +5,9 @@ import {
   NotFoundException,
   Logger,
 } from '@nestjs/common';
-import type { Prisma, Withdrawal, WithdrawalMethod } from '@prisma/client';
+import type { Prisma, Withdrawal, WithdrawalMethod, PaymentProvider as PaymentProviderEnum } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
+import { PaymentMethodsService } from '../payment-methods/payment-methods.service';
 import { SettingsService } from '../settings/settings.service';
 
 const DEFAULT_MAX_MINOR = 1_000_000n; // 10 000 AZN (страховочный потолок)
@@ -14,13 +15,14 @@ const DEFAULT_MAX_MINOR = 1_000_000n; // 10 000 AZN (страховочный п
 @Injectable()
 export class WithdrawalsService {
   private readonly logger = new Logger(WithdrawalsService.name);
-  private readonly maxMinor: bigint;
+  private readonly maxMinorFallback: bigint;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly settings: SettingsService,
+    private readonly methods: PaymentMethodsService,
   ) {
-    this.maxMinor = BigInt(process.env.WITHDRAWAL_MAX_MINOR ?? DEFAULT_MAX_MINOR.toString());
+    this.maxMinorFallback = BigInt(process.env.WITHDRAWAL_MAX_MINOR ?? DEFAULT_MAX_MINOR.toString());
   }
 
   private async getMinMinor(): Promise<bigint> {
@@ -28,17 +30,28 @@ export class WithdrawalsService {
     return BigInt(raw);
   }
 
+  /** Маппинг провайдера PaymentMethod → внутренний enum WithdrawalMethod. */
+  private providerToMethod(provider: PaymentProviderEnum): WithdrawalMethod {
+    return provider === 'BETRA_H2H' ? 'AUTO_BETRA_H2H' : 'AUTO_WESTWALLET';
+  }
+
   async createWithdrawal(params: {
     userId: string;
-    method: WithdrawalMethod;
+    paymentMethodId: string;
     amountMinor: bigint;
     destination: Prisma.InputJsonValue;
   }): Promise<Withdrawal> {
-    const { userId, method, amountMinor, destination } = params;
-    const minMinor = await this.getMinMinor();
-    if (amountMinor < minMinor || amountMinor > this.maxMinor) {
+    const { userId, paymentMethodId, amountMinor, destination } = params;
+
+    const pm = await this.methods.getUsable(paymentMethodId, 'WITHDRAWAL');
+    const method = this.providerToMethod(pm.provider);
+
+    const globalMin = await this.getMinMinor();
+    const minMinor = pm.minAmountMinor > 0n ? pm.minAmountMinor : globalMin;
+    const maxMinor = pm.maxAmountMinor > 0n ? pm.maxAmountMinor : this.maxMinorFallback;
+    if (amountMinor < minMinor || amountMinor > maxMinor) {
       throw new BadRequestException(
-        `Amount must be between ${minMinor} and ${this.maxMinor} qəpik`,
+        `Amount must be between ${minMinor} and ${maxMinor} qəpik`,
       );
     }
 
@@ -62,6 +75,7 @@ export class WithdrawalsService {
         data: {
           userId,
           method,
+          paymentMethodId: pm.id,
           amountMinor,
           destination,
           status: 'PENDING',

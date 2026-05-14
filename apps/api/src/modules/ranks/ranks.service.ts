@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import type { Prisma, Rank } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
 import { DEFAULT_RANKS } from './ranks.constants';
@@ -15,27 +15,15 @@ export class RanksService implements OnModuleInit {
   }
 
   private async seedDefaults(): Promise<void> {
-    for (const r of DEFAULT_RANKS) {
-      await this.prisma.rank.upsert({
-        where: { order: r.order },
-        update: {
-          slug: r.slug,
-          nameRu: r.nameRu,
-          nameAz: r.nameAz,
-          minWageredMinor: r.minWageredMinor,
-          iconUrl: r.iconUrl,
-        },
-        create: {
-          order: r.order,
-          slug: r.slug,
-          nameRu: r.nameRu,
-          nameAz: r.nameAz,
-          minWageredMinor: r.minWageredMinor,
-          iconUrl: r.iconUrl,
-        },
-      });
+    const count = await this.prisma.rank.count();
+    if (count > 0) {
+      this.logger.log(`Ranks already exist (${count}), skipping seed`);
+      return;
     }
-    this.logger.log(`Seeded/verified ${DEFAULT_RANKS.length} ranks`);
+    for (const r of DEFAULT_RANKS) {
+      await this.prisma.rank.create({ data: r });
+    }
+    this.logger.log(`Seeded ${DEFAULT_RANKS.length} ranks`);
   }
 
   private async getAllCached(): Promise<Rank[]> {
@@ -115,5 +103,40 @@ export class RanksService implements OnModuleInit {
       await client.user.update({ where: { id: userId }, data: { rankId: targetId } });
       this.logger.log(`User ${userId} rank → ${current?.slug ?? 'null'} (wagered=${user.totalWageredMinor})`);
     }
+  }
+
+  // ─── Admin CRUD ────────────────────────────────────────────────────────
+
+  async createRank(input: {
+    order: number;
+    slug: string;
+    nameRu: string;
+    nameAz: string;
+    minWageredMinor: bigint;
+    iconUrl?: string | null;
+  }): Promise<Rank> {
+    this.cache = null;
+    return this.prisma.rank.create({ data: { ...input, iconUrl: input.iconUrl ?? null } });
+  }
+
+  async updateRank(id: string, input: Partial<{
+    order: number;
+    slug: string;
+    nameRu: string;
+    nameAz: string;
+    minWageredMinor: bigint;
+    iconUrl: string | null;
+  }>): Promise<Rank> {
+    const exists = await this.prisma.rank.findUnique({ where: { id } });
+    if (!exists) throw new NotFoundException(`Rank ${id} not found`);
+    this.cache = null;
+    return this.prisma.rank.update({ where: { id }, data: input });
+  }
+
+  async deleteRank(id: string): Promise<void> {
+    const exists = await this.prisma.rank.findUnique({ where: { id } });
+    if (!exists) throw new NotFoundException(`Rank ${id} not found`);
+    this.cache = null;
+    await this.prisma.rank.delete({ where: { id } });
   }
 }

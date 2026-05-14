@@ -22,22 +22,23 @@ export function DataTable<T extends { id: string }>({
 }) {
   if (rows.length === 0) {
     return (
-      <div className="px-4 py-12 text-center text-sm text-ink-500">
-        {empty ?? 'Нет записей'}
+      <div className="py-16 text-center">
+        <div className="text-3xl mb-2">📭</div>
+        <div className="text-sm text-ink-400 font-medium">{empty ?? 'Нет записей'}</div>
       </div>
     );
   }
   return (
     <div className={cn('overflow-x-auto', className)}>
       <table className="w-full text-sm">
-        <thead className="bg-page text-xs uppercase tracking-wide text-ink-500">
-          <tr>
+        <thead>
+          <tr className="border-b border-border">
             {columns.map((c) => (
               <th
                 key={c.key}
                 style={c.width ? { width: c.width } : undefined}
                 className={cn(
-                  'px-4 py-2.5 font-semibold border-b border-border',
+                  'px-4 py-3 text-xs font-semibold uppercase tracking-wider text-ink-400 bg-elevated',
                   c.align === 'right' && 'text-right',
                   c.align === 'center' && 'text-center',
                   (!c.align || c.align === 'left') && 'text-left',
@@ -48,14 +49,20 @@ export function DataTable<T extends { id: string }>({
             ))}
           </tr>
         </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.id} className="hover:bg-page/60 transition-colors">
+        <tbody className="divide-y divide-border">
+          {rows.map((row, i) => (
+            <tr
+              key={row.id}
+              className={cn(
+                'hover:bg-elevated/70 transition-colors',
+                i % 2 === 0 ? 'bg-surface' : 'bg-surface',
+              )}
+            >
               {columns.map((c) => (
                 <td
                   key={c.key}
                   className={cn(
-                    'px-4 py-3 border-b border-border align-middle',
+                    'px-4 py-3.5 align-middle',
                     c.align === 'right' && 'text-right',
                     c.align === 'center' && 'text-center',
                   )}

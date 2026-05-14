@@ -49,7 +49,8 @@ export class AuthService {
   ) {}
 
   async register(input: RegisterInput): Promise<{ user: PublicUserDto; tokens: AuthTokens }> {
-    const email = input.email.trim().toLowerCase();
+    const email = input.email.trim().toLowerCase() || null;
+    const phone = input.phone.trim() || null;
     const username = input.username.trim();
 
     // referral
@@ -65,7 +66,7 @@ export class AuthService {
     try {
       const user = await this.users.create({
         email,
-        phone: input.phone,
+        phone,
         username,
         passwordHash,
         language: input.language ?? 'ru',

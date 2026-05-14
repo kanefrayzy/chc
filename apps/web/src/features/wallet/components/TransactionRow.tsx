@@ -48,7 +48,7 @@ export function TransactionRow({ tx, typeLabel, locale }: TransactionRowProps): 
     <div className="flex items-center justify-between gap-4 border-b border-border py-3 last:border-0">
       <div className="flex flex-col">
         <span className="text-sm font-medium text-text-primary">{typeLabel}</span>
-        <span className="text-xs text-text-secondary">{date}</span>
+        <span className="text-xs text-text-secondary" suppressHydrationWarning>{date}</span>
       </div>
       <div className="flex items-center gap-3">
         <Badge variant={STATUS_VARIANT[tx.status]}>{tx.status}</Badge>

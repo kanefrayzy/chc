@@ -6,6 +6,14 @@ export interface CreateDepositRequest {
   amountMinor: bigint;
   /** ISO-locale для лендинга провайдера */
   locale?: 'ru' | 'az';
+  /**
+   * Провайдер-специфичный конфиг из админ-настроек метода.
+   * BETRA_H2H: `{ aggregators?, betraCurrency? }`.
+   * WESTWALLET: `{ ticker?, dest_tag_required? }`.
+   */
+  config?: Record<string, unknown>;
+  /** Валюта пользовательского метода (для логирования / провайдера) */
+  currency?: string;
 }
 
 export interface CreateDepositResult {

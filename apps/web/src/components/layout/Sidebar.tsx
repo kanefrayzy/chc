@@ -1,124 +1,140 @@
 import Link from 'next/link';
-import type { ReactNode } from 'react';
 import { getTranslations } from 'next-intl/server';
+import {
+  HomeIcon,
+  RouletteIcon,
+  DiceIcon,
+  CaseIcon,
+  TrophyIcon,
+  UsersIcon,
+  UserIcon,
+  GiftIcon,
+  HeadsetIcon,
+  QuestionIcon,
+  ChatIcon,
+  CrownIcon,
+  TicketIcon,
+  ArrowDownIcon,
+  ArrowUpIcon,
+} from '@/components/icons';
 import { getServerUser } from '@/lib/api/server';
 import { getPublicSettings } from '@/lib/api/settings';
 import { SidebarNav, type SidebarItem, type SidebarSection } from './SidebarNav';
 import { SidebarDrawer } from './SidebarDrawer';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { SocialLinks } from './SocialLinks';
 
 export interface SidebarProps {
   locale: string;
 }
 
-function Icon({ children }: { children: ReactNode }): JSX.Element {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-5 w-5"
-      aria-hidden
-    >
-      {children}
-    </svg>
-  );
-}
-
-const ICONS = {
-  home: (
-    <Icon>
-      <path d="M3 12L12 3l9 9" />
-      <path d="M5 10v10h14V10" />
-    </Icon>
-  ),
-  roulette: (
-    <Icon>
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 3v3M12 18v3M3 12h3M18 12h3" />
-    </Icon>
-  ),
-  ranks: (
-    <Icon>
-      <path d="M8 21h8M12 17v4" />
-      <path d="M7 4h10v6a5 5 0 0 1-10 0V4z" />
-      <path d="M17 5h3v3a3 3 0 0 1-3 3M7 5H4v3a3 3 0 0 0 3 3" />
-    </Icon>
-  ),
-  chat: (
-    <Icon>
-      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-    </Icon>
-  ),
-  referral: (
-    <Icon>
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-    </Icon>
-  ),
-  profile: (
-    <Icon>
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </Icon>
-  ),
-  deposit: (
-    <Icon>
-      <path d="M12 5v14M5 12l7 7 7-7" />
-    </Icon>
-  ),
-  withdraw: (
-    <Icon>
-      <path d="M12 19V5M5 12l7-7 7 7" />
-    </Icon>
-  ),
-  code: (
-    <Icon>
-      <rect x="3" y="7" width="18" height="10" rx="2" />
-      <path d="M7 11h.01M11 11h.01M15 11h.01M7 14h10" />
-    </Icon>
-  ),
-};
+const ICON_CLS = 'h-5 w-5';
 
 async function buildSections(locale: string): Promise<SidebarSection[]> {
   const tNav = await getTranslations({ locale, namespace: 'nav' });
   const tSidebar = await getTranslations({ locale, namespace: 'sidebar' });
   const [user, settings] = await Promise.all([getServerUser(), getPublicSettings()]);
 
-  const games: SidebarItem[] = [{ href: '/', label: tNav('home'), icon: ICONS.home }];
+  const games: SidebarItem[] = [
+    { href: '/', label: tNav('home'), icon: <HomeIcon className={ICON_CLS} /> },
+  ];
   if (settings['gameplay.roulette_enabled']) {
-    games.push({ href: '/roulette', label: tNav('roulette'), icon: ICONS.roulette, badge: 'LIVE' });
+    games.push({
+      href: '/roulette',
+      label: tNav('roulette'),
+      icon: <RouletteIcon className={ICON_CLS} />,
+      badge: 'LIVE',
+    });
   }
-  // Активация купленного кода (вход в стороннее казино)
-  games.push({ href: '/code', label: 'Ввести код', icon: ICONS.code, action: 'code', badge: 'NEW' });
+  games.push({
+    href: '/classic',
+    label: tNav('classic'),
+    icon: <DiceIcon className={ICON_CLS} />,
+    badge: tSidebar('soon'),
+    disabled: true,
+  });
+  games.push({
+    href: '/cases',
+    label: tNav('cases'),
+    icon: <CaseIcon className={ICON_CLS} />,
+    badge: tSidebar('soon'),
+    disabled: true,
+  });
+  games.push({
+    href: '/play',
+    label: tSidebar('insertCode'),
+    icon: <TicketIcon className={ICON_CLS} />,
+    action: 'code',
+    badge: 'NEW',
+  });
   if (settings['gameplay.ranks_enabled']) {
-    games.push({ href: '/ranks', label: tNav('ranks'), icon: ICONS.ranks, action: 'ranks' });
+    games.push({
+      href: '/ranks',
+      label: tNav('ranks'),
+      icon: <TrophyIcon className={ICON_CLS} />,
+      action: 'ranks',
+    });
   }
 
   const sections: SidebarSection[] = [{ title: tSidebar('games'), items: games }];
 
+  const more: SidebarItem[] = [];
+  if (settings['gameplay.referrals_enabled']) {
+    more.push({
+      href: '/referrals',
+      label: tNav('referral'),
+      icon: <UsersIcon className={ICON_CLS} />,
+    });
+  }
+  more.push({
+    href: '/bonuses',
+    label: tNav('bonuses'),
+    icon: <GiftIcon className={ICON_CLS} />,
+  });
+  if (settings['gameplay.chat_enabled']) {
+    more.push({
+      href: '/chat',
+      label: tNav('support'),
+      icon: <HeadsetIcon className={ICON_CLS} />,
+      action: 'chat',
+    });
+  }
+  more.push({
+    href: '/faq',
+    label: tNav('faq'),
+    icon: <QuestionIcon className={ICON_CLS} />,
+  });
+  sections.push({ title: tSidebar('more'), items: more });
+
   if (user) {
     const account: SidebarItem[] = [
-      { href: '/profile', label: tNav('profile'), icon: ICONS.profile },
+      { href: '/profile', label: tNav('profile'), icon: <UserIcon className={ICON_CLS} /> },
     ];
     if (settings['gameplay.chat_enabled']) {
-      account.push({ href: '/chat', label: tNav('chat'), icon: ICONS.chat, action: 'chat' });
-    }
-    if (settings['gameplay.referrals_enabled']) {
-      account.push({ href: '/referrals', label: tNav('referral'), icon: ICONS.referral });
+      account.push({
+        href: '/chat',
+        label: tNav('chat'),
+        icon: <ChatIcon className={ICON_CLS} />,
+        action: 'chat',
+      });
     }
     sections.push({ title: tSidebar('account'), items: account });
 
     sections.push({
       title: tSidebar('payments'),
       items: [
-        { href: '/deposit', label: tNav('deposit'), icon: ICONS.deposit, action: 'deposit' },
-        { href: '/withdraw', label: tNav('withdraw'), icon: ICONS.withdraw, action: 'withdraw' },
+        {
+          href: '/deposit',
+          label: tNav('deposit'),
+          icon: <ArrowDownIcon className={ICON_CLS} />,
+          action: 'deposit',
+        },
+        {
+          href: '/withdraw',
+          label: tNav('withdraw'),
+          icon: <ArrowUpIcon className={ICON_CLS} />,
+          action: 'withdraw',
+        },
       ],
     });
   }
@@ -128,45 +144,63 @@ async function buildSections(locale: string): Promise<SidebarSection[]> {
 
 export async function Sidebar({ locale }: SidebarProps): Promise<JSX.Element> {
   const localePrefix = locale === 'ru' ? '' : `/${locale}`;
-  const siteName = process.env.NEXT_PUBLIC_SITE_NAME ?? 'CHCGREEN';
+  const settings = await getPublicSettings();
+  const siteName = settings['brand.site_name'] || process.env.NEXT_PUBLIC_SITE_NAME || 'CHCGREEN';
+  const logoUrl = settings['brand.logo_url'] || '';
   const sections = await buildSections(locale);
   const tSidebar = await getTranslations({ locale, namespace: 'sidebar' });
 
+  const telegram = settings['brand.social_telegram'] || '';
+  const instagram = settings['brand.social_instagram'] || '';
+  const discord = settings['brand.social_discord'] || '';
+
   const inner = (
-    <>
+    <div className="flex h-full flex-col">
       <Link
         href={`${localePrefix}/`}
-        className="flex items-center gap-2.5 px-3 pb-4 pt-2"
+        className="flex items-center gap-2.5 rounded-lg px-3 pb-5 pt-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+        aria-label={siteName}
       >
-        <span
-          aria-hidden
-          className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/15 text-lg shadow-[inset_0_0_0_1px_rgba(0,255,136,0.3)]"
-        >
-          👑
-        </span>
-        <span className="text-base font-bold tracking-wide text-text-primary">
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoUrl} alt={siteName} className="h-10 w-10 rounded-lg object-contain" />
+        ) : (
+          <span
+            aria-hidden
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-brand/25 to-accent-purple/20 text-brand shadow-[inset_0_0_0_1px_rgba(0,255,136,0.3)]"
+          >
+            <CrownIcon className="h-6 w-6" />
+          </span>
+        )}
+        <span className="text-base font-extrabold tracking-wide text-text-primary">
           {siteName}
         </span>
       </Link>
-      <SidebarNav sections={sections} localePrefix={localePrefix} />
-      <div className="mt-auto pt-6">
-        <div className="rounded-xl border border-brand/20 bg-gradient-to-br from-brand/10 to-accent-purple/10 p-4">
-          <div className="text-xs font-semibold uppercase tracking-wide text-brand">
+
+      <div className="flex-1 overflow-y-auto pr-1">
+        <SidebarNav sections={sections} localePrefix={localePrefix} />
+      </div>
+
+      <div className="mt-4 space-y-3 border-t border-border pt-4">
+        <div className="rounded-xl border border-brand/20 bg-gradient-to-br from-brand/10 to-accent-purple/10 p-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-brand">
             {tSidebar('promoTitle')}
           </div>
-          <p className="mt-1 text-xs text-text-secondary">{tSidebar('promoText')}</p>
+          <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+            {tSidebar('promoText')}
+          </p>
         </div>
+        <LanguageSwitcher />
+        <SocialLinks telegram={telegram} instagram={instagram} discord={discord} />
       </div>
-    </>
+    </div>
   );
 
   return (
     <>
-      {/* Desktop sidebar */}
       <aside className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 lg:flex-col lg:border-r lg:border-border lg:bg-bg-elevated lg:px-3 lg:py-5">
         {inner}
       </aside>
-      {/* Mobile drawer */}
       <SidebarDrawer>{inner}</SidebarDrawer>
     </>
   );

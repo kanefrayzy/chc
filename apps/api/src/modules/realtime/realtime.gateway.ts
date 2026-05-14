@@ -65,6 +65,10 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       const payload = this.auth.verifyAccessToken(token);
       client.data.user = payload;
       await client.join(`user:${payload.sub}`);
+      // Модераторы и админы подписываются на общую комнату тикетов
+      if (payload.role === 'MODERATOR' || payload.role === 'SUPER_ADMIN') {
+        await client.join('admin:tickets');
+      }
     } catch {
       // невалидный токен — оставляем как гостя
     }
@@ -94,6 +98,36 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     if (!isOwner && !isMod) return { ok: false, error: 'FORBIDDEN' };
     await client.join(`ticket:${id}`);
     return { ok: true };
+  }
+
+  /** Клиент сообщает что печатает (или перестал) в тикете. */
+  @SubscribeMessage('typing:ticket')
+  async typingTicket(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { ticketId?: string; isTyping?: boolean },
+  ): Promise<{ ok: boolean }> {
+    const user = client.data.user;
+    if (!user) return { ok: false };
+    const id = body?.ticketId?.trim();
+    if (!id) return { ok: false };
+    // Рассылаем всем в комнате (кроме отправителя)
+    client.to(`ticket:${id}`).emit('ticket:typing', {
+      ticketId: id,
+      userId: user.sub,
+      username: null, // резолвится на клиенте
+      isTyping: !!body.isTyping,
+    });
+    return { ok: true };
+  }
+
+  /** Новый тикет создан — уведомляем всех в комнате admin:tickets. */
+  emitNewTicket(ticket: { id: string; userId: string; type: string; status: string; subject: string | null }): void {
+    this.server.to('admin:tickets').emit('tickets:new', ticket);
+  }
+
+  /** Тикет обновлён (новое сообщение, смена статуса). */
+  emitTicketUpdated(ticketId: string, data: { status?: string; lastMessagePreview?: string | null; lastMessageAt?: string | null }): void {
+    this.server.to('admin:tickets').emit('tickets:updated', { ticketId, ...data });
   }
 
   @SubscribeMessage('unsubscribe:ticket')

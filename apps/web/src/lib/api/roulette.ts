@@ -40,9 +40,18 @@ export interface PlaceBetRequest {
   amountMinor: string;
 }
 
+export interface RecentWinnerDto {
+  username: string;
+  amountMinor: string;
+  color: RouletteColor;
+  createdAt: string;
+}
+
 export const rouletteApi = {
   state: () => apiFetch<RouletteStateDto>('/roulette/state'),
   history: (limit = 20) => apiFetch<{ items: RouletteRoundDto[] }>(`/roulette/history?limit=${limit}`),
+  recentWinners: (limit = 5) =>
+    apiFetch<{ items: RecentWinnerDto[] }>(`/roulette/recent-winners?limit=${limit}`),
   myBets: (limit = 30) =>
     apiFetch<{ items: RouletteBetDto[] }>(`/roulette/my-bets?limit=${limit}`, {
       credentials: 'include',

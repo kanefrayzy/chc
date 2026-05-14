@@ -13,7 +13,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AccessTokenPayload } from '../auth/auth.service';
 import { TicketsService } from './tickets.service';
-import { SendMessageDto } from './tickets.dto';
+import { SendMessageDto, CreateTicketDto } from './tickets.dto';
 import {
   toPublicMessage,
   toPublicTicket,
@@ -25,6 +25,20 @@ import {
 @UseGuards(JwtAuthGuard)
 export class TicketsController {
   constructor(private readonly tickets: TicketsService) {}
+
+  @Post()
+  async create(
+    @CurrentUser() user: AccessTokenPayload,
+    @Body() body: CreateTicketDto,
+  ): Promise<PublicTicketDto> {
+    const ticket = await this.tickets.createTicket({
+      userId: user.sub,
+      type: body.type,
+      subject: body.subject,
+      initialMessage: body.initialMessage,
+    });
+    return toPublicTicket(ticket);
+  }
 
   @Get()
   async list(
@@ -54,12 +68,14 @@ export class TicketsController {
     @CurrentUser() user: AccessTokenPayload,
     @Param('id') id: string,
     @Query('afterId') afterId?: string,
-    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
+    @Query('beforeId') beforeId?: string,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit?: number,
   ): Promise<{ items: PublicMessageDto[] }> {
     const items = await this.tickets.listMessages({
       userId: user.sub,
       ticketId: id,
       ...(afterId ? { afterId } : {}),
+      ...(beforeId ? { beforeId } : {}),
       ...(limit ? { limit } : {}),
     });
     return { items: items.map((m) => toPublicMessage(m, user.sub)) };

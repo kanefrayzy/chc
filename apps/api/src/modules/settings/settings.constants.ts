@@ -110,6 +110,79 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     isPublic: false,
     description: 'Базисные пункты от выигрыша (300 bps = 3%)',
   },
+  // ─── Геймплей: внешний URL казино ─────────────────────────────────────
+  {
+    key: 'gameplay.external_casino_url',
+    type: 'string',
+    defaultValue: 'https://fastloto.com/',
+    isPublic: true,
+    description: 'URL внешнего казино для iframe (страница /play). Пример: https://fastloto.com/',
+  },
+  // ─── Бонус при пополнении ────────────────────────────────────────────
+  {
+    key: 'deposit.bonus_bps',
+    type: 'number',
+    defaultValue: 0,
+    isPublic: true,
+    description: 'Бонус при депозите в базисных пунктах (1000 bps = 10%). 0 = без бонуса.',
+  },
+  // ─── Бренд / внешний вид ─────────────────────────────────────────────
+  {
+    key: 'brand.site_name',
+    type: 'string',
+    defaultValue: 'CHCGREEN',
+    isPublic: true,
+    description: 'Название сайта (отображается в шапке, заголовках страниц)',
+  },
+  {
+    key: 'brand.logo_url',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'URL логотипа (PNG/SVG). Если пусто — используется текстовый логотип.',
+  },
+  {
+    key: 'brand.support_email',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'Email службы поддержки (отображается на сайте)',
+  },
+  {
+    key: 'brand.tagline',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'Краткое описание сайта (используется в meta description и Open Graph).',
+  },
+  {
+    key: 'brand.hero_image_url',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'URL изображения hero-блока на главной (можно загрузить файлом).',
+  },
+  {
+    key: 'landing.game_image_url.roulette',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'Картинка плитки игры «Рулетка» на главной (можно загрузить файлом).',
+  },
+  {
+    key: 'landing.game_image_url.classic',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'Картинка плитки игры «Классика» на главной.',
+  },
+  {
+    key: 'landing.game_image_url.cases',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'Картинка плитки игры «Кейсы» на главной.',
+  },
 ] as const;
 
 export const SETTING_DEFINITION_MAP: Readonly<Record<string, SettingDefinition>> = Object.freeze(

@@ -2,21 +2,42 @@ import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getLocale } from 'next-intl/server';
 import { Toaster } from 'sonner';
+import { getPublicSettings } from '@/lib/api/settings';
 import '../globals.css';
 
 export const dynamic = 'force-dynamic';
 
-const siteName = process.env.NEXT_PUBLIC_SITE_NAME ?? 'CHCGREEN';
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getPublicSettings();
+  const siteName =
+    settings['brand.site_name'] || process.env.NEXT_PUBLIC_SITE_NAME || 'CHCGREEN';
+  const logoUrl = settings['brand.logo_url'] || '';
+  const description =
+    settings['brand.tagline'] || 'Онлайн-платформа автоматических игр';
 
-export const metadata: Metadata = {
-  title: { default: siteName, template: `%s · ${siteName}` },
-  description: 'Онлайн-платформа автоматических игр',
-  manifest: '/manifest.json',
-  icons: {
-    icon: '/icon.svg',
-    apple: '/apple-touch-icon.png',
-  },
-};
+  return {
+    title: { default: siteName, template: `%s · ${siteName}` },
+    description,
+    applicationName: siteName,
+    manifest: '/manifest.json',
+    icons: logoUrl
+      ? { icon: logoUrl, apple: logoUrl, shortcut: logoUrl }
+      : { icon: '/icon.svg', apple: '/apple-touch-icon.png' },
+    openGraph: {
+      siteName,
+      title: siteName,
+      description,
+      type: 'website',
+      images: logoUrl ? [{ url: logoUrl }] : undefined,
+    },
+    twitter: {
+      card: 'summary',
+      title: siteName,
+      description,
+      images: logoUrl ? [logoUrl] : undefined,
+    },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: '#07090c',

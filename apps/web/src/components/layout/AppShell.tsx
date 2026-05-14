@@ -10,6 +10,14 @@ import { RanksModal } from './RanksModal';
 import { RedeemCodeModal } from './RedeemCodeModal';
 import { ChatWidget } from './ChatWidget';
 import { UiProvider } from './ui-context';
+import {
+  HomeIcon,
+  RouletteIcon,
+  TrophyIcon,
+  UserIcon,
+  ChatIcon,
+  ArrowDownIcon,
+} from '@/components/icons';
 import { getServerUser } from '@/lib/api/server';
 import { getPublicSettings } from '@/lib/api/settings';
 import { walletApi } from '@/lib/api/wallet';
@@ -19,6 +27,8 @@ export interface AppShellProps {
   children: ReactNode;
 }
 
+const BN_ICON = 'h-5 w-5';
+
 export async function AppShell({ locale, children }: AppShellProps): Promise<JSX.Element> {
   const localePrefix = locale === 'ru' ? '' : `/${locale}`;
   const tNav = await getTranslations({ locale, namespace: 'nav' });
@@ -26,23 +36,49 @@ export async function AppShell({ locale, children }: AppShellProps): Promise<JSX
 
   let balanceMinor: string | null = null;
   if (user) {
-    try { balanceMinor = (await walletApi.balance()).balanceMinor; } catch { /* */ }
+    try {
+      balanceMinor = (await walletApi.balance()).balanceMinor;
+    } catch {
+      /* silent */
+    }
   }
 
   const bottomItems: MobileBottomNavItem[] = [
-    { href: '/', label: tNav('home'), icon: '🏠' },
+    { href: '/', label: tNav('home'), icon: <HomeIcon className={BN_ICON} /> },
   ];
   if (settings['gameplay.roulette_enabled']) {
-    bottomItems.push({ href: '/roulette', label: tNav('roulette'), icon: '🎰' });
+    bottomItems.push({
+      href: '/roulette',
+      label: tNav('roulette'),
+      icon: <RouletteIcon className={BN_ICON} />,
+    });
   }
   if (user) {
-    bottomItems.push({ href: '/deposit', label: tNav('deposit'), icon: '💰', action: 'deposit' });
+    bottomItems.push({
+      href: '/deposit',
+      label: tNav('deposit'),
+      icon: <ArrowDownIcon className={BN_ICON} />,
+      action: 'deposit',
+    });
     if (settings['gameplay.chat_enabled']) {
-      bottomItems.push({ href: '/chat', label: tNav('chat'), icon: '💬', action: 'chat' });
+      bottomItems.push({
+        href: '/chat',
+        label: tNav('chat'),
+        icon: <ChatIcon className={BN_ICON} />,
+        action: 'chat',
+      });
     }
-    bottomItems.push({ href: '/profile', label: tNav('profile'), icon: '👤' });
+    bottomItems.push({
+      href: '/profile',
+      label: tNav('profile'),
+      icon: <UserIcon className={BN_ICON} />,
+    });
   } else {
-    bottomItems.push({ href: '/ranks', label: tNav('ranks'), icon: '🏆' });
+    bottomItems.push({
+      href: '/ranks',
+      label: tNav('ranks'),
+      icon: <TrophyIcon className={BN_ICON} />,
+    });
   }
 
   return (
@@ -51,7 +87,7 @@ export async function AppShell({ locale, children }: AppShellProps): Promise<JSX
         <Sidebar locale={locale} />
         <div className="lg:pl-64">
           <TopBar locale={locale} />
-          <main className="mx-auto w-full max-w-7xl px-4 pb-24 pt-6 sm:px-6 lg:pb-12 lg:px-8">
+          <main className="mx-auto w-full max-w-7xl px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-12">
             {children}
           </main>
         </div>

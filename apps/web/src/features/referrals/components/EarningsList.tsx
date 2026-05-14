@@ -31,7 +31,7 @@ export function EarningsList({ items, locale }: EarningsListProps): JSX.Element 
                 <div className="text-sm font-semibold text-text-primary">
                   {e.referredUsername ?? e.referredId.slice(-6)}
                 </div>
-                <div className="text-xs text-text-muted">
+                <div className="text-xs text-text-muted" suppressHydrationWarning>
                   {new Date(e.createdAt).toLocaleString(locale === 'az' ? 'az-AZ' : 'ru-RU')}
                 </div>
                 <div className="mt-1 text-xs text-text-secondary">

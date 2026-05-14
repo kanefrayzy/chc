@@ -12,20 +12,29 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
   const cookie = cookieHeaderFromRequest();
   const [ticket, messages] = await Promise.all([
     adminApi.tickets.get(params.id, { cookie }),
-    adminApi.tickets.messages(params.id, { cookie }),
+    adminApi.tickets.messages(params.id, { limit: 30 }, { cookie }),
   ]);
+
+  const statusTone = { OPEN: 'info', WAITING_USER: 'warning', WAITING_MODERATOR: 'danger', CLOSED: 'neutral' }[ticket.status] as 'info' | 'warning' | 'danger' | 'neutral';
 
   return (
     <>
       <PageHeader
         title={`Тикет ${shortId(ticket.id, 6, 4)}`}
         subtitle={ticket.subject ?? undefined}
-        actions={<Badge tone="info">{ticket.status}</Badge>}
+        back="/tickets"
+        actions={<Badge tone={statusTone}>{ticket.status}</Badge>}
       />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
           <Card>
-            <TicketConversation ticketId={ticket.id} initialMessages={messages} ticketStatus={ticket.status} />
+            <TicketConversation
+              ticketId={ticket.id}
+              userId={ticket.userId}
+              initialMessages={messages}
+              ticketStatus={ticket.status}
+              oldestMessageId={messages[0]?.id ?? null}
+            />
           </Card>
         </div>
         <div className="space-y-4">
@@ -33,7 +42,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
             <dl className="text-sm space-y-2">
               <div className="flex justify-between gap-3">
                 <dt className="text-ink-500">Тип</dt>
-                <dd className="text-ink-900">{ticket.type}</dd>
+                <dd className="text-ink-900 font-medium">{ticket.type}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-ink-500">Пользователь</dt>

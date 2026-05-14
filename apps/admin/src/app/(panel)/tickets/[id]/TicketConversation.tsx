@@ -1,39 +1,159 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
 import { adminApi, type AdminMessage, type TicketStatus } from '../../../../lib/api/admin';
 import { ApiException } from '../../../../lib/api/client';
+import { getAdminSocket } from '../../../../lib/realtime';
 import { formatDateTime } from '../../../../lib/format';
 import { Button } from '../../../../components/ui/Button';
 import { Textarea } from '../../../../components/ui/Input';
 import { cn } from '../../../../lib/cn';
+import { playMessageSound, playSentSound } from '../../../../lib/sounds';
+
+interface TicketConversationProps {
+  ticketId: string;
+  userId: string;
+  initialMessages: AdminMessage[];
+  ticketStatus: TicketStatus;
+  oldestMessageId?: string | null;
+}
 
 export function TicketConversation({
   ticketId,
+  userId,
   initialMessages,
   ticketStatus,
-}: {
-  ticketId: string;
-  initialMessages: AdminMessage[];
-  ticketStatus: TicketStatus;
-}) {
-  const router = useRouter();
+  oldestMessageId,
+}: TicketConversationProps) {
   const [messages, setMessages] = useState(initialMessages);
   const [body, setBody] = useState('');
   const [status, setStatus] = useState(ticketStatus);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(initialMessages.length >= 30);
+  const [cursorId, setCursorId] = useState<string | null>(initialMessages[0]?.id ?? null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Индикатор печатания
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Корректировка баланса
+  const [balanceForm, setBalanceForm] = useState<'credit' | 'debit' | null>(null);
+  const [balanceAmount, setBalanceAmount] = useState('');
+  const [balanceReason, setBalanceReason] = useState('');
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceError, setBalanceError] = useState<string | null>(null);
+  const [balanceSuccess, setBalanceSuccess] = useState<string | null>(null);
+
+  // Блокировка пользователя
+  const [blockReason, setBlockReason] = useState('');
+  const [showBlockForm, setShowBlockForm] = useState(false);
+  const [blockLoading, setBlockLoading] = useState(false);
+  const [blockError, setBlockError] = useState<string | null>(null);
+  const [blockSuccess, setBlockSuccess] = useState(false);
+
+  // Прокрутка вниз при новых сообщениях
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
+
+  // WebSocket: real-time подписка
+  useEffect(() => {
+    if (status === 'CLOSED') return;
+    const socket = getAdminSocket();
+
+    const subscribe = () => socket.emit('subscribe:ticket', { ticketId });
+    if (socket.connected) subscribe();
+    socket.on('connect', subscribe);
+
+    const onMessage = (m: AdminMessage & { ticketId: string }) => {
+      if (m.ticketId !== ticketId) return;
+      setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+      const isUser = m.authorRole !== 'MODERATOR' && m.authorRole !== 'SUPER_ADMIN';
+      if (isUser) playMessageSound();
+      // Прекращаем индикатор печатания когда пришло сообщение
+      setIsTyping(false);
+    };
+    const onStatus = (s: { ticketId: string; status: TicketStatus }) => {
+      if (s.ticketId !== ticketId) return;
+      setStatus(s.status);
+    };
+    const onTyping = (data: { ticketId: string; isTyping: boolean }) => {
+      if (data.ticketId !== ticketId) return;
+      setIsTyping(data.isTyping);
+      if (data.isTyping) {
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = setTimeout(() => setIsTyping(false), 4000);
+      }
+    };
+
+    socket.on('ticket:message', onMessage);
+    socket.on('ticket:status', onStatus);
+    socket.on('ticket:typing', onTyping);
+
+    return () => {
+      socket.emit('unsubscribe:ticket', { ticketId });
+      socket.off('connect', subscribe);
+      socket.off('ticket:message', onMessage);
+      socket.off('ticket:status', onStatus);
+      socket.off('ticket:typing', onTyping);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    };
+  }, [ticketId, status]);
+
+  // Эмитим typing при вводе
+  const typingEmitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleBodyChange = useCallback((value: string) => {
+    setBody(value);
+    const socket = getAdminSocket();
+    if (socket.connected) {
+      socket.emit('typing:ticket', { ticketId, isTyping: value.length > 0 });
+      if (typingEmitTimerRef.current) clearTimeout(typingEmitTimerRef.current);
+      if (value.length > 0) {
+        typingEmitTimerRef.current = setTimeout(() => {
+          socket.emit('typing:ticket', { ticketId, isTyping: false });
+        }, 3000);
+      }
+    }
+  }, [ticketId]);
+
+  // Загрузить более старые сообщения
+  async function loadMore() {
+    if (!cursorId) return;
+    setLoadingMore(true);
+    try {
+      const prev = await adminApi.tickets.messages(ticketId, { beforeId: cursorId, limit: 30 });
+      if (prev.length === 0 || prev.length < 30) setHasMore(false);
+      if (prev.length > 0) {
+        setCursorId(prev[0]?.id ?? cursorId);
+        // Сохраняем скролл-позицию
+        const list = listRef.current;
+        const prevScrollHeight = list?.scrollHeight ?? 0;
+        setMessages((m) => [...prev.filter(p => !m.some(x => x.id === p.id)), ...m]);
+        requestAnimationFrame(() => {
+          if (list) list.scrollTop = list.scrollHeight - prevScrollHeight;
+        });
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   async function send(e: FormEvent) {
     e.preventDefault();
     if (body.trim().length < 1) return;
     setLoading(true);
     setError(null);
+    const socket = getAdminSocket();
+    if (socket.connected) socket.emit('typing:ticket', { ticketId, isTyping: false });
     try {
       const msg = await adminApi.tickets.send(ticketId, { body: body.trim() });
       setMessages((prev) => [...prev, msg]);
       setBody('');
+      playSentSound();
     } catch (e) {
       setError(e instanceof ApiException ? e.message : 'Ошибка отправки');
     } finally {
@@ -41,44 +161,178 @@ export function TicketConversation({
     }
   }
 
-  async function close() {
-    setLoading(true);
-    setError(null);
+  async function submitBalanceAdjust(e: FormEvent) {
+    e.preventDefault();
+    const azn = parseFloat(balanceAmount.replace(',', '.'));
+    if (isNaN(azn) || azn <= 0) { setBalanceError('Введите корректную сумму'); return; }
+    const minor = Math.round(azn * 100);
+    const amountMinor = balanceForm === 'credit' ? String(minor) : String(-minor);
+    setBalanceLoading(true);
+    setBalanceError(null);
+    setBalanceSuccess(null);
     try {
-      await adminApi.tickets.close(ticketId);
-      setStatus('CLOSED');
-      router.refresh();
+      const res = await adminApi.tickets.balanceAdjust(ticketId, {
+        amountMinor,
+        reason: balanceReason.trim() || (balanceForm === 'credit' ? 'Начисление' : 'Списание'),
+      });
+      const after = (Number(res.balanceAfterMinor) / 100).toFixed(2);
+      setBalanceSuccess(`Готово. Баланс: ${after} AZN`);
+      setBalanceAmount('');
+      setBalanceReason('');
+      setBalanceForm(null);
+      const fresh = await adminApi.tickets.messages(ticketId, { limit: 30 });
+      setMessages(fresh);
     } catch (e) {
-      setError(e instanceof ApiException ? e.message : 'Ошибка закрытия');
+      setBalanceError(e instanceof ApiException ? e.message : 'Ошибка корректировки');
     } finally {
-      setLoading(false);
+      setBalanceLoading(false);
+    }
+  }
+
+  async function submitBlock(e: FormEvent) {
+    e.preventDefault();
+    setBlockLoading(true);
+    setBlockError(null);
+    try {
+      await adminApi.users.setStatus(userId, { status: 'BANNED', reason: blockReason.trim() || 'Заблокирован через тикет' });
+      setBlockSuccess(true);
+      setShowBlockForm(false);
+    } catch (e) {
+      setBlockError(e instanceof ApiException ? e.message : 'Ошибка блокировки');
+    } finally {
+      setBlockLoading(false);
     }
   }
 
   return (
-    <div>
-      <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 mb-4">
+    <div className="flex flex-col gap-3">
+      {/* Список сообщений */}
+      <div ref={listRef} className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+        {hasMore && (
+          <div className="text-center py-1">
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="text-xs text-primary hover:underline disabled:opacity-50"
+            >
+              {loadingMore ? 'Загрузка…' : '↑ Загрузить более старые'}
+            </button>
+          </div>
+        )}
         {messages.length === 0 && (
           <div className="text-center text-sm text-ink-500 py-8">Сообщений нет</div>
         )}
         {messages.map((m) => (
           <MessageBubble key={m.id} message={m} />
         ))}
+        {isTyping && (
+          <div className="flex justify-start">
+            <div className="bg-page border border-border rounded-lg px-3 py-2 text-xs text-ink-400 italic flex items-center gap-1.5">
+              <span className="flex gap-0.5">
+                <span className="w-1.5 h-1.5 bg-ink-400 rounded-full animate-[typing_1s_ease-in-out_infinite]" />
+                <span className="w-1.5 h-1.5 bg-ink-400 rounded-full animate-[typing_1s_ease-in-out_0.2s_infinite]" />
+                <span className="w-1.5 h-1.5 bg-ink-400 rounded-full animate-[typing_1s_ease-in-out_0.4s_infinite]" />
+              </span>
+              Пользователь печатает...
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
       </div>
+
+      {balanceSuccess && (
+        <div className="rounded-xl bg-success/10 border border-success/30 px-3 py-2 text-sm text-success">
+          {balanceSuccess}
+        </div>
+      )}
+      {blockSuccess && (
+        <div className="rounded-xl bg-danger/10 border border-danger/30 px-3 py-2 text-sm text-danger font-medium">
+          Пользователь заблокирован.
+        </div>
+      )}
+
+      {/* Форма блокировки */}
+      {showBlockForm && (
+        <form onSubmit={submitBlock} className="rounded-xl border border-danger/30 bg-danger/5 p-4 space-y-2">
+          <div className="text-sm font-semibold text-danger">Заблокировать пользователя</div>
+          <input
+            type="text"
+            value={blockReason}
+            onChange={(e) => setBlockReason(e.target.value)}
+            placeholder="Причина блокировки (необязательно)"
+            maxLength={500}
+            className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm focus:border-danger focus:outline-none focus:ring-2 focus:ring-danger/10"
+          />
+          {blockError && <div className="text-sm text-danger">{blockError}</div>}
+          <div className="flex gap-2 justify-end">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowBlockForm(false)} disabled={blockLoading}>Отмена</Button>
+            <Button type="submit" variant="danger" size="sm" loading={blockLoading}>Заблокировать</Button>
+          </div>
+        </form>
+      )}
+
+      {/* Форма корректировки баланса */}
+      {balanceForm && (
+        <form onSubmit={submitBalanceAdjust} className="rounded-xl border border-border bg-elevated p-4 space-y-2">
+          <div className="text-sm font-semibold text-ink-700">
+            {balanceForm === 'credit' ? '＋ Начислить баланс' : '－ Списать баланс'}
+          </div>
+          <input
+            type="number" min="0.01" step="0.01" value={balanceAmount}
+            onChange={(e) => setBalanceAmount(e.target.value)}
+            placeholder="Сумма в AZN" required
+            className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10"
+          />
+          <input
+            type="text" value={balanceReason} maxLength={500}
+            onChange={(e) => setBalanceReason(e.target.value)}
+            placeholder="Причина (необязательно)"
+            className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10"
+          />
+          {balanceError && <div className="text-sm text-danger">{balanceError}</div>}
+          <div className="flex gap-2 justify-end">
+            <Button type="button" variant="ghost" size="sm" onClick={() => { setBalanceForm(null); setBalanceError(null); }} disabled={balanceLoading}>Отмена</Button>
+            <Button type="submit" size="sm" loading={balanceLoading}>Подтвердить</Button>
+          </div>
+        </form>
+      )}
 
       {status !== 'CLOSED' ? (
         <form onSubmit={send} className="space-y-2">
           <Textarea
             value={body}
-            onChange={(e) => setBody(e.target.value)}
+            onChange={(e) => handleBodyChange(e.target.value)}
             rows={3}
             placeholder="Ответ пользователю…"
           />
           {error && <div className="text-sm text-danger">{error}</div>}
-          <div className="flex items-center justify-between">
-            <Button type="button" variant="ghost" size="sm" onClick={close} disabled={loading}>
-              Закрыть тикет
-            </Button>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                type="button" variant="ghost" size="sm"
+                onClick={() => { setShowBlockForm(true); setBlockError(null); }}
+                disabled={loading || blockSuccess}
+                className="text-danger hover:text-danger"
+              >
+                🚫 Заблокировать
+              </Button>
+              <Button
+                type="button" variant="ghost" size="sm"
+                onClick={() => { setBalanceForm('credit'); setBalanceSuccess(null); }}
+                disabled={loading}
+                className="text-success hover:text-success"
+              >
+                ＋ Начислить
+              </Button>
+              <Button
+                type="button" variant="ghost" size="sm"
+                onClick={() => { setBalanceForm('debit'); setBalanceSuccess(null); }}
+                disabled={loading}
+                className="text-danger hover:text-danger"
+              >
+                － Списать
+              </Button>
+            </div>
             <Button type="submit" loading={loading} disabled={body.trim().length === 0}>
               Отправить
             </Button>
@@ -100,7 +354,7 @@ function MessageBubble({ message }: { message: AdminMessage }) {
   if (isSystem) {
     return (
       <div className="text-center">
-        <span className="inline-block text-xs px-3 py-1 bg-page text-ink-500 rounded border border-border">
+        <span className="inline-block text-xs px-3 py-1 bg-elevated text-ink-500 rounded-full border border-border">
           {message.body}
           <span className="ml-2 text-ink-400">· {formatDateTime(message.createdAt)}</span>
         </span>
@@ -112,13 +366,13 @@ function MessageBubble({ message }: { message: AdminMessage }) {
     <div className={cn('flex', isStaff ? 'justify-end' : 'justify-start')}>
       <div
         className={cn(
-          'max-w-[80%] rounded-lg px-3 py-2 text-sm',
+          'max-w-[80%] rounded-2xl px-4 py-2.5 text-sm',
           isStaff
             ? 'bg-primary text-white rounded-br-sm'
-            : 'bg-page text-ink-900 border border-border rounded-bl-sm',
+            : 'bg-elevated text-ink-900 border border-border rounded-bl-sm',
         )}
       >
-        <div className={cn('text-xs mb-0.5', isStaff ? 'text-white/70' : 'text-ink-400')}>
+        <div className={cn('text-xs mb-0.5', isStaff ? 'text-white/60' : 'text-ink-400')}>
           {message.authorUsername ?? 'Без автора'} · {formatDateTime(message.createdAt)}
         </div>
         <div className="whitespace-pre-wrap break-words">{message.body}</div>

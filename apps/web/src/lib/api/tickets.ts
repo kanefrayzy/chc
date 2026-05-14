@@ -40,9 +40,10 @@ export const ticketsApi = {
     return apiFetch<TicketsPageDto>(`/tickets${qs ? `?${qs}` : ''}`, { credentials: 'include' });
   },
   get: (id: string) => apiFetch<TicketDto>(`/tickets/${id}`, { credentials: 'include' }),
-  messages: (id: string, args: { afterId?: string; limit?: number } = {}) => {
+  messages: (id: string, args: { afterId?: string; beforeId?: string; limit?: number } = {}) => {
     const params = new URLSearchParams();
     if (args.afterId) params.set('afterId', args.afterId);
+    if (args.beforeId) params.set('beforeId', args.beforeId);
     if (args.limit) params.set('limit', String(args.limit));
     const qs = params.toString();
     return apiFetch<{ items: MessageDto[] }>(

@@ -19,9 +19,16 @@ export interface TicketStatusEvent {
   closedAt: string | null;
 }
 
+export interface TicketTypingEvent {
+  ticketId: string;
+  userId: string;
+  isTyping: boolean;
+}
+
 interface UseTicketSocketHandlers {
   onMessage?: (msg: TicketMessageEvent) => void;
   onStatus?: (s: TicketStatusEvent) => void;
+  onTyping?: (data: TicketTypingEvent) => void;
 }
 
 export function useTicketSocket(ticketId: string | null, handlers: UseTicketSocketHandlers): void {
@@ -43,14 +50,20 @@ export function useTicketSocket(ticketId: string | null, handlers: UseTicketSock
       if (s.ticketId !== ticketId) return;
       handlers.onStatus?.(s);
     };
+    const onTyping = (data: TicketTypingEvent): void => {
+      if (data.ticketId !== ticketId) return;
+      handlers.onTyping?.(data);
+    };
     socket.on('ticket:message', onMsg);
     socket.on('ticket:status', onStat);
+    socket.on('ticket:typing', onTyping);
 
     return () => {
       socket.emit('unsubscribe:ticket', { ticketId });
       socket.off('connect', subscribe);
       socket.off('ticket:message', onMsg);
       socket.off('ticket:status', onStat);
+      socket.off('ticket:typing', onTyping);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketId]);

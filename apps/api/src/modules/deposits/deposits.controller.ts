@@ -32,7 +32,7 @@ export class DepositsController {
   ): Promise<PublicDepositDto> {
     const deposit = await this.deposits.createDeposit({
       userId: user.sub,
-      provider: body.provider,
+      paymentMethodId: body.paymentMethodId,
       amountMinor: BigInt(body.amountMinor),
     });
     return toPublicDeposit(deposit);

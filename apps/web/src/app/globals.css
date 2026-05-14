@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Russo+One&display=swap');
+
 :root {
   color-scheme: dark;
   --color-bg-card: #111419;
@@ -28,6 +30,35 @@ body {
   @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-6 py-3 font-semibold text-bg-base transition hover:bg-brand-dim hover:shadow-glow;
 }
 
+.font-display {
+  font-family: 'Russo One', 'Inter', system-ui, sans-serif;
+  letter-spacing: 0.01em;
+}
+
 .card {
   @apply rounded-2xl border border-border bg-bg-card p-6 shadow-card;
+}
+
+/* Тонкий тёмный скроллбар на всех элементах */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1f2937 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #1f2937;
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #2a3441;
 }

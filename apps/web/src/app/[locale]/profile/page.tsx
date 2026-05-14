@@ -6,7 +6,7 @@ import { ProfileHeader } from '@/features/profile/components/ProfileHeader';
 import { ProfileTabs } from '@/features/profile/components/ProfileTabs';
 import { ProfileOverviewPanel } from '@/features/profile/components/panels/ProfileOverviewPanel';
 import { WalletPanel } from '@/features/profile/components/panels/WalletPanel';
-import { ReferralsPanel } from '@/features/profile/components/panels/ReferralsPanel';
+import { HistoryPanel } from '@/features/profile/components/panels/HistoryPanel';
 import { LogoutButton } from '@/features/auth/components/LogoutButton';
 
 export const dynamic = 'force-dynamic';
@@ -38,8 +38,6 @@ export default async function ProfilePage({ params }: ProfilePageProps): Promise
         <ProfileHeader
           user={user}
           locale={params.locale}
-          roleLabel={t('header.role')}
-          referralLabel={t('header.referral')}
           memberSinceLabel={t('header.memberSince')}
         />
         <ProfileTabs
@@ -51,9 +49,9 @@ export default async function ProfilePage({ params }: ProfilePageProps): Promise
               content: <WalletPanel locale={params.locale} />,
             },
             {
-              id: 'referrals',
-              label: t('tabs.referrals'),
-              content: <ReferralsPanel referralCode={user.referralCode} />,
+              id: 'history',
+              label: t('tabs.history'),
+              content: <HistoryPanel locale={params.locale} />,
             },
           ]}
         />

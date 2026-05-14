@@ -21,15 +21,20 @@ export const phoneSchema = z
   .string()
   .regex(/^\+?[0-9]{8,15}$/, 'Invalid phone number');
 
-export const registerSchema = z.object({
-  email: z.string().email(),
-  phone: phoneSchema,
+export const registerBaseSchema = z.object({
+  email: z.union([z.string().email(), z.literal('')]),
+  phone: z.union([phoneSchema, z.literal('')]),
   username: usernameSchema,
   password: passwordSchema,
   referralCode: z.string().optional(),
   ageConfirmed: z.literal(true),
   termsAccepted: z.literal(true),
 });
+
+export const registerSchema = registerBaseSchema.refine(
+  (data) => data.email !== '' || data.phone !== '',
+  { message: 'Укажите email или телефон', path: ['email'] },
+);
 
 export type RegisterDto = z.infer<typeof registerSchema>;
 

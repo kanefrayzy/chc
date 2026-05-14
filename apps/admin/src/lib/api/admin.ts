@@ -1,4 +1,4 @@
-import { apiFetch } from './client';
+import { apiFetch, ApiException, getApiBaseUrl } from './client';
 
 export interface Page<T> {
   items: T[];
@@ -48,6 +48,7 @@ export interface AdminCodePurchaseRow {
   id: string;
   userId: string;
   username: string | null;
+  userBalanceMinor: string | null;
   ticketId: string | null;
   amountMinor: string;
   status: CodePurchaseStatus;
@@ -129,6 +130,18 @@ export interface AdminAuditRow {
   createdAt: string;
 }
 
+// ─── Ranks ───────────────────────────────────────────────────────────────
+
+export interface AdminRankRow {
+  id: string;
+  order: number;
+  slug: string;
+  nameRu: string;
+  nameAz: string;
+  minWageredMinor: string;
+  iconUrl: string | null;
+}
+
 // ─── Settings ────────────────────────────────────────────────────────────
 
 export type SettingType = 'boolean' | 'string' | 'number' | 'json';
@@ -141,6 +154,41 @@ export interface AdminSettingRow {
   description: string;
   isDefault: boolean;
   updatedAt: string | null;
+}
+
+// ─── Payment methods ─────────────────────────────────────────────────────
+
+export type PaymentProviderKind = 'BETRA_H2H' | 'WESTWALLET';
+export type PaymentMethodKind = 'DEPOSIT' | 'WITHDRAWAL' | 'BOTH';
+
+export interface AdminPaymentMethodRow {
+  id: string;
+  name: string;
+  provider: PaymentProviderKind;
+  kind: PaymentMethodKind;
+  currency: string;
+  iconUrl: string | null;
+  description: string | null;
+  minAmountMinor: string;
+  maxAmountMinor: string;
+  displayOrder: number;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentMethodInput {
+  name: string;
+  provider: PaymentProviderKind;
+  kind: PaymentMethodKind;
+  currency: string;
+  description?: string | null;
+  minAmountMinor: string;
+  maxAmountMinor: string;
+  displayOrder: number;
+  enabled: boolean;
+  config?: Record<string, unknown>;
 }
 
 // ─── API client ──────────────────────────────────────────────────────────
@@ -186,7 +234,7 @@ export const adminApi = {
         { ...withCookie(opts) },
       );
     },
-    issue: (id: string, body: { code: string }) =>
+    issue: (id: string, body: { code: string; amountMinor: string }) =>
       apiFetch<AdminCodePurchaseRow>(`/admin/code-purchases/${id}/issue`, { method: 'POST', body }),
     reject: (id: string, body: { reason: string }) =>
       apiFetch<AdminCodePurchaseRow>(`/admin/code-purchases/${id}/reject`, { method: 'POST', body }),
@@ -225,12 +273,20 @@ export const adminApi = {
     },
     get: (id: string, opts?: FetchOptions) =>
       apiFetch<AdminTicketRow>(`/admin/tickets/${id}`, { ...withCookie(opts) }),
-    messages: (id: string, opts?: FetchOptions) =>
-      apiFetch<AdminMessage[]>(`/admin/tickets/${id}/messages`, { ...withCookie(opts) }),
+    messages: (id: string, params?: { beforeId?: string; afterId?: string; limit?: number }, opts?: FetchOptions) => {
+      const qs = new URLSearchParams();
+      if (params?.beforeId) qs.set('beforeId', params.beforeId);
+      if (params?.afterId) qs.set('afterId', params.afterId);
+      if (params?.limit) qs.set('limit', String(params.limit));
+      const q = qs.toString();
+      return apiFetch<AdminMessage[]>(`/admin/tickets/${id}/messages${q ? `?${q}` : ''}`, { ...withCookie(opts) });
+    },
     send: (id: string, body: { body: string }) =>
       apiFetch<AdminMessage>(`/admin/tickets/${id}/messages`, { method: 'POST', body }),
     close: (id: string) =>
       apiFetch<AdminTicketRow>(`/admin/tickets/${id}/close`, { method: 'POST' }),
+    balanceAdjust: (id: string, body: { amountMinor: string; reason: string }) =>
+      apiFetch<{ balanceAfterMinor: string }>(`/admin/tickets/${id}/balance-adjust`, { method: 'POST', body }),
   },
 
   audit: {
@@ -243,13 +299,105 @@ export const adminApi = {
     },
   },
 
+  ranks: {
+    list: (opts?: FetchOptions) =>
+      apiFetch<{ items: AdminRankRow[] }>('/admin/ranks', { ...withCookie(opts) }),
+    create: (body: Omit<AdminRankRow, 'id'>) =>
+      apiFetch<AdminRankRow>('/admin/ranks', { method: 'POST', body }),
+    update: (id: string, body: Partial<Omit<AdminRankRow, 'id'>>) =>
+      apiFetch<AdminRankRow>(`/admin/ranks/${id}`, { method: 'PATCH', body }),
+    remove: (id: string) =>
+      apiFetch<void>(`/admin/ranks/${id}`, { method: 'DELETE' }),
+    uploadIcon: async (id: string, file: File): Promise<AdminRankRow> => {
+      const url = `${getApiBaseUrl()}/admin/ranks/${id}/upload-icon`;
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch(url, {
+        method: 'POST',
+        body: form,
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const text = await res.text();
+      const data = text ? (JSON.parse(text) as unknown) : null;
+      if (!res.ok) {
+        throw new ApiException(res.status, data as null);
+      }
+      return data as AdminRankRow;
+    },
+  },
+
+  paymentMethods: {
+    list: (opts?: FetchOptions) =>
+      apiFetch<{ items: AdminPaymentMethodRow[] }>('/admin/payment-methods', { ...withCookie(opts) }),
+    get: (id: string, opts?: FetchOptions) =>
+      apiFetch<AdminPaymentMethodRow>(`/admin/payment-methods/${id}`, { ...withCookie(opts) }),
+    create: (body: PaymentMethodInput) =>
+      apiFetch<AdminPaymentMethodRow>('/admin/payment-methods', { method: 'POST', body }),
+    update: (id: string, body: Partial<PaymentMethodInput>) =>
+      apiFetch<AdminPaymentMethodRow>(`/admin/payment-methods/${id}`, { method: 'PATCH', body }),
+    remove: (id: string) =>
+      apiFetch<void>(`/admin/payment-methods/${id}`, { method: 'DELETE' }),
+    uploadIcon: async (id: string, file: File): Promise<AdminPaymentMethodRow> => {
+      const url = `${getApiBaseUrl()}/admin/payment-methods/${id}/upload-icon`;
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch(url, {
+        method: 'POST',
+        body: form,
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const text = await res.text();
+      const data = text ? (JSON.parse(text) as unknown) : null;
+      if (!res.ok) {
+        throw new ApiException(res.status, data as null);
+      }
+      return data as AdminPaymentMethodRow;
+    },
+  },
+
   settings: {
     list: (opts?: FetchOptions) =>
       apiFetch<{ items: AdminSettingRow[] }>('/admin/settings', { ...withCookie(opts) }),
     set: (key: string, value: unknown) =>
-      apiFetch<AdminSettingRow>(`/admin/settings/${encodeURIComponent(key)}`, {
+      apiFetch<AdminSettingRow>(`/admin/settings/${encodeURIComponent(key).replace(/\./g, '%2E')}`, {
         method: 'POST',
         body: { value },
       }),
+    uploadLogo: async (file: File): Promise<AdminSettingRow> => {
+      const url = `${getApiBaseUrl()}/admin/settings/upload-logo`;
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch(url, {
+        method: 'POST',
+        body: form,
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const text = await res.text();
+      const data = text ? (JSON.parse(text) as unknown) : null;
+      if (!res.ok) {
+        throw new ApiException(res.status, data as null);
+      }
+      return data as AdminSettingRow;
+    },
+    uploadImage: async (key: string, file: File): Promise<AdminSettingRow> => {
+      const url = `${getApiBaseUrl()}/admin/settings/upload-image/${encodeURIComponent(key).replace(/\./g, '%2E')}`;
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch(url, {
+        method: 'POST',
+        body: form,
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const text = await res.text();
+      const data = text ? (JSON.parse(text) as unknown) : null;
+      if (!res.ok) {
+        throw new ApiException(res.status, data as null);
+      }
+      return data as AdminSettingRow;
+    },
   },
 };

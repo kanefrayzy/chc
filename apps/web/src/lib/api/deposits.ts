@@ -7,6 +7,7 @@ export type DepositStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 
 export interface DepositDto {
   id: string;
   provider: PaymentProviderId;
+  paymentMethodId: string | null;
   status: DepositStatus;
   amountMinor: string;
   externalId: string | null;
@@ -24,7 +25,7 @@ export interface DepositsPageDto {
 }
 
 export interface CreateDepositRequest {
-  provider: PaymentProviderId;
+  paymentMethodId: string;
   amountMinor: string;
 }
 

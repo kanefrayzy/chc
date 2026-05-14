@@ -45,7 +45,7 @@ export function TicketListItem({
         </div>
         <Badge variant={STATUS_VARIANT[ticket.status]}>{t(`status.${ticket.status}`)}</Badge>
       </div>
-      <div className="mt-2 text-xs text-text-muted">
+      <div className="mt-2 text-xs text-text-muted" suppressHydrationWarning>
         {new Date(ticket.lastMessageAt ?? ticket.updatedAt).toLocaleString(
           locale === 'az' ? 'az-AZ' : 'ru-RU',
         )}

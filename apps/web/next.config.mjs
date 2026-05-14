@@ -10,6 +10,13 @@ const nextConfig = {
     optimizePackageImports: ['@chcgreen/shared', '@chcgreen/ui'],
   },
   transpilePackages: ['@chcgreen/shared', '@chcgreen/ui'],
+  images: {
+    remotePatterns: [
+      { protocol: 'http', hostname: 'localhost' },
+      { protocol: 'http', hostname: '**' },
+      { protocol: 'https', hostname: '**' },
+    ],
+  },
   async headers() {
     return [
       {

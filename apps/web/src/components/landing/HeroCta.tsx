@@ -1,11 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Button } from '@chcgreen/ui';
+import { ArrowRightIcon } from '@/components/icons';
 import { useUi } from '@/components/layout/ui-context';
 
 export interface HeroCtaProps {
-  /** показывать ли «Регистрация» (если гость) */
   showRegister: boolean;
   registerHref: string;
   rouletteHref: string;
@@ -21,26 +22,32 @@ export function HeroCta({
 
   if (showRegister) {
     return (
-      <div className="flex flex-wrap items-center gap-3">
-        <Button size="lg" onClick={() => openAuth('register')} rightIcon={<span aria-hidden>→</span>}>
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:flex-wrap">
+        <Button
+          size="lg"
+          onClick={() => openAuth('register')}
+          rightIcon={<ArrowRightIcon className="h-5 w-5" />}
+          className="w-full sm:w-auto sm:min-w-[220px] h-14 text-base font-semibold px-8"
+        >
           {t('cta')}
         </Button>
-        <a
+        <Link
           href={registerHref}
-          className="text-sm font-medium text-text-secondary underline-offset-4 hover:text-text-primary hover:underline"
+          className="inline-flex h-14 w-full sm:w-auto items-center justify-center rounded-lg border border-border bg-bg-elevated px-6 text-base font-semibold text-text-primary transition-colors hover:bg-bg-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
         >
           {t('ctaAlt')}
-        </a>
+        </Link>
       </div>
     );
   }
 
   return (
-    <a
+    <Link
       href={rouletteHref}
-      className="inline-flex h-13 items-center gap-2 rounded-lg bg-brand px-7 text-base font-semibold text-bg-base shadow-glow hover:bg-brand-dim"
+      className="inline-flex h-14 w-full sm:w-auto sm:min-w-[220px] items-center justify-center gap-2 rounded-lg bg-brand px-8 text-base font-semibold text-bg-base shadow-glow transition-colors hover:bg-brand-dim focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
     >
-      {t('ctaPlay')} <span aria-hidden>→</span>
-    </a>
+      {t('ctaPlay')}
+      <ArrowRightIcon className="h-5 w-5" />
+    </Link>
   );
 }

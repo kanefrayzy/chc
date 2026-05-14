@@ -4,8 +4,8 @@ ARG NODE_VERSION=20.18.0
 ARG PNPM_VERSION=9.12.0
 
 # ---- deps ----
-FROM node:${NODE_VERSION}-alpine AS deps
-RUN apk add --no-cache libc6-compat
+FROM node:${NODE_VERSION}-bookworm-slim AS deps
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 ARG PNPM_VERSION
 RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 WORKDIR /repo
@@ -17,8 +17,7 @@ RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile=false
 
 # ---- build ----
-FROM node:${NODE_VERSION}-alpine AS build
-RUN apk add --no-cache libc6-compat
+FROM node:${NODE_VERSION}-bookworm-slim AS build
 ARG PNPM_VERSION
 RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 WORKDIR /repo
@@ -34,11 +33,11 @@ COPY packages/ui ./packages/ui
 COPY apps/admin ./apps/admin
 
 RUN pnpm --filter @chcgreen/shared build
-RUN pnpm --filter @chcgreen/admin build
+RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm --filter @chcgreen/admin build
 
 # ---- runtime ----
-FROM node:${NODE_VERSION}-alpine AS runtime
-RUN apk add --no-cache libc6-compat wget
+FROM node:${NODE_VERSION}-bookworm-slim AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends wget ca-certificates && rm -rf /var/lib/apt/lists/*
 ARG PNPM_VERSION
 RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 WORKDIR /repo
@@ -61,7 +60,7 @@ COPY --from=build /repo/apps/admin/.next ./apps/admin/.next
 COPY --from=build /repo/apps/admin/public ./apps/admin/public
 COPY --from=build /repo/apps/admin/next.config.mjs ./apps/admin/
 
-RUN addgroup -g 1001 -S nodejs && adduser -S -u 1001 -G nodejs nextjs \
+RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -s /bin/sh -m nextjs \
     && chown -R nextjs:nodejs /repo
 USER nextjs
 

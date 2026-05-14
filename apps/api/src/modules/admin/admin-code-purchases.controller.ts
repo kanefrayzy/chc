@@ -54,6 +54,7 @@ export class AdminCodePurchasesController {
       actorId: actor.sub,
       purchaseId: id,
       code: body.code,
+      amountMinor: BigInt(body.amountMinor),
       ip: meta.ip,
       userAgent: meta.userAgent,
     });

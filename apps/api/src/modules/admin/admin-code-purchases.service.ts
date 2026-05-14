@@ -18,7 +18,7 @@ export class AdminCodePurchasesService {
     const where = params.status ? { status: params.status as never } : {};
     const items = await this.prisma.codePurchase.findMany({
       where,
-      include: { user: { select: { username: true } } },
+      include: { user: { select: { username: true, balanceMinor: true } } },
       orderBy: { createdAt: 'desc' },
       take: take + 1,
       ...(params.cursor ? { cursor: { id: params.cursor }, skip: 1 } : {}),
@@ -35,9 +35,14 @@ export class AdminCodePurchasesService {
     actorId: string;
     purchaseId: string;
     code: string;
+    amountMinor: bigint;
     ip?: string;
     userAgent?: string;
   }) {
+    if (params.amountMinor <= 0n) {
+      throw new ConflictException('AMOUNT_MUST_BE_POSITIVE');
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const p = await tx.codePurchase.findUnique({ where: { id: params.purchaseId } });
       if (!p) throw new NotFoundException('CODE_PURCHASE_NOT_FOUND');
@@ -45,25 +50,45 @@ export class AdminCodePurchasesService {
         throw new ConflictException('CODE_PURCHASE_NOT_ISSUABLE');
       }
 
-      // Финализируем hold: статус → COMPLETED. Деньги уже списаны при create.
-      const holdKey = `code:${p.id}:hold`;
-      const hold = await tx.transaction.findUnique({ where: { idempotencyKey: holdKey } });
-      if (hold && hold.status === 'PENDING') {
-        await tx.transaction.update({
-          where: { id: hold.id },
-          data: { status: 'COMPLETED' },
-        });
+      const user = await tx.user.findUnique({
+        where: { id: p.userId },
+        select: { balanceMinor: true },
+      });
+      if (!user) throw new NotFoundException('USER_NOT_FOUND');
+      if (user.balanceMinor < params.amountMinor) {
+        throw new ConflictException('INSUFFICIENT_FUNDS');
       }
+
+      const updatedUser = await tx.user.update({
+        where: { id: p.userId },
+        data: { balanceMinor: { decrement: params.amountMinor } },
+        select: { balanceMinor: true },
+      });
+
+      await tx.transaction.create({
+        data: {
+          userId: p.userId,
+          type: 'ADMIN_DEBIT',
+          status: 'COMPLETED',
+          amountMinor: -params.amountMinor,
+          balanceAfterMinor: updatedUser.balanceMinor,
+          idempotencyKey: `code:${p.id}:debit`,
+          referenceType: 'code_purchase',
+          referenceId: p.id,
+          description: `Code purchase debit by moderator ${params.actorId}`,
+        },
+      });
 
       const updated = await tx.codePurchase.update({
         where: { id: p.id },
         data: {
+          amountMinor: params.amountMinor,
           status: 'COMPLETED',
           code: params.code,
           issuedByModeratorId: params.actorId,
           completedAt: new Date(),
         },
-        include: { user: { select: { username: true } } },
+        include: { user: { select: { username: true, balanceMinor: true } } },
       });
 
       if (p.ticketId) {
@@ -72,7 +97,7 @@ export class AdminCodePurchasesService {
             ticketId: p.ticketId,
             authorId: params.actorId,
             kind: 'ACTION',
-            body: `Код выдан: ${params.code}`,
+            body: `Код выдан: ${params.code}. Списано ${(Number(params.amountMinor) / 100).toFixed(2)} AZN.`,
           },
         });
         await tx.ticket.update({
@@ -86,7 +111,7 @@ export class AdminCodePurchasesService {
         action: 'code_purchase.issue',
         entityType: 'code_purchase',
         entityId: p.id,
-        payload: { amountMinor: p.amountMinor.toString() },
+        payload: { amountMinor: params.amountMinor.toString(), code: params.code },
         ip: params.ip,
         userAgent: params.userAgent,
         tx,
@@ -111,29 +136,6 @@ export class AdminCodePurchasesService {
         throw new ConflictException('CODE_PURCHASE_NOT_REJECTABLE');
       }
 
-      const refundKey = `code:${p.id}:release`;
-      const existing = await tx.transaction.findUnique({ where: { idempotencyKey: refundKey } });
-      if (!existing) {
-        const updatedUser = await tx.user.update({
-          where: { id: p.userId },
-          data: { balanceMinor: { increment: p.amountMinor } },
-          select: { balanceMinor: true },
-        });
-        await tx.transaction.create({
-          data: {
-            userId: p.userId,
-            type: 'CODE_RELEASE',
-            status: 'COMPLETED',
-            amountMinor: p.amountMinor,
-            balanceAfterMinor: updatedUser.balanceMinor,
-            idempotencyKey: refundKey,
-            referenceType: 'code_purchase',
-            referenceId: p.id,
-            description: `Code purchase rejected: ${params.reason.slice(0, 100)}`,
-          },
-        });
-      }
-
       if (p.ticketId) {
         await tx.message.create({
           data: {
@@ -152,7 +154,7 @@ export class AdminCodePurchasesService {
       const updated = await tx.codePurchase.update({
         where: { id: p.id },
         data: { status: 'CANCELLED', completedAt: new Date() },
-        include: { user: { select: { username: true } } },
+        include: { user: { select: { username: true, balanceMinor: true } } },
       });
 
       await this.audit.log({

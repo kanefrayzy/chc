@@ -34,7 +34,7 @@ export class WithdrawalsController {
   ): Promise<PublicWithdrawalDto> {
     const w = await this.withdrawals.createWithdrawal({
       userId: user.sub,
-      method: body.method,
+      paymentMethodId: body.paymentMethodId,
       amountMinor: BigInt(body.amountMinor),
       destination: body.destination as unknown as Prisma.InputJsonValue,
     });

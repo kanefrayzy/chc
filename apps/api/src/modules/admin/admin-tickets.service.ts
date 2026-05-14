@@ -47,12 +47,25 @@ export class AdminTicketsService {
     return t;
   }
 
-  async listMessages(ticketId: string) {
+  async listMessages(ticketId: string, params?: { beforeId?: string; afterId?: string; limit?: number }) {
+    const take = Math.min(Math.max(params?.limit ?? 30, 1), 100);
+    if (params?.beforeId) {
+      const msgs = await this.prisma.message.findMany({
+        where: { ticketId },
+        include: { author: { select: { username: true, role: true } } },
+        orderBy: { createdAt: 'desc' },
+        take,
+        cursor: { id: params.beforeId },
+        skip: 1,
+      });
+      return msgs.reverse();
+    }
     return this.prisma.message.findMany({
       where: { ticketId },
       include: { author: { select: { username: true, role: true } } },
       orderBy: { createdAt: 'asc' },
-      take: 500,
+      take,
+      ...(params?.afterId ? { cursor: { id: params.afterId }, skip: 1 } : {}),
     });
   }
 
@@ -110,6 +123,76 @@ export class AdminTicketsService {
     }
 
     return message;
+  }
+
+  /**
+   * Начислить или списать баланс пользователя прямо из тикета.
+   * amountMinor > 0 → начисление, amountMinor < 0 → списание.
+   */
+  async adjustBalance(params: {
+    actorId: string;
+    ticketId: string;
+    amountMinor: bigint;
+    reason: string;
+    ip?: string;
+    userAgent?: string;
+  }) {
+    const ticket = await this.prisma.ticket.findUnique({ where: { id: params.ticketId } });
+    if (!ticket) throw new NotFoundException('TICKET_NOT_FOUND');
+
+    const type = params.amountMinor >= 0n ? 'ADMIN_CREDIT' : 'ADMIN_DEBIT';
+    const absAmount = params.amountMinor < 0n ? -params.amountMinor : params.amountMinor;
+    const actor = await this.prisma.user.findUnique({
+      where: { id: params.actorId },
+      select: { username: true },
+    });
+
+    const [updatedUser] = await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: ticket.userId },
+        data: { balanceMinor: { increment: params.amountMinor } },
+      }),
+    ]);
+
+    // Запись транзакции и системное сообщение в тикете
+    await this.prisma.$transaction([
+      this.prisma.transaction.create({
+        data: {
+          userId: ticket.userId,
+          type,
+          status: 'COMPLETED',
+          amountMinor: params.amountMinor,
+          balanceAfterMinor: updatedUser.balanceMinor,
+          idempotencyKey: `admin:balance:${ticket.id}:${Date.now()}`,
+          referenceType: 'ticket',
+          referenceId: ticket.id,
+          description: params.reason,
+        },
+      }),
+      this.prisma.message.create({
+        data: {
+          ticketId: ticket.id,
+          authorId: null,
+          kind: 'ACTION',
+          body:
+            params.amountMinor >= 0n
+              ? `Администратор (${actor?.username ?? params.actorId}) начислил ${(Number(absAmount) / 100).toFixed(2)} AZN. Причина: ${params.reason}`
+              : `Администратор (${actor?.username ?? params.actorId}) списал ${(Number(absAmount) / 100).toFixed(2)} AZN. Причина: ${params.reason}`,
+        },
+      }),
+    ]);
+
+    await this.audit.log({
+      actorId: params.actorId,
+      action: 'user.balance_adjust',
+      entityType: 'user',
+      entityId: ticket.userId,
+      payload: { ticketId: ticket.id, amountMinor: params.amountMinor.toString(), reason: params.reason },
+      ip: params.ip,
+      userAgent: params.userAgent,
+    });
+
+    return { balanceAfterMinor: updatedUser.balanceMinor.toString() };
   }
 
   async close(params: { actorId: string; ticketId: string; ip?: string; userAgent?: string }) {

@@ -25,7 +25,7 @@ const manualDestination = z.object({
 });
 
 export const createWithdrawalSchema = z.object({
-  method: z.enum(['AUTO_BETRA_H2H', 'AUTO_WESTWALLET', 'MANUAL_MODERATOR']),
+  paymentMethodId: z.string().min(1),
   amountMinor: z
     .string()
     .regex(/^\d+$/, 'amountMinor must be a non-negative integer string'),

@@ -1,11 +1,14 @@
 import { z } from 'zod';
-import { registerSchema, loginSchema } from '@chcgreen/shared';
+import { registerBaseSchema, loginSchema } from '@chcgreen/shared';
 import { createZodDto } from 'nestjs-zod';
 
 /** DTO регистрации. На бэке язык опционален (по умолчанию ru). */
-export const registerApiSchema = registerSchema.extend({
+export const registerApiSchema = registerBaseSchema.extend({
   language: z.enum(['ru', 'az']).optional(),
-});
+}).refine(
+  (data) => data.email !== '' || data.phone !== '',
+  { message: 'Укажите email или телефон', path: ['email'] },
+);
 
 export class RegisterRequestDto extends createZodDto(registerApiSchema) {}
 
