@@ -125,6 +125,20 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     isPublic: true,
     description: 'Максимальная ставка в рулетке (qəpik). 100000 = 1000.00 AZN',
   },
+  {
+    key: 'roulette.forced_color',
+    type: 'string',
+    defaultValue: '',
+    isPublic: false,
+    description: 'Принудительный цвет следующего раунда рулетки (RED/GREEN/BLACK или пусто = авто).',
+  },
+  {
+    key: 'roulette.daily_target_minor',
+    type: 'string',
+    defaultValue: '0',
+    isPublic: false,
+    description: 'Суточный план GGR рулетки в qəpik. 0 = без плана.',
+  },
   // ─── Геймплей: внешний URL казино ─────────────────────────────────────
   {
     key: 'gameplay.external_casino_url',
