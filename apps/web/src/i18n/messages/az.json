@@ -259,7 +259,12 @@
       "address": "Köçürmə üçün ünvan",
       "expectedAmount": "Ödənilməli",      "timeLeft": "Qalan vaxt",
       "expired": "Müddəti keçib",
-      "copy": "Kopyala",      "status": {
+      "copy": "Kopyala",
+      "copied": "Kopyalandı!",
+      "cardTitle": "Köçürmə üçün kart nömrəsi",
+      "transferAmount": "Dəqiq məbləği köçürün",
+      "transferHint": "Dəqiq məbləği köçürün — əks halda ödəniş keçməyəcək.",
+      "autoCredit": "Hesablama 1–5 dəqiqə ərzində avtomatik baş verir.",      "status": {
         "PENDING": "Yaradıldı",
         "PROCESSING": "İşlənir",
         "COMPLETED": "Hesablandı",
