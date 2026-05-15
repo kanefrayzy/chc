@@ -32,7 +32,9 @@ export default async function RoulettePage() {
   const currentHouseEdgePct = Number(houseEdgeSetting?.value ?? 5);
 
   const todayGgr = BigInt(stats.todayGgrMinor);
-  const belowTarget = currentHouseEdgePct > 0 && stats.todayGgrPct < currentHouseEdgePct;
+  const todayGgrPct = stats.todayGgrPct ?? 0;
+  const todayBetsMinor = stats.todayBetsMinor ?? '0';
+  const belowTarget = currentHouseEdgePct > 0 && todayGgrPct < currentHouseEdgePct;
 
   return (
     <>
@@ -47,7 +49,7 @@ export default async function RoulettePage() {
           label="GGR сегодня"
           value={minorToAzn(stats.todayGgrMinor)}
           tone={todayGgr >= 0n ? 'success' : 'warning'}
-          hint={`GGR%: ${stats.todayGgrPct.toFixed(1)}% / цель: ${currentHouseEdgePct}%`}
+          hint={`GGR%: ${todayGgrPct.toFixed(1)}% / цель: ${currentHouseEdgePct}%`}
         />
         <StatCard
           label="GGR всего"
@@ -58,7 +60,7 @@ export default async function RoulettePage() {
           label="Раундов сегодня"
           value={String(stats.roundsToday)}
           tone="info"
-          hint={`Оборот: ${minorToAzn(stats.todayBetsMinor)}`}
+          hint={`Оборот: ${minorToAzn(todayBetsMinor)}`}
         />
         <StatCard
           label="Раундов всего"
@@ -71,7 +73,7 @@ export default async function RoulettePage() {
       {belowTarget && (
         <div className="mb-6 rounded-2xl border border-orange-200 bg-orange-50 px-5 py-4">
           <p className="text-sm font-semibold text-orange-700">
-            ⚠ GGR% за сегодня ({stats.todayGgrPct.toFixed(1)}%) ниже целевого показателя ({currentHouseEdgePct}%).
+            ⚠ GGR% за сегодня ({todayGgrPct.toFixed(1)}%) ниже целевого показателя ({currentHouseEdgePct}%).
             Используйте принудительный цвет для управления балансом раундов.
           </p>
         </div>
