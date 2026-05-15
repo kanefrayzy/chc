@@ -21,13 +21,11 @@ export class BetraH2HProvider implements PaymentProvider {
   readonly id = 'BETRA_H2H' as const;
   private readonly logger = new Logger(BetraH2HProvider.name);
   private readonly secret: string;
-  private readonly publicUrl: string;
   private readonly apiKey: string;
   private readonly apiSecret: string;
 
   constructor() {
     this.secret = process.env.BETRA_H2H_WEBHOOK_SECRET || 'dev-betra-secret';
-    this.publicUrl = process.env.BETRA_H2H_REDIRECT_BASE || 'https://pay.example.com/betra';
     this.apiKey = process.env.BETRA_H2H_API_KEY || '';
     this.apiSecret = process.env.BETRA_H2H_API_SECRET || '';
   }
@@ -38,7 +36,14 @@ export class BetraH2HProvider implements PaymentProvider {
     // Если DepositsService передал уже сконвертированную сумму — используем её.
     const displayAmount = req.convertedAmount ?? (Number(req.amountMinor) / 100).toFixed(2);
     const displayCurrency = req.convertedCurrency ?? req.currency ?? 'AZN';
-    const paymentUrl = `${this.publicUrl}/${externalId}?amount=${displayAmount}&currency=${displayCurrency}`;
+
+    // TODO: Реальный API-вызов Betra H2H.
+    // Betra возвращает реквизиты (номер карты/счёта) для перевода.
+    // Пример: const res = await this.callBetraApi({ amount: displayAmount, currency: displayCurrency, ... });
+    // const externalAddress = res.card_number;
+    //
+    // Пока используем заглушку — номер карты из env или фейковый.
+    const externalAddress = process.env.BETRA_H2H_CARD_NUMBER || '4111111111111111';
 
     this.logger.log(
       `BETRA createDeposit deposit=${req.depositId} ext=${externalId} ` +
@@ -47,7 +52,7 @@ export class BetraH2HProvider implements PaymentProvider {
     );
     return {
       externalId,
-      paymentUrl,
+      externalAddress,
       originalAmount: displayAmount,
       originalCurrency: displayCurrency,
       exchangeRate: req.exchangeRate,
