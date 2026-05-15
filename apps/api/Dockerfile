@@ -72,6 +72,10 @@ COPY --from=build /repo/packages/shared/dist ./packages/shared/dist
 
 # non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S -u 1001 -G nodejs nestjs
+# Create uploads dir and set ownership BEFORE switching user so named volume
+# inherits correct permissions on first mount
+RUN mkdir -p /app/uploads/logos /app/uploads/images && \
+    chown -R nestjs:nodejs /app/uploads
 USER nestjs
 
 WORKDIR /repo/apps/api
