@@ -137,7 +137,14 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     type: 'string',
     defaultValue: '0',
     isPublic: false,
-    description: 'Суточный план GGR рулетки в qəpik. 0 = без плана.',
+    description: '(Устарело) Суточный план GGR рулетки в qəpik.',
+  },
+  {
+    key: 'roulette.house_edge_pct',
+    type: 'number',
+    defaultValue: 5,
+    isPublic: false,
+    description: 'Целевой доход казино от рулетки в % от оборота (0–100). Используется для антиминуса.',
   },
   // ─── Геймплей: внешний URL казино ─────────────────────────────────────
   {

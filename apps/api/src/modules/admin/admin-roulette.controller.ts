@@ -20,6 +20,8 @@ export interface AdminRouletteRoundRow {
 
 export interface AdminRouletteStatsDto {
   todayGgrMinor: string;
+  todayBetsMinor: string;
+  todayGgrPct: number;
   allTimeGgrMinor: string;
   roundsToday: number;
   roundsTotal: number;
@@ -89,8 +91,13 @@ export class AdminRouletteController {
       };
     });
 
+    const todayGgrPct =
+      todayBets > 0n ? Math.round(Number((todayGgr * 10000n) / todayBets)) / 100 : 0;
+
     return {
       todayGgrMinor: minorToJson(todayGgr),
+      todayBetsMinor: minorToJson(todayBets),
+      todayGgrPct,
       allTimeGgrMinor: minorToJson(allTimeGgr),
       roundsToday,
       roundsTotal,

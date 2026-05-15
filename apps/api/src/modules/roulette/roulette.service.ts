@@ -192,12 +192,17 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
       // Нельзя ставить одновременно на RED и BLACK.
       const myBets = await tx.rouletteBet.findMany({
         where: { roundId: round.id, userId },
-        select: { color: true },
+        select: { color: true, amountMinor: true },
       });
       const myColors = new Set(myBets.map((b) => b.color));
       myColors.add(color);
       if (myColors.has('RED') && myColors.has('BLACK')) {
         throw new ConflictException('INVALID_BET_COMBINATION');
+      }
+      // Проверяем суммарный лимит ставок за раунд
+      const totalBetSoFar = myBets.reduce((sum, b) => sum + b.amountMinor, 0n);
+      if (totalBetSoFar + amountMinor > maxBetMinor) {
+        throw new ConflictException('MAX_TOTAL_BET_EXCEEDED');
       }
 
       const isFirstBetInRound = (await tx.rouletteBet.count({ where: { roundId: round.id } })) === 0;

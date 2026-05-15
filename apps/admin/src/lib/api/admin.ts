@@ -22,6 +22,8 @@ export interface AdminRouletteRoundRow {
 
 export interface AdminRouletteStats {
   todayGgrMinor: string;
+  todayBetsMinor: string;
+  todayGgrPct: number;
   allTimeGgrMinor: string;
   roundsToday: number;
   roundsTotal: number;

@@ -5,24 +5,22 @@ import { adminApi } from '../../../lib/api/admin';
 
 type RouletteColor = 'RED' | 'GREEN' | 'BLACK';
 
-const COLOR_OPTIONS: { value: RouletteColor | ''; label: string; color: string }[] = [
-  { value: '', label: 'Авто (случайно)', color: 'text-ink-500' },
-  { value: 'RED', label: 'Красный', color: 'text-red-500' },
-  { value: 'GREEN', label: 'Зелёный', color: 'text-green-500' },
-  { value: 'BLACK', label: 'Чёрный', color: 'text-ink-900' },
+const COLOR_OPTIONS: { value: RouletteColor | ''; label: string }[] = [
+  { value: '', label: 'Авто (случайно)' },
+  { value: 'RED', label: 'Красный' },
+  { value: 'GREEN', label: 'Зелёный' },
+  { value: 'BLACK', label: 'Чёрный' },
 ];
 
 export function RouletteControls({
   currentForcedColor,
-  currentDailyTargetMinor,
+  currentHouseEdgePct,
 }: {
   currentForcedColor: string;
-  currentDailyTargetMinor: string;
+  currentHouseEdgePct: number;
 }) {
   const [forcedColor, setForcedColor] = useState(currentForcedColor);
-  const [dailyTarget, setDailyTarget] = useState(
-    currentDailyTargetMinor ? String(Math.round(Number(currentDailyTargetMinor) / 100)) : '',
-  );
+  const [houseEdge, setHouseEdge] = useState(currentHouseEdgePct);
   const [saved, setSaved] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -34,11 +32,10 @@ export function RouletteControls({
     });
   };
 
-  const saveTarget = (): void => {
-    const minor = String(Math.round(parseFloat(dailyTarget || '0') * 100));
+  const saveEdge = (): void => {
     startTransition(async () => {
-      await adminApi.settings.set('roulette.daily_target_minor', minor);
-      setSaved('Суточный план сохранён');
+      await adminApi.settings.set('roulette.house_edge_pct', houseEdge);
+      setSaved(`Целевой GGR ${houseEdge}% сохранён`);
       setTimeout(() => setSaved(null), 3000);
     });
   };
@@ -78,30 +75,38 @@ export function RouletteControls({
         )}
       </div>
 
-      {/* Daily GGR target */}
+      {/* House edge % slider */}
       <div className="rounded-2xl border border-border bg-surface p-5 shadow-card">
-        <h3 className="text-sm font-semibold text-ink-700 mb-3">Суточный план GGR (₼)</h3>
+        <h3 className="text-sm font-semibold text-ink-700 mb-1">Целевой GGR казино</h3>
         <p className="text-xs text-ink-500 mb-4">
-          Укажите желаемый суточный доход казино. Если фактический GGR ниже — используйте принудительный цвет для управления.
+          Желаемый доход от оборота. Если фактический GGR% ниже — срабатывает предупреждение антиминуса.
         </p>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-4 mb-3">
           <input
-            type="number"
-            min="0"
-            step="1"
-            value={dailyTarget}
-            onChange={(e) => setDailyTarget(e.target.value)}
-            placeholder="0.00"
-            className="flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary"
+            type="range"
+            min={0}
+            max={30}
+            step={0.5}
+            value={houseEdge}
+            onChange={(e) => setHouseEdge(parseFloat(e.target.value))}
+            className="flex-1 accent-primary"
           />
-          <button
-            onClick={saveTarget}
-            disabled={isPending}
-            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-80 disabled:opacity-50"
-          >
-            Сохранить
-          </button>
+          <span className="w-14 text-right font-mono text-lg font-bold text-primary">
+            {houseEdge.toFixed(1)}%
+          </span>
         </div>
+        <div className="flex justify-between text-xs text-ink-400 mb-4">
+          <span>0% (без цели)</span>
+          <span>15%</span>
+          <span>30%</span>
+        </div>
+        <button
+          onClick={saveEdge}
+          disabled={isPending}
+          className="w-full rounded-xl bg-primary py-2 text-sm font-semibold text-white transition-opacity hover:opacity-80 disabled:opacity-50"
+        >
+          Сохранить {houseEdge.toFixed(1)}%
+        </button>
       </div>
 
       {saved && (

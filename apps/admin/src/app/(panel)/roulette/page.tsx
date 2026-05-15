@@ -28,12 +28,11 @@ export default async function RoulettePage() {
 
   const forcedColorSetting = settings.items.find((s) => s.key === 'roulette.forced_color');
   const currentForcedColor = String(forcedColorSetting?.value ?? '');
-  const dailyTargetSetting = settings.items.find((s) => s.key === 'roulette.daily_target_minor');
-  const currentDailyTargetMinor = String(dailyTargetSetting?.value ?? '0');
+  const houseEdgeSetting = settings.items.find((s) => s.key === 'roulette.house_edge_pct');
+  const currentHouseEdgePct = Number(houseEdgeSetting?.value ?? 5);
 
   const todayGgr = BigInt(stats.todayGgrMinor);
-  const dailyTarget = BigInt(currentDailyTargetMinor || '0');
-  const belowTarget = dailyTarget > 0n && todayGgr < dailyTarget;
+  const belowTarget = currentHouseEdgePct > 0 && stats.todayGgrPct < currentHouseEdgePct;
 
   return (
     <>
@@ -48,7 +47,7 @@ export default async function RoulettePage() {
           label="GGR сегодня"
           value={minorToAzn(stats.todayGgrMinor)}
           tone={todayGgr >= 0n ? 'success' : 'warning'}
-          hint={dailyTarget > 0n ? `План: ${minorToAzn(currentDailyTargetMinor)}` : undefined}
+          hint={`GGR%: ${stats.todayGgrPct.toFixed(1)}% / цель: ${currentHouseEdgePct}%`}
         />
         <StatCard
           label="GGR всего"
@@ -59,6 +58,7 @@ export default async function RoulettePage() {
           label="Раундов сегодня"
           value={String(stats.roundsToday)}
           tone="info"
+          hint={`Оборот: ${minorToAzn(stats.todayBetsMinor)}`}
         />
         <StatCard
           label="Раундов всего"
@@ -71,7 +71,7 @@ export default async function RoulettePage() {
       {belowTarget && (
         <div className="mb-6 rounded-2xl border border-orange-200 bg-orange-50 px-5 py-4">
           <p className="text-sm font-semibold text-orange-700">
-            ⚠ GGR за сегодня ({minorToAzn(stats.todayGgrMinor)}) ниже суточного плана ({minorToAzn(currentDailyTargetMinor)}).
+            ⚠ GGR% за сегодня ({stats.todayGgrPct.toFixed(1)}%) ниже целевого показателя ({currentHouseEdgePct}%).
             Используйте принудительный цвет для управления балансом раундов.
           </p>
         </div>
@@ -80,7 +80,7 @@ export default async function RoulettePage() {
       {/* Controls */}
       <RouletteControls
         currentForcedColor={currentForcedColor}
-        currentDailyTargetMinor={currentDailyTargetMinor}
+        currentHouseEdgePct={currentHouseEdgePct}
       />
 
       {/* Recent rounds table */}
