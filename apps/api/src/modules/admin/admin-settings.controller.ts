@@ -75,7 +75,7 @@ export class AdminSettingsController {
       throw new BadRequestException('File too large (max 2 MB)');
     }
 
-    const logoDir = path.join('/tmp', 'uploads', 'logos');
+    const logoDir = path.join('/app', 'uploads', 'logos');
     await fs.promises.mkdir(logoDir, { recursive: true });
 
     let filename: string;
@@ -131,7 +131,7 @@ export class AdminSettingsController {
       throw new BadRequestException('Invalid setting key');
     }
 
-    const imgDir = path.join('/tmp', 'uploads', 'images');
+    const imgDir = path.join('/app', 'uploads', 'images');
     await fs.promises.mkdir(imgDir, { recursive: true });
 
     const filename = `${randomUUID()}.webp`;

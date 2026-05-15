@@ -99,6 +99,8 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       minio: { condition: service_healthy }
+    volumes:
+      - uploads_data:/app/uploads
     ports:
       - "${API_PORT:-4000}:4000"
     healthcheck:
@@ -176,6 +178,7 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
+  uploads_data:
 
 networks:
   chcgreen:

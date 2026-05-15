@@ -25,7 +25,7 @@ import { RealtimeModule } from './modules/realtime/realtime.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, cache: true }),
     ServeStaticModule.forRoot({
-      rootPath: path.join('/tmp', 'uploads'),
+      rootPath: path.join('/app', 'uploads'),
       serveRoot: '/uploads',
     }),
     TerminusModule,

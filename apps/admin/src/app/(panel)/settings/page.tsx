@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation';
 import { adminApi } from '../../../lib/api/admin';
 import { cookieHeaderFromRequest, getServerUser, isSuperAdmin } from '../../../lib/api/server';
 import { PageHeader } from '../../../components/ui/PageHeader';
-import { Card } from '../../../components/ui/Card';
 import { Alert } from '../../../components/ui/Alert';
 import { SettingsTable } from './SettingsTable';
 
@@ -26,9 +25,7 @@ export default async function SettingsPage() {
         Изменения применяются ко всем инстансам после ~1 минуты (TTL кэша). Каждое изменение
         фиксируется в audit-log.
       </Alert>
-      <Card>
-        <SettingsTable initialItems={res.items} />
-      </Card>
+      <SettingsTable initialItems={res.items} />
     </>
   );
 }
