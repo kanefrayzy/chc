@@ -131,7 +131,7 @@ export class AdminRanksController {
 
     await fs.promises.writeFile(path.join(iconDir, filename), buffer);
 
-    const apiUrl = process.env.API_URL ?? 'http://localhost:4000';
+    const apiUrl = process.env.API_PUBLIC_URL ?? 'http://localhost:4000';
     const iconUrl = `${apiUrl}/uploads/rank-icons/${filename}`;
 
     const rank = await this.ranks.updateRank(id, { iconUrl });

@@ -92,7 +92,7 @@ export class AdminSettingsController {
     const filePath = path.join(logoDir, filename);
     await fs.promises.writeFile(filePath, buffer);
 
-    const apiUrl = process.env.API_URL ?? 'http://localhost:4000';
+    const apiUrl = process.env.API_PUBLIC_URL ?? 'http://localhost:4000';
     const logoUrl = `${apiUrl}/uploads/logos/${filename}`;
 
     const row = await this.settings.set('brand.logo_url', logoUrl);
@@ -143,7 +143,7 @@ export class AdminSettingsController {
     const filePath = path.join(imgDir, filename);
     await fs.promises.writeFile(filePath, buffer);
 
-    const apiUrl = process.env.API_URL ?? 'http://localhost:4000';
+    const apiUrl = process.env.API_PUBLIC_URL ?? 'http://localhost:4000';
     const imageUrl = `${apiUrl}/uploads/images/${filename}`;
 
     const row = await this.settings.set(key, imageUrl);

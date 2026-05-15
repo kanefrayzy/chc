@@ -100,7 +100,7 @@ export class AdminPaymentMethodsController {
 
     await fs.promises.writeFile(path.join(iconDir, filename), buffer);
 
-    const apiUrl = process.env.API_URL ?? 'http://localhost:4000';
+    const apiUrl = process.env.API_PUBLIC_URL ?? 'http://localhost:4000';
     const iconUrl = `${apiUrl}/uploads/payment-icons/${filename}`;
     const updated = await this.service.setIcon(id, iconUrl);
     return toAdminPaymentMethod(updated);

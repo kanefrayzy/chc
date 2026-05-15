@@ -140,7 +140,7 @@ export class AuthController {
       .webp({ quality: 80 })
       .toFile(filepath);
 
-    const apiBase = process.env.API_URL ?? `http://localhost:4000`;
+    const apiBase = process.env.API_PUBLIC_URL ?? `http://localhost:4000`;
     const avatarUrl = `${apiBase}/uploads/avatars/${filename}`;
 
     await this.prisma.user.update({
