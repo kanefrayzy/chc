@@ -8,7 +8,8 @@ export function getApiBaseUrl(): string {
       'http://api:4000'
     );
   }
-  return process.env.NEXT_PUBLIC_API_URL || `${window.location.origin}/api`;
+  // In the browser: always use same-origin /api (works regardless of domain)
+  return window.location.origin + '/api';
 }
 
 export class ApiException extends Error {
