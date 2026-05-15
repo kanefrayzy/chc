@@ -106,3 +106,8 @@ export function playClick(): void {
 export function playCountdownTick(): void {
   beep(1200, 'square', 0.07, 0.12);
 }
+
+/** Мягкий тик обратного отсчёта для секунд > 3. */
+export function playCountdownSoftTick(): void {
+  beep(600, 'sine', 0.055, 0.035);
+}

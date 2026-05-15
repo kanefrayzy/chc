@@ -5,6 +5,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { RouletteLayout } from '@/features/roulette/components/RouletteLayout';
 import { getServerUser } from '@/lib/api/server';
 import { apiFetch } from '@/lib/api/client';
+import { getPublicSettings } from '@/lib/api/settings';
 import type { WalletBalanceDto } from '@/lib/api/wallet';
 
 interface RoulettePageProps {
@@ -30,7 +31,10 @@ export default async function RoulettePage({ params }: RoulettePageProps): Promi
     balanceMinor = balance.balanceMinor;
   }
 
-  const t = await getTranslations({ locale: params.locale, namespace: 'roulette' });
+  const [t, settings] = await Promise.all([
+    getTranslations({ locale: params.locale, namespace: 'roulette' }),
+    getPublicSettings(),
+  ]);
 
   return (
     <AppShell locale={params.locale}>
@@ -41,6 +45,8 @@ export default async function RoulettePage({ params }: RoulettePageProps): Promi
           isAuthed={Boolean(user)}
           balanceMinor={balanceMinor}
           locale={params.locale}
+          minBetMinor={settings['roulette.min_bet_minor']}
+          maxBetMinor={settings['roulette.max_bet_minor']}
         />
       </div>
     </AppShell>

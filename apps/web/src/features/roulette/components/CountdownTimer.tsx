@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { playCountdownTick } from '@/lib/sound';
+import { playCountdownTick, playCountdownSoftTick } from '@/lib/sound';
 
 export interface CountdownTimerProps {
   /** Дата/время-метка окончания приёма ставок (ISO). */
@@ -23,10 +23,14 @@ export function CountdownTimer({ endsAt, onEnd }: CountdownTimerProps): JSX.Elem
   const remainingMs = Math.max(0, target - now);
   const seconds = Math.ceil(remainingMs / 1000);
 
-  // Звук на последние 3 секунды — один раз при смене значения
+  // Звук обратного отсчёта — один раз при смене значения
   useEffect(() => {
-    if (seconds > 0 && seconds <= 3 && prevSecondsRef.current !== seconds) {
-      playCountdownTick();
+    if (seconds > 0 && prevSecondsRef.current !== seconds) {
+      if (seconds <= 3) {
+        playCountdownTick();
+      } else {
+        playCountdownSoftTick();
+      }
     }
     prevSecondsRef.current = seconds;
   }, [seconds]);

@@ -5,6 +5,29 @@ export interface Page<T> {
   nextCursor: string | null;
 }
 
+// ─── Roulette ────────────────────────────────────────────────────────────
+
+export interface AdminRouletteRoundRow {
+  id: string;
+  status: string;
+  winningColor: string | null;
+  winningSlot: number | null;
+  betsCount: number;
+  totalBetsMinor: string;
+  totalPayoutsMinor: string;
+  ggrMinor: string;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+export interface AdminRouletteStats {
+  todayGgrMinor: string;
+  allTimeGgrMinor: string;
+  roundsToday: number;
+  roundsTotal: number;
+  recentRounds: AdminRouletteRoundRow[];
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────────
 
 export interface DashboardStats {
@@ -399,5 +422,10 @@ export const adminApi = {
       }
       return data as AdminSettingRow;
     },
+  },
+
+  roulette: {
+    stats: (opts?: FetchOptions) =>
+      apiFetch<AdminRouletteStats>('/admin/roulette/stats', { ...withCookie(opts) }),
   },
 };

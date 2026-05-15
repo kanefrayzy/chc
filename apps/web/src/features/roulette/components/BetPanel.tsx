@@ -10,8 +10,8 @@ import { rouletteApi, type RouletteColor } from '@/lib/api/roulette';
 import { ApiException } from '@/lib/api/client';
 import { playClick } from '@/lib/sound';
 
-const MIN_BET_MINOR = 100n;
-const MAX_BET_MINOR = 50_000n;
+const DEFAULT_MIN_BET_MINOR = 100n;
+const DEFAULT_MAX_BET_MINOR = 100_000n;
 
 const COLOR_LABELS: Record<RouletteColor, string> = {
   BLACK: 'Black',
@@ -23,6 +23,8 @@ export interface BetPanelProps {
   balanceMinor: string;
   disabled?: boolean;
   multipliers: Record<RouletteColor, number>;
+  minBetMinor?: string;
+  maxBetMinor?: string;
   /** На какие цвета пользователь уже поставил в текущем раунде. */
   placedColors: RouletteColor[];
   onBetPlaced?: (color: RouletteColor, amountMinor: string) => void;
@@ -32,6 +34,8 @@ export function BetPanel({
   balanceMinor,
   disabled,
   multipliers,
+  minBetMinor: minBetMinorStr,
+  maxBetMinor: maxBetMinorStr,
   placedColors,
   onBetPlaced,
 }: BetPanelProps): JSX.Element {
@@ -39,6 +43,9 @@ export function BetPanel({
   const [amount, setAmount] = useState('');
   const [pendingColor, setPendingColor] = useState<RouletteColor | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const MIN_BET_MINOR = minBetMinorStr ? BigInt(minBetMinorStr) : DEFAULT_MIN_BET_MINOR;
+  const MAX_BET_MINOR = maxBetMinorStr ? BigInt(maxBetMinorStr) : DEFAULT_MAX_BET_MINOR;
 
   const balanceAzn = Number(balanceMinor) / 100;
 

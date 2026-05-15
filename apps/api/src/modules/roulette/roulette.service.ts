@@ -118,24 +118,25 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
 
   async listRecentWinners(
     limit = 5,
-  ): Promise<{ username: string; amountMinor: string; color: RouletteColor; createdAt: string }[]> {
+  ): Promise<{ username: string; avatarUrl: string | null; amountMinor: string; color: RouletteColor; createdAt: string }[]> {
     // Берём больше строк чтобы после агрегации осталось нужное количество
     const rows = await this.prisma.rouletteBet.findMany({
       where: { isWinner: true, payoutMinor: { gt: 0n } },
       orderBy: { createdAt: 'desc' },
       take: Math.min(limit * 20, 200),
-      include: { user: { select: { username: true } } } as never,
+      include: { user: { select: { username: true, avatarUrl: true } } } as never,
     });
 
     // Группируем по (userId, roundId) — суммируем выигрыши
-    type WinEntry = { username: string; amountMinor: bigint; color: RouletteColor; createdAt: Date };
+    type WinEntry = { username: string; avatarUrl: string | null; amountMinor: bigint; color: RouletteColor; createdAt: Date };
     const groups = new Map<string, WinEntry>();
     for (const b of rows) {
-      const username =
-        (b as RouletteBet & { user?: { username: string } }).user?.username ?? 'player';
+      const user = (b as RouletteBet & { user?: { username: string; avatarUrl?: string | null } }).user;
+      const username = user?.username ?? 'player';
+      const avatarUrl = user?.avatarUrl ?? null;
       const key = `${b.userId}|${b.roundId}`;
       if (!groups.has(key)) {
-        groups.set(key, { username, amountMinor: 0n, color: b.color, createdAt: b.createdAt });
+        groups.set(key, { username, avatarUrl, amountMinor: 0n, color: b.color, createdAt: b.createdAt });
       }
       groups.get(key)!.amountMinor += b.payoutMinor ?? 0n;
     }
@@ -145,6 +146,7 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
       .slice(0, limit)
       .map((e) => ({
         username: e.username,
+        avatarUrl: e.avatarUrl,
         amountMinor: e.amountMinor.toString(),
         color: e.color,
         createdAt: e.createdAt.toISOString(),
@@ -322,9 +324,25 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
       // анимировать барабан с реальным winningSlot, не дожидаясь COMPLETED.
       // Выплаты происходят только при COMPLETED (после окончания анимации).
       const publicSeed = generatePublicSeed();
-      const serverSeed = round.serverSeed!;
-      const earlySlot = pickSlot(serverSeed, publicSeed, ROULETTE_TOTAL_SLOTS);
-      const earlyColor = slotToColor(earlySlot);
+      let earlySlot: number;
+      let earlyColor: RouletteColor;
+
+      // Проверяем принудительный цвет от администратора
+      const forcedColor = await this.settings.get<string>('roulette.forced_color');
+      if (forcedColor && ['RED', 'GREEN', 'BLACK'].includes(forcedColor)) {
+        const fc = forcedColor as RouletteColor;
+        const validSlots = Array.from({ length: ROULETTE_TOTAL_SLOTS }, (_, i) => i).filter(
+          (s) => slotToColor(s) === fc,
+        );
+        earlySlot = validSlots[Math.floor(Math.random() * validSlots.length)];
+        earlyColor = fc;
+        await this.settings.set('roulette.forced_color', '');
+        this.logger.log(`Round ${round.id} FORCED color=${earlyColor} slot=${earlySlot}`);
+      } else {
+        const serverSeed = round.serverSeed!;
+        earlySlot = pickSlot(serverSeed, publicSeed, ROULETTE_TOTAL_SLOTS);
+        earlyColor = slotToColor(earlySlot);
+      }
       const rolling = await this.prisma.rouletteRound.update({
         where: { id: round.id },
         data: { status: 'ROLLING', publicSeed, winningSlot: earlySlot, winningColor: earlyColor },
@@ -385,26 +403,32 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
               description: `Roulette win on ${color}`,
             },
           });
-          // Реферал: 3% от чистого выигрыша (payout - ставка)
-          const netWin = payout - bet.amountMinor;
-          if (netWin > 0n) {
-            await this.referrals.creditEarning({
-              referredId: bet.userId,
-              kind: 'FROM_WIN',
-              sourceAmountMinor: netWin,
-              referenceType: 'roulette_bet',
-              referenceId: bet.id,
-              tx,
-            });
-          }
+          // Реферал — начисляем после агрегации по всем ставкам раунда (ниже)
         } else {
-          // Реферал: 10% от проигранной ставки
+          // Реферал — начисляем после агрегации по всем ставкам раунда (ниже)
+        }
+      }
+
+      // Агрегируем GGR (доход казино) по каждому игроку и начисляем реферал только если дом в плюсе
+      const userGgr = new Map<string, bigint>();
+      for (const bet of allBets) {
+        const prev = userGgr.get(bet.userId) ?? 0n;
+        if (bet.color === color) {
+          const payout = calculatePayout(bet.amountMinor, color);
+          const netWin = payout - bet.amountMinor;
+          userGgr.set(bet.userId, prev - netWin);
+        } else {
+          userGgr.set(bet.userId, prev + bet.amountMinor);
+        }
+      }
+      for (const [userId, ggr] of userGgr.entries()) {
+        if (ggr > 0n) {
           await this.referrals.creditEarning({
-            referredId: bet.userId,
+            referredId: userId,
             kind: 'FROM_LOSS',
-            sourceAmountMinor: bet.amountMinor,
-            referenceType: 'roulette_bet',
-            referenceId: bet.id,
+            sourceAmountMinor: ggr,
+            referenceType: 'roulette_round',
+            referenceId: round.id,
             tx,
           });
         }

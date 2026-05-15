@@ -21,6 +21,12 @@ export function ChatLayout({ locale, viewerId, initialTicketId }: ChatLayoutProp
   const [activeId, setActiveId] = useState<string | null>(initialTicketId ?? null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const loadTickets = async (): Promise<TicketDto[]> => {
+    const res = await ticketsApi.list({ limit: 30 });
+    return res.items;
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -28,11 +34,11 @@ export function ChatLayout({ locale, viewerId, initialTicketId }: ChatLayoutProp
 
     const pull = async (): Promise<void> => {
       try {
-        const res = await ticketsApi.list({ limit: 30 });
+        const items = await loadTickets();
         if (cancelled) return;
-        setTickets(res.items);
+        setTickets(items);
         setErrorMessage(null);
-        if (!activeId && res.items[0]) setActiveId(res.items[0].id);
+        if (!activeId && items[0]) setActiveId(items[0].id);
       } catch {
         if (!cancelled) setErrorMessage(t('list.errors.loadFailed'));
       } finally {
@@ -51,6 +57,20 @@ export function ChatLayout({ locale, viewerId, initialTicketId }: ChatLayoutProp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleNewDialog = async (): Promise<void> => {
+    setCreating(true);
+    try {
+      const ticket = await ticketsApi.create({ subject: 'Поддержка', type: 'SUPPORT' });
+      const items = await loadTickets();
+      setTickets(items);
+      setActiveId(ticket.id);
+    } catch {
+      // ignore
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const activeTicket = tickets.find((tk) => tk.id === activeId) ?? null;
 
   if (initialLoading) {
@@ -65,9 +85,18 @@ export function ChatLayout({ locale, viewerId, initialTicketId }: ChatLayoutProp
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
       <aside className="space-y-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
-          {t('list.title')}
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+            {t('list.title')}
+          </h2>
+          <button
+            onClick={() => void handleNewDialog()}
+            disabled={creating}
+            className="rounded-lg bg-brand px-3 py-1 text-xs font-semibold text-white transition-opacity hover:opacity-80 disabled:opacity-50"
+          >
+            {creating ? '...' : '+ Новый диалог'}
+          </button>
+        </div>
         <TicketList tickets={tickets} activeId={activeId} onSelect={setActiveId} locale={locale} />
       </aside>
       <section>

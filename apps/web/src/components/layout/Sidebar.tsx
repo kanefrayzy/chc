@@ -87,19 +87,6 @@ async function buildSections(locale: string): Promise<SidebarSection[]> {
     });
   }
   more.push({
-    href: '/bonuses',
-    label: tNav('bonuses'),
-    icon: <GiftIcon className={ICON_CLS} />,
-  });
-  if (settings['gameplay.chat_enabled']) {
-    more.push({
-      href: '/chat',
-      label: tNav('support'),
-      icon: <HeadsetIcon className={ICON_CLS} />,
-      action: 'chat',
-    });
-  }
-  more.push({
     href: '/faq',
     label: tNav('faq'),
     icon: <QuestionIcon className={ICON_CLS} />,

@@ -81,14 +81,22 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
               key={`${w.username}-${w.createdAt}-${idx}`}
               className="flex items-center gap-3 rounded-lg px-1.5 py-1 transition-colors hover:bg-bg-card-hover"
             >
-              <span
-                aria-hidden
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${
-                  AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length]
-                } text-[11px] font-bold text-text-primary ring-1 ring-border`}
-              >
-                {initials(w.username)}
-              </span>
+              {w.avatarUrl ? (
+                <img
+                  src={w.avatarUrl}
+                  alt={w.username}
+                  className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-border"
+                />
+              ) : (
+                <span
+                  aria-hidden
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${
+                    AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length]
+                  } text-[11px] font-bold text-text-primary ring-1 ring-border`}
+                >
+                  {initials(w.username)}
+                </span>
+              )}
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-text-primary">
                   {w.username}

@@ -44,6 +44,8 @@ export interface RouletteLayoutProps {
   isAuthed: boolean;
   balanceMinor: string | null;
   locale: string;
+  minBetMinor?: string;
+  maxBetMinor?: string;
 }
 
 interface ResultInfo {
@@ -53,7 +55,7 @@ interface ResultInfo {
   multiplier: number;
 }
 
-export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: RouletteLayoutProps): JSX.Element {
+export function RouletteLayout({ isAuthed, balanceMinor: initialBalance, minBetMinor, maxBetMinor }: RouletteLayoutProps): JSX.Element {
   const t = useTranslations('roulette');
   const { refreshBalance } = useUi();
   const [round, setRound] = useState<RouletteRoundDto | null>(null);
@@ -366,6 +368,8 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
           balanceMinor={balance}
           disabled={!canBet}
           multipliers={safeMultipliers}
+          minBetMinor={minBetMinor}
+          maxBetMinor={maxBetMinor}
           placedColors={myColors}
           onBetPlaced={(color) => {
             setMyColors((prev) => (prev.includes(color) ? prev : [...prev, color]));

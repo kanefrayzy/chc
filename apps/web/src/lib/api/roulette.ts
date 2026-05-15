@@ -42,6 +42,7 @@ export interface PlaceBetRequest {
 
 export interface RecentWinnerDto {
   username: string;
+  avatarUrl?: string | null;
   amountMinor: string;
   color: RouletteColor;
   createdAt: string;

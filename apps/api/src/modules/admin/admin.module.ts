@@ -15,7 +15,7 @@ import { AdminAuditController } from './admin-audit.controller';
 import { AdminDashboardController } from './admin-dashboard.controller';
 import { AdminSettingsController } from './admin-settings.controller';
 import { AdminRanksController } from './admin-ranks.controller';
-import { AdminPaymentMethodsController } from './admin-payment-methods.controller';
+import { AdminRouletteController } from './admin-roulette.controller';
 
 @Module({
   imports: [AuthModule, RanksModule, PaymentMethodsModule],
@@ -29,6 +29,7 @@ import { AdminPaymentMethodsController } from './admin-payment-methods.controlle
     AdminSettingsController,
     AdminRanksController,
     AdminPaymentMethodsController,
+    AdminRouletteController,
   ],
   providers: [
     AdminAuditService,
