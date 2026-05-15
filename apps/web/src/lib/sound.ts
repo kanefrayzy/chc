@@ -101,3 +101,8 @@ export function playLose(): void {
 export function playClick(): void {
   beep(660, 'triangle', 0.06, 0.08);
 }
+
+/** Тик обратного отсчёта (последние 3 секунды). Отличается от игрового тика. */
+export function playCountdownTick(): void {
+  beep(1200, 'square', 0.07, 0.12);
+}

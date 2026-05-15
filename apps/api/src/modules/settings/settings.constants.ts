@@ -110,13 +110,28 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     isPublic: false,
     description: 'Базисные пункты от выигрыша (300 bps = 3%)',
   },
+  // ─── Рулетка ──────────────────────────────────────────────────────────
+  {
+    key: 'roulette.min_bet_minor',
+    type: 'string',
+    defaultValue: '100',
+    isPublic: true,
+    description: 'Минимальная ставка в рулетке (qəpik). 100 = 1.00 AZN',
+  },
+  {
+    key: 'roulette.max_bet_minor',
+    type: 'string',
+    defaultValue: '100000',
+    isPublic: true,
+    description: 'Максимальная ставка в рулетке (qəpik). 100000 = 1000.00 AZN',
+  },
   // ─── Геймплей: внешний URL казино ─────────────────────────────────────
   {
     key: 'gameplay.external_casino_url',
     type: 'string',
-    defaultValue: 'https://fastloto.com/',
+    defaultValue: 'https://star7sky.store/',
     isPublic: true,
-    description: 'URL внешнего казино для iframe (страница /play). Пример: https://fastloto.com/',
+    description: 'URL внешнего казино для iframe (страница /play). Пример: https://star7sky.store/',
   },
   // ─── Бонус при пополнении ────────────────────────────────────────────
   {

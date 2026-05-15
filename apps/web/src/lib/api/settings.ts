@@ -13,6 +13,8 @@ export interface PublicSettings {
   'deposit.max_amount_minor': string;
   'deposit.bonus_bps': number;
   'withdrawal.min_amount_minor': string;
+  'roulette.min_bet_minor': string;
+  'roulette.max_bet_minor': string;
   'brand.site_name': string;
   'brand.logo_url': string;
   'brand.support_email': string;
@@ -34,11 +36,13 @@ const DEFAULTS: PublicSettings = {
   'gameplay.code_purchase_enabled': true,
   'gameplay.jackpot_enabled': false,
   'gameplay.case_opening_enabled': false,
-  'gameplay.external_casino_url': '',
+  'gameplay.external_casino_url': 'https://star7sky.store/',
   'deposit.min_amount_minor': '500',
   'deposit.max_amount_minor': '100000000',
   'deposit.bonus_bps': 0,
   'withdrawal.min_amount_minor': '1000',
+  'roulette.min_bet_minor': '100',
+  'roulette.max_bet_minor': '100000',
   'brand.site_name': 'CHCGREEN',
   'brand.logo_url': '',
   'brand.support_email': '',

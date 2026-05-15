@@ -34,8 +34,6 @@ const DEFAULT_MAX_BET = 100_000n;
 @Injectable()
 export class RouletteService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RouletteService.name);
-  private readonly minBetMinor: bigint;
-  private readonly maxBetMinor: bigint;
   private loopTimer: ReturnType<typeof setTimeout> | null = null;
   private running = false;
 
@@ -46,8 +44,6 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
     private readonly settings: SettingsService,
     private readonly realtime: RealtimeGateway,
   ) {
-    this.minBetMinor = BigInt(process.env.ROULETTE_MIN_BET_MINOR || DEFAULT_MIN_BET.toString());
-    this.maxBetMinor = BigInt(process.env.ROULETTE_MAX_BET_MINOR || DEFAULT_MAX_BET.toString());
   }
 
   async onModuleInit(): Promise<void> {
@@ -151,9 +147,11 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
     if (!enabled) {
       throw new BadRequestException('ROULETTE_DISABLED');
     }
-    if (amountMinor < this.minBetMinor || amountMinor > this.maxBetMinor) {
+    const minBetMinor = BigInt((await this.settings.get<string>('roulette.min_bet_minor')) ?? DEFAULT_MIN_BET.toString());
+    const maxBetMinor = BigInt((await this.settings.get<string>('roulette.max_bet_minor')) ?? DEFAULT_MAX_BET.toString());
+    if (amountMinor < minBetMinor || amountMinor > maxBetMinor) {
       throw new BadRequestException(
-        `Bet must be between ${this.minBetMinor} and ${this.maxBetMinor} qəpik`,
+        `Bet must be between ${minBetMinor} and ${maxBetMinor} qəpik`,
       );
     }
 
