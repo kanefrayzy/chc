@@ -14,6 +14,7 @@ export interface PublicDepositDto {
   originalCurrency: string | null;
   createdAt: string;
   completedAt: string | null;
+  expiresAt: string | null;
 }
 
 export function toPublicDeposit(d: Deposit): PublicDepositDto {
@@ -30,5 +31,6 @@ export function toPublicDeposit(d: Deposit): PublicDepositDto {
     originalCurrency: d.originalCurrency,
     createdAt: d.createdAt.toISOString(),
     completedAt: d.completedAt?.toISOString() ?? null,
+    expiresAt: d.expiresAt?.toISOString() ?? null,
   };
 }

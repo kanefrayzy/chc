@@ -17,6 +17,7 @@ export interface DepositDto {
   originalCurrency: string | null;
   createdAt: string;
   completedAt: string | null;
+  expiresAt: string | null;
 }
 
 export interface DepositsPageDto {

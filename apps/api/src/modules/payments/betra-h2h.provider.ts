@@ -22,10 +22,14 @@ export class BetraH2HProvider implements PaymentProvider {
   private readonly logger = new Logger(BetraH2HProvider.name);
   private readonly secret: string;
   private readonly publicUrl: string;
+  private readonly apiKey: string;
+  private readonly apiSecret: string;
 
   constructor() {
     this.secret = process.env.BETRA_H2H_WEBHOOK_SECRET || 'dev-betra-secret';
     this.publicUrl = process.env.BETRA_H2H_REDIRECT_BASE || 'https://pay.example.com/betra';
+    this.apiKey = process.env.BETRA_H2H_API_KEY || '';
+    this.apiSecret = process.env.BETRA_H2H_API_SECRET || '';
   }
 
   async createDeposit(req: CreateDepositRequest): Promise<CreateDepositResult> {

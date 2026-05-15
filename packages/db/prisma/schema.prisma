@@ -217,6 +217,7 @@ model Deposit {
   // авторство (если ручная корректировка)
   createdAt     DateTime        @default(now())
   completedAt   DateTime?
+  expiresAt     DateTime?
 
   @@index([userId])
   @@index([status])

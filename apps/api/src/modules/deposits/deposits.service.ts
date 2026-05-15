@@ -1,8 +1,11 @@
 import {
   Injectable,
   BadRequestException,
+  ConflictException,
   NotFoundException,
   Logger,
+  OnModuleInit,
+  OnModuleDestroy,
 } from '@nestjs/common';
 import type { Deposit, PaymentProvider as PaymentProviderEnum, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
@@ -10,9 +13,12 @@ import { PaymentProviderRegistry } from '../payments/payments.module';
 import { PaymentMethodsService } from '../payment-methods/payment-methods.service';
 import { SettingsService } from '../settings/settings.service';
 
+const DEPOSIT_EXPIRE_MINUTES = 15;
+
 @Injectable()
-export class DepositsService {
+export class DepositsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DepositsService.name);
+  private expiryTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -20,6 +26,32 @@ export class DepositsService {
     private readonly settings: SettingsService,
     private readonly methods: PaymentMethodsService,
   ) {}
+
+  onModuleInit(): void {
+    // Каждую минуту переводим просроченные PENDING/PROCESSING депозиты в EXPIRED
+    this.expiryTimer = setInterval(() => void this.expireOldDeposits(), 60_000);
+  }
+
+  onModuleDestroy(): void {
+    if (this.expiryTimer) clearInterval(this.expiryTimer);
+  }
+
+  private async expireOldDeposits(): Promise<void> {
+    try {
+      const result = await this.prisma.deposit.updateMany({
+        where: {
+          status: { in: ['PENDING', 'PROCESSING'] },
+          expiresAt: { lt: new Date() },
+        },
+        data: { status: 'EXPIRED' },
+      });
+      if (result.count > 0) {
+        this.logger.log(`Auto-expired ${result.count} deposit(s)`);
+      }
+    } catch (e) {
+      this.logger.error(`expireOldDeposits failed: ${String(e)}`);
+    }
+  }
 
   private async getGlobalLimits(): Promise<{ minMinor: bigint; maxMinor: bigint }> {
     const [minStr, maxStr] = await Promise.all([
@@ -38,6 +70,15 @@ export class DepositsService {
 
     const method = await this.methods.getUsable(paymentMethodId, 'DEPOSIT');
 
+    // Блокируем создание второго депозита, если уже есть активный
+    const activeDeposit = await this.prisma.deposit.findFirst({
+      where: { userId, status: { in: ['PENDING', 'PROCESSING'] } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (activeDeposit) {
+      throw new ConflictException('У вас уже есть активный счёт на оплату. Оплатите его или дождитесь истечения таймера.');
+    }
+
     // Лимиты: приоритет у метода (если заданы), иначе глобальные настройки.
     const global = await this.getGlobalLimits();
     const minMinor = method.minAmountMinor > 0n ? method.minAmountMinor : global.minMinor;
@@ -51,6 +92,8 @@ export class DepositsService {
     const provider: PaymentProviderEnum = method.provider;
     const provImpl = this.providers.get(provider);
 
+    const expiresAt = new Date(Date.now() + DEPOSIT_EXPIRE_MINUTES * 60 * 1000);
+
     // создаём запись со статусом PENDING, чтобы получить depositId
     const draft = await this.prisma.deposit.create({
       data: {
@@ -59,6 +102,7 @@ export class DepositsService {
         paymentMethodId: method.id,
         amountMinor,
         status: 'PENDING',
+        expiresAt,
       },
     });
 
@@ -102,6 +146,7 @@ export class DepositsService {
           originalCurrency: result.originalCurrency ?? null,
           exchangeRate: result.exchangeRate ?? null,
           status: 'PROCESSING',
+          expiresAt,
         },
       });
       return updated;

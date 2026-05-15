@@ -237,6 +237,7 @@
       "submitting": "Yaradılır…",
       "hintLocale": "Ödəniş səhifəsi {locale} dilində açılacaq.",
       "loading": "Ödəniş üsulları yüklənir…",
+      "activeDepositHint": "Sizə artıq aktiv hesab təyin edilib. Onu ödəyin və ya taymer bitməsini gözləyin.",
       "errors": {
         "invalidAmount": "Düzgün məbləğ daxil edin",
         "outOfRange": "Məbləğ icazə verilən diapazondan kənardadır",
@@ -256,8 +257,9 @@
       "provider": "Provayder",
       "payNow": "Ödənişə keçid",
       "address": "Köçürmə üçün ünvan",
-      "expectedAmount": "Ödənilməli",
-      "status": {
+      "expectedAmount": "Ödənilməli",      "timeLeft": "Qalan vaxt",
+      "expired": "Müddəti keçib",
+      "copy": "Kopyala",      "status": {
         "PENDING": "Yaradıldı",
         "PROCESSING": "İşlənir",
         "COMPLETED": "Hesablandı",

@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { Button, Alert } from '@chcgreen/ui';
+import { Button, Alert, Spinner } from '@chcgreen/ui';
 import { AmountInput, parseAmountToMinor } from './AmountInput';
-import { depositsApi } from '@/lib/api/deposits';
+import { PendingDepositCard } from './PendingDepositCard';
+import { depositsApi, type DepositDto } from '@/lib/api/deposits';
 import { paymentMethodsApi, type PublicPaymentMethod } from '@/lib/api/payment-methods';
 import { ApiException } from '@/lib/api/client';
 
@@ -28,7 +29,30 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // Активный незавершённый депозит (блокирует форму)
+  const [activeDeposit, setActiveDeposit] = useState<DepositDto | null | undefined>(undefined); // undefined = loading
+
+  const checkActiveDeposit = useCallback((): void => {
+    depositsApi
+      .list({ limit: 5 })
+      .then((res) => {
+        const found = res.items.find(
+          (d) =>
+            (d.status === 'PENDING' || d.status === 'PROCESSING') &&
+            d.expiresAt &&
+            new Date(d.expiresAt) > new Date(),
+        );
+        setActiveDeposit(found ?? null);
+      })
+      .catch(() => setActiveDeposit(null));
+  }, []);
+
   useEffect(() => {
+    checkActiveDeposit();
+  }, [checkActiveDeposit]);
+
+  useEffect(() => {
+    if (activeDeposit !== null) return; // уже проверили или нашли активный
     let cancelled = false;
     setMethodsLoading(true);
     paymentMethodsApi
@@ -48,7 +72,13 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [t, activeDeposit]);
+
+  // Таймер дошёл до 0 → перезагружаем
+  const handleExpire = useCallback((): void => {
+    router.refresh();
+    checkActiveDeposit();
+  }, [router, checkActiveDeposit]);
 
   const selected = methods.find((m) => m.id === selectedId) ?? null;
   const minMinor =
@@ -79,10 +109,11 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
 
     startTransition(async () => {
       try {
-        await depositsApi.create({
+        const created = await depositsApi.create({
           paymentMethodId: selected.id,
           amountMinor: minor.toString(),
         });
+        setActiveDeposit(created);
         router.refresh();
         setAmount('');
         if (onSuccess) onSuccess();
@@ -95,6 +126,25 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
       }
     });
   };
+
+  // Загрузка статуса активного депозита
+  if (activeDeposit === undefined) {
+    return (
+      <div className="flex justify-center py-8">
+        <Spinner />
+      </div>
+    );
+  }
+
+  // Есть активный депозит — показываем его карточку вместо формы
+  if (activeDeposit !== null) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-text-secondary">{t('activeDepositHint')}</p>
+        <PendingDepositCard deposit={activeDeposit} locale={locale} onExpire={handleExpire} />
+      </div>
+    );
+  }
 
   return (
     <div>
