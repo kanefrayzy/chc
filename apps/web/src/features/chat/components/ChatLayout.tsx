@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Spinner, Alert } from '@chcgreen/ui';
-import { TicketList } from './TicketList';
 import { ChatThread } from './ChatThread';
 import { ticketsApi, type TicketDto } from '@/lib/api/tickets';
 
@@ -17,16 +16,10 @@ export interface ChatLayoutProps {
 
 export function ChatLayout({ locale, viewerId, initialTicketId }: ChatLayoutProps): JSX.Element {
   const t = useTranslations('chat');
-  const [tickets, setTickets] = useState<TicketDto[]>([]);
+  const [ticket, setTicket] = useState<TicketDto | null>(null);
   const [activeId, setActiveId] = useState<string | null>(initialTicketId ?? null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-
-  const loadTickets = async (): Promise<TicketDto[]> => {
-    const res = await ticketsApi.list({ limit: 30 });
-    return res.items;
-  };
 
   useEffect(() => {
     let cancelled = false;
@@ -34,11 +27,25 @@ export function ChatLayout({ locale, viewerId, initialTicketId }: ChatLayoutProp
 
     const pull = async (): Promise<void> => {
       try {
-        const items = await loadTickets();
+        const res = await ticketsApi.list({ limit: 30 });
         if (cancelled) return;
-        setTickets(items);
+
+        // Ищем существующий SUPPORT тикет
+        const supportTicket =
+          res.items.find((tk) => tk.type === 'SUPPORT') ?? res.items[0] ?? null;
+
+        if (supportTicket) {
+          setTicket(supportTicket);
+          setActiveId(supportTicket.id);
+        } else if (!activeId) {
+          // Если тикетов нет — создаём единственный автоматически
+          const created = await ticketsApi.create({ subject: 'Поддержка', type: 'SUPPORT' });
+          if (!cancelled) {
+            setTicket(created);
+            setActiveId(created.id);
+          }
+        }
         setErrorMessage(null);
-        if (!activeId && items[0]) setActiveId(items[0].id);
       } catch {
         if (!cancelled) setErrorMessage(t('list.errors.loadFailed'));
       } finally {
@@ -57,22 +64,6 @@ export function ChatLayout({ locale, viewerId, initialTicketId }: ChatLayoutProp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleNewDialog = async (): Promise<void> => {
-    setCreating(true);
-    try {
-      const ticket = await ticketsApi.create({ subject: 'Поддержка', type: 'SUPPORT' });
-      const items = await loadTickets();
-      setTickets(items);
-      setActiveId(ticket.id);
-    } catch {
-      // ignore
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const activeTicket = tickets.find((tk) => tk.id === activeId) ?? null;
-
   if (initialLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -83,31 +74,15 @@ export function ChatLayout({ locale, viewerId, initialTicketId }: ChatLayoutProp
   if (errorMessage) return <Alert variant="danger">{errorMessage}</Alert>;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-      <aside className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
-            {t('list.title')}
-          </h2>
-          <button
-            onClick={() => void handleNewDialog()}
-            disabled={creating}
-            className="rounded-lg bg-brand px-3 py-1 text-xs font-semibold text-white transition-opacity hover:opacity-80 disabled:opacity-50"
-          >
-            {creating ? '...' : '+ Новый диалог'}
-          </button>
+    <div className="w-full">
+      {ticket ? (
+        <ChatThread ticket={ticket} viewerId={viewerId} locale={locale} />
+      ) : (
+        <div className="rounded-xl border border-border p-8 text-center text-sm text-text-secondary">
+          {t('thread.selectHint')}
         </div>
-        <TicketList tickets={tickets} activeId={activeId} onSelect={setActiveId} locale={locale} />
-      </aside>
-      <section>
-        {activeTicket ? (
-          <ChatThread ticket={activeTicket} viewerId={viewerId} locale={locale} />
-        ) : (
-          <div className="rounded-xl border border-border p-8 text-center text-sm text-text-secondary">
-            {t('thread.selectHint')}
-          </div>
-        )}
-      </section>
+      )}
     </div>
   );
 }
+
