@@ -1,7 +1,6 @@
 'use client';
 
 import { io, type Socket } from 'socket.io-client';
-import { getApiBaseUrl } from '../api/client';
 
 let socket: Socket | null = null;
 
@@ -17,7 +16,8 @@ export function getRealtimeSocket(): Socket {
     socket.connect();
     return socket;
   }
-  const url = getApiBaseUrl();
+  // Используем origin (без /api), чтобы namespace был '/' (дефолтный)
+  const url = window.location.origin;
   socket = io(url, {
     path: '/socket.io',
     withCredentials: true,
