@@ -49,7 +49,7 @@ export async function TopBar({ locale }: TopBarProps): Promise<JSX.Element> {
           aria-label={siteName}
         >
           {logoUrl ? (
-            <Image src={logoUrl} alt={siteName} width={28} height={28} className="rounded-md" />
+            <Image src={logoUrl} alt={siteName} width={40} height={40} className="rounded-md" />
           ) : (
             <span
               aria-hidden

@@ -430,4 +430,28 @@ export const adminApi = {
     stats: (opts?: FetchOptions) =>
       apiFetch<AdminRouletteStats>('/admin/roulette/stats', { ...withCookie(opts) }),
   },
+
+  translations: {
+    get: (locale: 'ru' | 'az', opts?: FetchOptions) =>
+      apiFetch<{ locale: string; messages: Record<string, unknown>; isCustom: boolean }>(
+        `/admin/translations/${locale}`,
+        { ...withCookie(opts) },
+      ),
+    save: (locale: 'ru' | 'az', messages: Record<string, unknown>) =>
+      apiFetch<{ locale: string; isCustom: boolean }>(`/admin/translations/${locale}`, {
+        method: 'POST',
+        body: { messages },
+      }),
+    reset: (locale: 'ru' | 'az') =>
+      apiFetch<{ locale: string; isCustom: boolean }>(`/admin/translations/${locale}/reset`, {
+        method: 'POST',
+      }),
+  },
+
+  exchangeRates: {
+    refresh: () =>
+      apiFetch<{ usd: number; rub: number; try: number }>('/admin/exchange-rates/refresh', {
+        method: 'POST',
+      }),
+  },
 };

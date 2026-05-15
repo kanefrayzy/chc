@@ -219,6 +219,43 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     isPublic: true,
     description: 'Картинка плитки игры «Кейсы» на главной.',
   },
+  // ─── Переводы (переопределение встроенных) ────────────────────────────
+  {
+    key: 'translations.ru',
+    type: 'json',
+    defaultValue: null,
+    isPublic: false,
+    description: 'Пользовательские переводы (ru). Если задано — перекрывает встроенный файл.',
+  },
+  {
+    key: 'translations.az',
+    type: 'json',
+    defaultValue: null,
+    isPublic: false,
+    description: 'Пользовательские переводы (az). Если задано — перекрывает встроенный файл.',
+  },
+  // ─── Курсы валют ─────────────────────────────────────────────────────
+  {
+    key: 'exchange_rate.usd',
+    type: 'number',
+    defaultValue: 0.588,
+    isPublic: true,
+    description: '1 AZN = X USD. Обновляется вручную или через кнопку «Обновить курсы».',
+  },
+  {
+    key: 'exchange_rate.rub',
+    type: 'number',
+    defaultValue: 54.0,
+    isPublic: true,
+    description: '1 AZN = X RUB.',
+  },
+  {
+    key: 'exchange_rate.try',
+    type: 'number',
+    defaultValue: 20.0,
+    isPublic: true,
+    description: '1 AZN = X TRY.',
+  },
 ] as const;
 
 export const SETTING_DEFINITION_MAP: Readonly<Record<string, SettingDefinition>> = Object.freeze(

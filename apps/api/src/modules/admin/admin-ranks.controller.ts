@@ -112,7 +112,7 @@ export class AdminRanksController {
       throw new BadRequestException('File too large (max 2 MB)');
     }
 
-    const iconDir = path.join('/tmp', 'uploads', 'rank-icons');
+    const iconDir = path.join('/app', 'uploads', 'rank-icons');
     await fs.promises.mkdir(iconDir, { recursive: true });
 
     let filename: string;

@@ -28,9 +28,13 @@ export class WestWalletProvider implements PaymentProvider {
 
   async createDeposit(req: CreateDepositRequest): Promise<CreateDepositResult> {
     const externalId = `wst_${randomUUID()}`;
-    const azn = Number(req.amountMinor) / 100;
-    const usdt = (azn * this.rate).toFixed(2);
     const address = `T${randomUUID().replace(/-/g, '').slice(0, 33).toUpperCase()}`;
+
+    // Предпочитаем сконвертированное значение из DepositsService (из exchange_rate.usd),
+    // иначе фолбэк на старый env-var rate (для обратной совместимости в dev).
+    const usdt = req.convertedAmount ?? ((Number(req.amountMinor) / 100) * this.rate).toFixed(2);
+    const exchangeRate = req.exchangeRate ?? this.rate.toString();
+
     this.logger.log(
       `WESTWALLET createDeposit deposit=${req.depositId} ext=${externalId} usdt=${usdt}`,
     );
@@ -39,7 +43,7 @@ export class WestWalletProvider implements PaymentProvider {
       externalAddress: address,
       originalAmount: usdt,
       originalCurrency: 'USDT',
-      exchangeRate: this.rate.toString(),
+      exchangeRate,
     };
   }
 

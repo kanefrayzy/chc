@@ -14,6 +14,15 @@ export interface CreateDepositRequest {
   config?: Record<string, unknown>;
   /** Валюта пользовательского метода (для логирования / провайдера) */
   currency?: string;
+  /**
+   * Сконвертированная сумма (в валюте платёжного метода).
+   * Вычисляется в DepositsService перед вызовом провайдера.
+   * Например: AZN 100.00 → RUB 5400, originalAmount='5400.00', originalCurrency='RUB'.
+   */
+  convertedAmount?: string;
+  convertedCurrency?: string;
+  /** Курс AZN→валюта на момент создания (для логирования). */
+  exchangeRate?: string;
 }
 
 export interface CreateDepositResult {

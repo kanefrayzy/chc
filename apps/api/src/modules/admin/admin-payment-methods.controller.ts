@@ -82,7 +82,7 @@ export class AdminPaymentMethodsController {
       throw new BadRequestException('File too large (max 2 MB)');
     }
 
-    const iconDir = path.join('/tmp', 'uploads', 'payment-icons');
+    const iconDir = path.join('/app', 'uploads', 'payment-icons');
     await fs.promises.mkdir(iconDir, { recursive: true });
 
     let filename: string;

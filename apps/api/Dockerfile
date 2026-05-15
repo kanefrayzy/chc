@@ -35,6 +35,8 @@ COPY --from=deps /repo/node_modules ./node_modules
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* turbo.json tsconfig.base.json ./
 COPY packages ./packages
 COPY apps/api ./apps/api
+# Copy web i18n messages so they can be bundled into the API image as defaults
+COPY apps/web/src/i18n/messages ./apps/web/src/i18n/messages
 
 # Восстанавливаем workspace симлинки после COPY (BuildKit дереференсит).
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
@@ -76,6 +78,9 @@ RUN addgroup -g 1001 -S nodejs && adduser -S -u 1001 -G nodejs nestjs
 # inherits correct permissions on first mount
 RUN mkdir -p /app/uploads/logos /app/uploads/images && \
     chown -R nestjs:nodejs /app/uploads
+
+# Bundle default i18n messages so the translations endpoint can serve them
+COPY --from=build /repo/apps/web/src/i18n/messages /app/translations
 USER nestjs
 
 WORKDIR /repo/apps/api

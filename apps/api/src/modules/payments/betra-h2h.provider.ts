@@ -30,9 +30,24 @@ export class BetraH2HProvider implements PaymentProvider {
 
   async createDeposit(req: CreateDepositRequest): Promise<CreateDepositResult> {
     const externalId = `betra_${randomUUID()}`;
-    const paymentUrl = `${this.publicUrl}/${externalId}?amount=${req.amountMinor.toString()}`;
-    this.logger.log(`BETRA createDeposit deposit=${req.depositId} ext=${externalId}`);
-    return { externalId, paymentUrl };
+
+    // Если DepositsService передал уже сконвертированную сумму — используем её.
+    const displayAmount = req.convertedAmount ?? (Number(req.amountMinor) / 100).toFixed(2);
+    const displayCurrency = req.convertedCurrency ?? req.currency ?? 'AZN';
+    const paymentUrl = `${this.publicUrl}/${externalId}?amount=${displayAmount}&currency=${displayCurrency}`;
+
+    this.logger.log(
+      `BETRA createDeposit deposit=${req.depositId} ext=${externalId} ` +
+        `${displayAmount} ${displayCurrency}` +
+        (req.exchangeRate ? ` (rate 1 AZN = ${req.exchangeRate} ${displayCurrency})` : ''),
+    );
+    return {
+      externalId,
+      paymentUrl,
+      originalAmount: displayAmount,
+      originalCurrency: displayCurrency,
+      exchangeRate: req.exchangeRate,
+    };
   }
 
   verifyAndParseWebhook(headers: Record<string, string>, rawBody: string): ParsedWebhook {

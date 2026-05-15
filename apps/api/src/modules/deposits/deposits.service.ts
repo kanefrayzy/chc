@@ -63,12 +63,34 @@ export class DepositsService {
     });
 
     try {
+      // Конвертируем AZN → валюту платёжного метода (если она не AZN)
+      let convertedAmount: string | undefined;
+      let convertedCurrency: string | undefined;
+      let exchangeRateStr: string | undefined;
+
+      const methodCurrency = (method.currency ?? '').toUpperCase();
+      if (methodCurrency && methodCurrency !== 'AZN') {
+        // USDT приравниваем к USD
+        const rateSettingsKey =
+          methodCurrency === 'USDT' ? 'exchange_rate.usd' : `exchange_rate.${methodCurrency.toLowerCase()}`;
+        const rate = await this.settings.get<number>(rateSettingsKey).catch(() => null);
+        if (rate && rate > 0) {
+          const aznMajor = Number(amountMinor) / 100;
+          convertedAmount = (aznMajor * rate).toFixed(2);
+          convertedCurrency = methodCurrency;
+          exchangeRateStr = String(rate);
+        }
+      }
+
       const result = await provImpl.createDeposit({
         depositId: draft.id,
         userId,
         amountMinor,
         config: (method.config ?? {}) as Record<string, unknown>,
         currency: method.currency,
+        convertedAmount,
+        convertedCurrency,
+        exchangeRate: exchangeRateStr,
       });
       const updated = await this.prisma.deposit.update({
         where: { id: draft.id },
