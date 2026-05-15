@@ -28,7 +28,7 @@ export function RouletteControls({
 
   const saveForced = (): void => {
     startTransition(async () => {
-      await adminApi.settings.update('roulette.forced_color', forcedColor);
+      await adminApi.settings.set('roulette.forced_color', forcedColor);
       setSaved('Принудительный цвет сохранён');
       setTimeout(() => setSaved(null), 3000);
     });
@@ -37,7 +37,7 @@ export function RouletteControls({
   const saveTarget = (): void => {
     const minor = String(Math.round(parseFloat(dailyTarget || '0') * 100));
     startTransition(async () => {
-      await adminApi.settings.update('roulette.daily_target_minor', minor);
+      await adminApi.settings.set('roulette.daily_target_minor', minor);
       setSaved('Суточный план сохранён');
       setTimeout(() => setSaved(null), 3000);
     });
