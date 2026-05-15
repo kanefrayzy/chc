@@ -182,14 +182,16 @@ export async function Sidebar({ locale }: SidebarProps): Promise<JSX.Element> {
       </div>
 
       <div className="mt-4 space-y-3 border-t border-border pt-4">
-        <div className="rounded-xl border border-brand/20 bg-gradient-to-br from-brand/10 to-accent-purple/10 p-3">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-brand">
-            {tSidebar('promoTitle')}
+        {settings['deposit.bonus_bps'] > 0 && (
+          <div className="rounded-xl border border-brand/20 bg-gradient-to-br from-brand/10 to-accent-purple/10 p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-brand">
+              {tSidebar('promoTitle')}
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+              {tSidebar('promoText')}
+            </p>
           </div>
-          <p className="mt-1 text-xs leading-relaxed text-text-secondary">
-            {tSidebar('promoText')}
-          </p>
-        </div>
+        )}
         <LanguageSwitcher />
         <SocialLinks telegram={telegram} instagram={instagram} discord={discord} />
       </div>

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { AppShell } from '@/components/layout/AppShell';
 import { Card } from '@chcgreen/ui';
+import { getPublicSettings } from '@/lib/api/settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,7 @@ interface BonusItem {
   text: string;
   badge: string;
   tone: 'brand' | 'purple' | 'success' | 'info';
+  depositBonus?: boolean;
 }
 
 const RU_ITEMS: BonusItem[] = [
@@ -29,6 +31,7 @@ const RU_ITEMS: BonusItem[] = [
     text: 'При первом пополнении баланса от 20 AZN мы удваиваем сумму. Бонусные средства можно использовать сразу для покупки кодов.',
     badge: '100%',
     tone: 'brand',
+    depositBonus: true,
   },
   {
     title: 'Кэшбэк выходного дня',
@@ -60,6 +63,7 @@ const AZ_ITEMS: BonusItem[] = [
     text: '20 AZN-dən başlayan ilk depozitdə məbləği ikiqat artırırıq. Bonus vəsaitləri dərhal kod almaq üçün istifadə oluna bilər.',
     badge: '100%',
     tone: 'brand',
+    depositBonus: true,
   },
   {
     title: 'Həftəsonu keş-bek',
@@ -92,8 +96,13 @@ const toneBg: Record<BonusItem['tone'], string> = {
 };
 
 export default async function BonusesPage({ params }: BonusesPageProps): Promise<JSX.Element> {
-  const t = await getTranslations({ locale: params.locale, namespace: 'bonuses' });
-  const items = params.locale === 'az' ? AZ_ITEMS : RU_ITEMS;
+  const [t, settings] = await Promise.all([
+    getTranslations({ locale: params.locale, namespace: 'bonuses' }),
+    getPublicSettings(),
+  ]);
+  const bonusBps = settings['deposit.bonus_bps'];
+  const allItems = params.locale === 'az' ? AZ_ITEMS : RU_ITEMS;
+  const items = bonusBps > 0 ? allItems : allItems.filter((it) => !it.depositBonus);
 
   return (
     <AppShell locale={params.locale}>

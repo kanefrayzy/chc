@@ -127,7 +127,7 @@ export class AuthController {
     void req;
     if (!file) throw new BadRequestException('Файл не загружен');
 
-    const uploadDir = path.join('/tmp', 'uploads', 'avatars');
+    const uploadDir = path.join('/app', 'uploads', 'avatars');
     await fs.mkdir(uploadDir, { recursive: true });
 
     const ext = 'webp';

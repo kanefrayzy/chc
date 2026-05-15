@@ -124,7 +124,7 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
               .reduce((s, b) => s + BigInt(b.amountMinor) * BigInt(mul), 0n);
             const net = totalWin - totalBet;
             if (totalWin > 0n) {
-              toast.success(`Победа! +${(Number(net) / 100).toFixed(2)} AZN`, {
+              toast.success(`Победа! +${(Number(totalWin) / 100).toFixed(2)} AZN`, {
                 duration: 6000,
                 style: {
                   background: COLOR_FILL[c],
@@ -412,11 +412,19 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance }: Roule
                 ) : (
                   bets.slice(0, 8).map((a) => (
                     <div key={a.key} className="flex items-center justify-between text-[11px]">
-                      <span className="text-text-secondary truncate max-w-[60%]">
-                        {a.username}
-                        {a.count > 1 ? <span className="ml-1 text-text-muted">×{a.count}</span> : null}
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <span
+                          className="h-4 w-4 rounded-full shrink-0 flex items-center justify-center text-[8px] font-bold uppercase"
+                          style={{ background: fill + '33', color: fill }}
+                        >
+                          {a.username.charAt(0)}
+                        </span>
+                        <span className="text-text-secondary truncate">
+                          {a.username}
+                        </span>
+                        {a.count > 1 ? <span className="ml-1 text-text-muted shrink-0">×{a.count}</span> : null}
                       </span>
-                      <span className="font-mono font-medium" style={{ color: fill }}>
+                      <span className="font-mono font-medium shrink-0 ml-2" style={{ color: fill }}>
                         {(Number(a.amountMinor) / 100).toFixed(2)}
                       </span>
                     </div>

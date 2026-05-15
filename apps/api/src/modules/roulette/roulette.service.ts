@@ -119,22 +119,36 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
   async listRecentWinners(
     limit = 5,
   ): Promise<{ username: string; amountMinor: string; color: RouletteColor; createdAt: string }[]> {
+    // Берём больше строк чтобы после агрегации осталось нужное количество
     const rows = await this.prisma.rouletteBet.findMany({
       where: { isWinner: true, payoutMinor: { gt: 0n } },
       orderBy: { createdAt: 'desc' },
-      take: Math.min(limit, 20),
+      take: Math.min(limit * 20, 200),
       include: { user: { select: { username: true } } } as never,
     });
-    return rows.map((b) => {
+
+    // Группируем по (userId, roundId) — суммируем выигрыши
+    type WinEntry = { username: string; amountMinor: bigint; color: RouletteColor; createdAt: Date };
+    const groups = new Map<string, WinEntry>();
+    for (const b of rows) {
       const username =
         (b as RouletteBet & { user?: { username: string } }).user?.username ?? 'player';
-      return {
-        username,
-        amountMinor: (b.payoutMinor ?? 0n).toString(),
-        color: b.color,
-        createdAt: b.createdAt.toISOString(),
-      };
-    });
+      const key = `${b.userId}|${b.roundId}`;
+      if (!groups.has(key)) {
+        groups.set(key, { username, amountMinor: 0n, color: b.color, createdAt: b.createdAt });
+      }
+      groups.get(key)!.amountMinor += b.payoutMinor ?? 0n;
+    }
+
+    return [...groups.values()]
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit)
+      .map((e) => ({
+        username: e.username,
+        amountMinor: e.amountMinor.toString(),
+        color: e.color,
+        createdAt: e.createdAt.toISOString(),
+      }));
   }
 
   async placeBet(params: {

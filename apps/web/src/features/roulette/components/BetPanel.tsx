@@ -127,7 +127,7 @@ export function BetPanel({
       </div>
 
       {/* Быстрые кнопки — две строки на мобильных */}
-      <div className="grid grid-cols-4 gap-1.5 sm:flex sm:flex-wrap">
+      <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-8">
         {[1, 5, 10, 50].map((v) => (
           <button
             key={v}
