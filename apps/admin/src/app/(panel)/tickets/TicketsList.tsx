@@ -60,6 +60,7 @@ export function TicketsList({ initialItems, status }: TicketsListProps) {
           id: base.id,
           userId: base.userId,
           username: base.username,
+          userBalanceMinor: base.userBalanceMinor,
           moderatorId: base.moderatorId,
           moderatorUsername: base.moderatorUsername,
           type: base.type,
