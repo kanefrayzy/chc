@@ -47,6 +47,9 @@ export default async function RoulettePage({ params }: RoulettePageProps): Promi
           locale={params.locale}
           minBetMinor={settings['roulette.min_bet_minor']}
           maxBetMinor={settings['roulette.max_bet_minor']}
+          iconGreen={settings['roulette.icon_url.green'] as string | undefined}
+          iconRed={settings['roulette.icon_url.red'] as string | undefined}
+          iconBlack={settings['roulette.icon_url.black'] as string | undefined}
         />
       </div>
     </AppShell>

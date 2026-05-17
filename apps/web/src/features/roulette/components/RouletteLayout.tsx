@@ -46,6 +46,9 @@ export interface RouletteLayoutProps {
   locale: string;
   minBetMinor?: string;
   maxBetMinor?: string;
+  iconGreen?: string;
+  iconRed?: string;
+  iconBlack?: string;
 }
 
 interface ResultInfo {
@@ -55,7 +58,7 @@ interface ResultInfo {
   multiplier: number;
 }
 
-export function RouletteLayout({ isAuthed, balanceMinor: initialBalance, minBetMinor, maxBetMinor }: RouletteLayoutProps): JSX.Element {
+export function RouletteLayout({ isAuthed, balanceMinor: initialBalance, minBetMinor, maxBetMinor, iconGreen, iconRed, iconBlack }: RouletteLayoutProps): JSX.Element {
   const t = useTranslations('roulette');
   const { refreshBalance } = useUi();
   const [round, setRound] = useState<RouletteRoundDto | null>(null);
@@ -358,6 +361,9 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance, minBetM
             resultColor={result?.color ?? null}
             highlightWinner={highlightWinner}
             center={centerNode}
+            iconGreen={iconGreen}
+            iconRed={iconRed}
+            iconBlack={iconBlack}
           />
         </div>
       </div>

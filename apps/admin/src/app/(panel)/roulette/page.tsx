@@ -30,6 +30,9 @@ export default async function RoulettePage() {
   const currentForcedColor = String(forcedColorSetting?.value ?? '');
   const houseEdgeSetting = settings.items.find((s) => s.key === 'roulette.house_edge_pct');
   const currentHouseEdgePct = Number(houseEdgeSetting?.value ?? 5);
+  const iconGreen = String(settings.items.find((s) => s.key === 'roulette.icon_url.green')?.value ?? '');
+  const iconRed = String(settings.items.find((s) => s.key === 'roulette.icon_url.red')?.value ?? '');
+  const iconBlack = String(settings.items.find((s) => s.key === 'roulette.icon_url.black')?.value ?? '');
 
   const todayGgr = BigInt(stats.todayGgrMinor);
   const todayGgrPct = stats.todayGgrPct ?? 0;
@@ -83,6 +86,9 @@ export default async function RoulettePage() {
       <RouletteControls
         currentForcedColor={currentForcedColor}
         currentHouseEdgePct={currentHouseEdgePct}
+        currentIconGreen={iconGreen}
+        currentIconRed={iconRed}
+        currentIconBlack={iconBlack}
       />
 
       {/* Recent rounds table */}

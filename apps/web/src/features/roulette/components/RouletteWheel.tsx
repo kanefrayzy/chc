@@ -45,6 +45,10 @@ export interface RouletteWheelProps {
   /** Сбрасывает выделение победителя (когда новый раунд активно идёт). */
   highlightWinner: boolean;
   center?: React.ReactNode;
+  /** Кастомные иконки для секторов (URL PNG/WEBP). Если пусто — фоллбэк. */
+  iconGreen?: string;
+  iconRed?: string;
+  iconBlack?: string;
 }
 
 /**
@@ -58,6 +62,9 @@ export function RouletteWheel({
   resultColor,
   highlightWinner,
   center,
+  iconGreen,
+  iconRed,
+  iconBlack,
 }: RouletteWheelProps): JSX.Element {
   const [angleDeg, setAngleDeg] = useState(0);
   const angleRef = useRef(0);
@@ -155,6 +162,12 @@ export function RouletteWheel({
 
   const isWinnerVisible = highlightWinner && resultColor !== null;
 
+  const iconUrlMap: Record<RouletteColor, string | undefined> = {
+    GREEN: iconGreen || undefined,
+    RED:   iconRed   || undefined,
+    BLACK: iconBlack || undefined,
+  };
+
   return (
     <div
       className="relative flex items-center justify-center select-none"
@@ -238,7 +251,6 @@ export function RouletteWheel({
         {/* ячейки */}
         {cells.map((cell, i) => {
           const isWinner = isWinnerVisible && i === resultSlot;
-          const isGreen = cell.color === 'GREEN';
           return (
             <g key={i}>
               <path
@@ -252,11 +264,33 @@ export function RouletteWheel({
                   ...(isWinner ? { filter: `drop-shadow(0 0 10px ${COLOR_FILL[cell.color]})` } : {}),
                 }}
               />
-              {isGreen ? (
-                <g transform={`translate(${cell.cx},${cell.cy}) rotate(${cell.rot})`}>
-                  <CrownIcon size={14} />
-                </g>
-              ) : null}
+              {(() => {
+                const customUrl = iconUrlMap[cell.color];
+                const iconSize = 16;
+                const half = iconSize / 2;
+                if (customUrl) {
+                  return (
+                    <g transform={`translate(${cell.cx},${cell.cy}) rotate(${cell.rot})`}>
+                      <image
+                        href={customUrl}
+                        width={iconSize}
+                        height={iconSize}
+                        x={-half}
+                        y={-half}
+                        style={{ imageRendering: 'auto' }}
+                      />
+                    </g>
+                  );
+                }
+                if (cell.color === 'GREEN') {
+                  return (
+                    <g transform={`translate(${cell.cx},${cell.cy}) rotate(${cell.rot})`}>
+                      <CrownIcon size={14} />
+                    </g>
+                  );
+                }
+                return null;
+              })()}
             </g>
           );
         })}

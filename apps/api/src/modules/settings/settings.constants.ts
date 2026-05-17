@@ -146,6 +146,27 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     isPublic: false,
     description: 'Целевой доход казино от рулетки в % от оборота (0–100). Используется для антиминуса.',
   },
+  {
+    key: 'roulette.icon_url.green',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'Иконка для зелёных секторов рулетки (URL PNG/WEBP). Если пусто — отображается корона.',
+  },
+  {
+    key: 'roulette.icon_url.red',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'Иконка для красных секторов рулетки (URL PNG/WEBP). Если пусто — без иконки.',
+  },
+  {
+    key: 'roulette.icon_url.black',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'Иконка для чёрных секторов рулетки (URL PNG/WEBP). Если пусто — без иконки.',
+  },
   // ─── Геймплей: внешний URL казино ─────────────────────────────────────
   {
     key: 'gameplay.external_casino_url',
