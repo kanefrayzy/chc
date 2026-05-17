@@ -26,7 +26,7 @@ export class WestWalletProvider implements PaymentProvider {
   private readonly baseUrl = 'https://api.westwallet.io';
 
   constructor() {
-    this.apiKey = process.env.WESTWALLET_API_KEY ?? '';
+    this.apiKey = process.env.WESTWALLET_PUBLIC_KEY ?? process.env.WESTWALLET_API_KEY ?? '';
     this.privateKey = process.env.WESTWALLET_PRIVATE_KEY ?? '';
     this.ipnUrl = process.env.WESTWALLET_IPN_URL ?? '';
   }
