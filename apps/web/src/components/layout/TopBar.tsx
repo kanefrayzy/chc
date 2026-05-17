@@ -11,6 +11,7 @@ import { BalancePill } from './BalancePill';
 import { AuthButtons } from './AuthButtons';
 import { UserMenu } from './UserMenu';
 import { RedeemCodeButton } from './RedeemCodeButton';
+import { OnlineCounter } from './OnlineCounter';
 
 export interface TopBarProps {
   locale: string;
@@ -62,6 +63,9 @@ export async function TopBar({ locale }: TopBarProps): Promise<JSX.Element> {
             {siteName}
           </span>
         </Link>
+        <div className="lg:hidden">
+          <OnlineCounter />
+        </div>
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
           {user ? (

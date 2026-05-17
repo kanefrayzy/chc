@@ -318,6 +318,21 @@ export const adminApi = {
     },
     send: (id: string, body: { body: string }) =>
       apiFetch<AdminMessage>(`/admin/tickets/${id}/messages`, { method: 'POST', body }),
+    uploadImage: async (id: string, file: File): Promise<AdminMessage> => {
+      const url = `${getApiBaseUrl()}/admin/tickets/${id}/upload-image`;
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch(url, {
+        method: 'POST',
+        body: form,
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const text = await res.text();
+      const data = text ? (JSON.parse(text) as unknown) : null;
+      if (!res.ok) throw new ApiException(res.status, data as null);
+      return data as AdminMessage;
+    },
     close: (id: string) =>
       apiFetch<AdminTicketRow>(`/admin/tickets/${id}/close`, { method: 'POST' }),
     balanceAdjust: (id: string, body: { amountMinor: string; reason: string }) =>

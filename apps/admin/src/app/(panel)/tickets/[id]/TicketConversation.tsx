@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, type FormEvent, type ChangeEvent } from 'react';
 import { adminApi, type AdminMessage, type TicketStatus } from '../../../../lib/api/admin';
 import { ApiException } from '../../../../lib/api/client';
 import { getAdminSocket } from '../../../../lib/realtime';
@@ -47,6 +47,11 @@ export function TicketConversation({
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [balanceSuccess, setBalanceSuccess] = useState<string | null>(null);
+
+  // Загрузка изображения
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   // Блокировка пользователя
   const [blockReason, setBlockReason] = useState('');
@@ -120,9 +125,25 @@ export function TicketConversation({
     }
   }, [ticketId]);
 
+  async function handleImageUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setImageUploading(true);
+    setImageError(null);
+    try {
+      const msg = await adminApi.tickets.uploadImage(ticketId, file);
+      setMessages((prev) => [...prev, msg]);
+      playSentSound();
+    } catch (err) {
+      setImageError(err instanceof ApiException ? err.message : 'Ошибка загрузки изображения');
+    } finally {
+      setImageUploading(false);
+    }
+  }
+
   // Загрузить более старые сообщения
-  async function loadMore() {
-    if (!cursorId) return;
+  async function loadMore() {    if (!cursorId) return;
     setLoadingMore(true);
     try {
       const prev = await adminApi.tickets.messages(ticketId, { beforeId: cursorId, limit: 30 });
@@ -299,6 +320,13 @@ export function TicketConversation({
 
       {status !== 'CLOSED' ? (
         <form onSubmit={send} className="space-y-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            className="hidden"
+            onChange={handleImageUpload}
+          />
           <Textarea
             value={body}
             onChange={(e) => handleBodyChange(e.target.value)}
@@ -306,8 +334,17 @@ export function TicketConversation({
             placeholder="Ответ пользователю…"
           />
           {error && <div className="text-sm text-danger">{error}</div>}
+          {imageError && <div className="text-sm text-danger">{imageError}</div>}
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                type="button" variant="ghost" size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={imageUploading}
+                title="Прикрепить изображение"
+              >
+                {imageUploading ? '⏳' : '📎'} Изображение
+              </Button>
               <Button
                 type="button" variant="ghost" size="sm"
                 onClick={() => { setShowBlockForm(true); setBlockError(null); }}
@@ -375,7 +412,17 @@ function MessageBubble({ message }: { message: AdminMessage }) {
         <div className={cn('text-xs mb-0.5', isStaff ? 'text-white/60' : 'text-ink-400')}>
           {message.authorUsername ?? 'Без автора'} · {formatDateTime(message.createdAt)}
         </div>
-        <div className="whitespace-pre-wrap break-words">{message.body}</div>
+        {message.kind === 'FILE' ? (
+          <a href={message.body} target="_blank" rel="noopener noreferrer">
+            <img
+              src={message.body}
+              alt="Изображение"
+              className="max-w-[280px] max-h-[280px] rounded-lg cursor-pointer object-contain"
+            />
+          </a>
+        ) : (
+          <div className="whitespace-pre-wrap break-words">{message.body}</div>
+        )}
       </div>
     </div>
   );

@@ -35,8 +35,9 @@ export class WestWalletProvider implements PaymentProvider {
   private buildAuthHeaders(body: Record<string, unknown>): Record<string, string> {
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const bodyJson = JSON.stringify(body);
-    // Подпись: HMAC-SHA256(privateKey, timestamp + "\n" + bodyJson)
-    const sign = createHmac('sha256', this.privateKey)
+    // Ключ WestWallet передаётся в формате base64url — декодируем в raw-байты перед HMAC
+    const keyBytes = Buffer.from(this.privateKey, 'base64url');
+    const sign = createHmac('sha256', keyBytes)
       .update(`${timestamp}\n${bodyJson}`)
       .digest('hex');
     return {

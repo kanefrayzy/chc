@@ -13,11 +13,11 @@ export default async function PanelLayout({ children }: { children: ReactNode })
     redirect('/login');
   }
 
-  // Moderators can only access /tickets and /dashboard
+  // Moderators can only access /tickets and /withdrawals
   if (user.role === 'MODERATOR') {
     const headersList = headers();
     const pathname = headersList.get('x-invoke-path') ?? headersList.get('x-pathname') ?? '';
-    const allowed = ['/tickets', '/dashboard'];
+    const allowed = ['/tickets', '/withdrawals'];
     const isAllowed = allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
     if (pathname && !isAllowed) {
       redirect('/tickets');

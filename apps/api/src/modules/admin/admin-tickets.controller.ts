@@ -1,3 +1,6 @@
+import * as path from 'node:path';
+import * as fs from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import {
   Controller,
   Get,
@@ -9,7 +12,12 @@ import {
   UseGuards,
   DefaultValuePipe,
   ParseIntPipe,
+  BadRequestException,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import sharp from 'sharp';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -115,5 +123,45 @@ export class AdminTicketsController {
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
+  }
+
+  @Post(':id/upload-image')
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.mimetype)) {
+        return cb(new BadRequestException('Разрешены только PNG, JPG, WEBP, GIF'), false);
+      }
+      cb(null, true);
+    },
+  }))
+  async uploadImage(
+    @CurrentUser() actor: AccessTokenPayload,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
+  ): Promise<AdminMessageDto> {
+    if (!file) throw new BadRequestException('Файл не загружен');
+
+    const uploadDir = path.join('/app', 'uploads', 'ticket-images');
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    const filename = `${randomUUID()}.webp`;
+    const filepath = path.join(uploadDir, filename);
+    await sharp(file.buffer).webp({ quality: 85 }).toFile(filepath);
+
+    const apiBase = process.env.API_PUBLIC_URL ?? 'http://localhost:4000';
+    const imageUrl = `${apiBase}/uploads/ticket-images/${filename}`;
+
+    const meta = clientMeta(req);
+    const msg = await this.service.postMessage({
+      actorId: actor.sub,
+      ticketId: id,
+      body: imageUrl,
+      kind: 'FILE',
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+    return toAdminMessage(msg);
   }
 }

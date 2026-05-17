@@ -28,7 +28,7 @@ function clientMeta(req: Request) {
 
 @Controller('admin/withdrawals')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('SUPER_ADMIN')
+@Roles('MODERATOR', 'SUPER_ADMIN')
 export class AdminWithdrawalsController {
   constructor(private readonly service: AdminWithdrawalsService) {}
 

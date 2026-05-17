@@ -23,6 +23,7 @@ import { SidebarNav, type SidebarItem, type SidebarSection } from './SidebarNav'
 import { SidebarDrawer } from './SidebarDrawer';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { SocialLinks } from './SocialLinks';
+import { OnlineCounter } from './OnlineCounter';
 
 export interface SidebarProps {
   locale: string;
@@ -159,9 +160,12 @@ export async function Sidebar({ locale }: SidebarProps): Promise<JSX.Element> {
             <CrownIcon className="h-6 w-6" />
           </span>
         )}
-        <span className="text-base font-extrabold tracking-wide text-text-primary">
-          {siteName}
-        </span>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-base font-extrabold tracking-wide text-text-primary">
+            {siteName}
+          </span>
+          <OnlineCounter />
+        </div>
       </Link>
 
       <div className="flex-1 overflow-y-auto pr-1">

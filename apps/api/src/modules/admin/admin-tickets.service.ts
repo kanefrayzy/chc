@@ -73,6 +73,7 @@ export class AdminTicketsService {
     actorId: string;
     ticketId: string;
     body: string;
+    kind?: 'TEXT' | 'FILE';
     ip?: string;
     userAgent?: string;
   }) {
@@ -92,7 +93,7 @@ export class AdminTicketsService {
         data: {
           ticketId: ticket.id,
           authorId: params.actorId,
-          kind: 'TEXT',
+          kind: params.kind ?? 'TEXT',
           body: params.body,
         },
         include: { author: { select: { username: true, role: true } } },

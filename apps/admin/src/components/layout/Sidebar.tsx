@@ -26,6 +26,7 @@ const NAV: NavItem[] = [
     href: '/dashboard',
     label: 'Сводка',
     icon: <Icon d="M3 3h7v7H3V3zM14 3h7v7h-7V3zM3 14h7v7H3v-7zM14 14h7v7h-7v-7z" />,
+    moderatorHidden: true,
   },
   {
     href: '/code-purchases',
@@ -37,7 +38,6 @@ const NAV: NavItem[] = [
     href: '/withdrawals',
     label: 'Выводы',
     icon: <Icon d="M12 2v20M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 010 7H6" />,
-    moderatorHidden: true,
   },
   {
     href: '/tickets',
