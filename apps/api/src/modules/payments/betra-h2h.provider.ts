@@ -97,8 +97,8 @@ export class BetraH2HProvider implements PaymentProvider {
     );
 
     return {
-      // externalId = числовой ID от Betra (data.id): именно его Betra вернёт в webhook как mirror_transaction_id
-      externalId: String(data.id),
+      // externalId = наш depositId (order_id): его Betra вернёт в webhook.data.order_id
+      externalId: req.depositId,
       externalAddress,
       originalAmount: displayAmount,
       originalCurrency: displayCurrency,
@@ -107,95 +107,50 @@ export class BetraH2HProvider implements PaymentProvider {
   }
 
   verifyAndParseWebhook(headers: Record<string, string>, rawBody: string): ParsedWebhook {
-    let payload: {
-      id?: number;
-      mirror_transaction_id?: number;
-      order_id?: string;
-      status?: string;
-      timestamp?: number;
-      signature?: string;
+    // Betra фактически шлёт: {"event":"transaction.updated","data":{"id":...,"order_id":"...","status":"..."},...}
+    // Подпись: X-Signature заголовок = HMAC-SHA256(rawBody, secret)
+    let outer: {
+      event?: string;
+      data?: {
+        id?: number;
+        order_id?: string;
+        status?: string;
+      };
+      timestamp?: string;
     };
     try {
-      payload = JSON.parse(rawBody) as typeof payload;
+      outer = JSON.parse(rawBody) as typeof outer;
     } catch {
       throw new BadRequestException('Invalid JSON body');
     }
 
-    // Betra может прислать order_id (по документации) или mirror_transaction_id (фактически)
-    const transactionId =
-      payload.order_id ??
-      (payload.mirror_transaction_id != null ? String(payload.mirror_transaction_id) : null);
-
-    if (!transactionId) {
-      throw new BadRequestException('Missing order_id or mirror_transaction_id in webhook payload');
+    const data = outer.data;
+    if (!data?.order_id) {
+      throw new BadRequestException('Missing data.order_id in webhook payload');
     }
 
-    // Проверка подписи (два метода: body signature и X-Signature header)
+    // Проверка подписи: X-Signature = HMAC-SHA256(rawBody, secret)
     if (this.secret) {
-      const numericId = payload.id ?? payload.mirror_transaction_id;
-      let verified = false;
-
-      // Метод 1: стандартный — HMAC-SHA256(id + order_id + status + timestamp) в payload.signature
-      if (payload.signature) {
-        const signData =
-          String(numericId ?? '') +
-          String(payload.order_id ?? '') +
-          String(payload.status ?? '') +
-          String(payload.timestamp ?? '');
-        const expected = createHmac('sha256', this.secret).update(signData).digest('hex');
-        try {
-          const expectedBuf = Buffer.from(expected, 'hex');
-          const actualBuf = Buffer.from(payload.signature, 'hex');
-          if (expectedBuf.length === actualBuf.length && timingSafeEqual(expectedBuf, actualBuf)) {
-            verified = true;
-          } else {
-            this.logger.debug(
-              `Betra method1 mismatch id=${numericId} signData="${signData}" expected=${expected} got=${payload.signature}`,
-            );
-          }
-        } catch {
-          // ignore parse errors, try next method
-        }
+      const xSig = headers['x-signature'] ?? '';
+      if (!xSig) throw new BadRequestException('Missing X-Signature header');
+      const expected = createHmac('sha256', this.secret).update(rawBody).digest('hex');
+      const expectedBuf = Buffer.from(expected, 'hex');
+      let actualBuf: Buffer;
+      try {
+        actualBuf = Buffer.from(xSig, 'hex');
+      } catch {
+        throw new BadRequestException('Invalid X-Signature format');
       }
-
-      // Метод 2: X-Signature заголовок — HMAC-SHA256(rawBody)
-      if (!verified) {
-        const xSig = headers['x-signature'] ?? headers['X-Signature'] ?? '';
-        if (xSig) {
-          const expected2 = createHmac('sha256', this.secret).update(rawBody).digest('hex');
-          try {
-            const expectedBuf2 = Buffer.from(expected2, 'hex');
-            const actualBuf2 = Buffer.from(xSig, 'hex');
-            if (expectedBuf2.length === actualBuf2.length && timingSafeEqual(expectedBuf2, actualBuf2)) {
-              verified = true;
-            } else {
-              this.logger.debug(`Betra method2 mismatch expected=${expected2} got=${xSig}`);
-            }
-          } catch {
-            // ignore
-          }
-        }
-      }
-
-      if (!verified) {
-        this.logger.warn(
-          `Betra webhook signature verification failed for id=${numericId}. ` +
-            `rawBody=${rawBody} xSig=${headers['x-signature'] ?? ''}`,
-        );
-        // mirror_transaction_id — нестандартный формат от агрегатора (aggregator-forwarded callback).
-        // Подпись в теле — подпись агрегатора, а не наша. Принимаем с предупреждением.
-        // TODO: уточнить у Betra алгоритм подписи для mirror_transaction_id формата.
-        if (payload.mirror_transaction_id == null) {
-          throw new BadRequestException('Invalid webhook signature');
-        }
-        this.logger.warn(`Betra mirror_transaction_id callback accepted without signature verification (id=${numericId})`);
+      if (expectedBuf.length !== actualBuf.length || !timingSafeEqual(expectedBuf, actualBuf)) {
+        this.logger.warn(`Betra signature mismatch expected=${expected} got=${xSig}`);
+        throw new BadRequestException('Invalid webhook signature');
       }
     }
 
     return {
-      externalId: transactionId,
-      status: mapBetraStatus(payload.status),
-      rawPayload: payload,
+      externalId: data.order_id,
+      status: mapBetraStatus(data.status),
+      rawPayload: outer,
     };
   }
 }
