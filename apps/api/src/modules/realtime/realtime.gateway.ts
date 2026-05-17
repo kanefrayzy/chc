@@ -47,6 +47,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   @WebSocketServer()
   server!: Server;
 
+  /** Количество подключённых веб-клиентов (не из admin-панели). */
+  private webClientCount = 0;
+
   constructor(
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
@@ -60,7 +63,12 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     const token =
       parseCookie(client.handshake.headers.cookie, AUTH_COOKIE.access) ??
       (client.handshake.auth?.token as string | undefined);
-    if (!token) return;
+    if (!token) {
+      // Гость с веб-сайта (не admin)
+      this.webClientCount += 1;
+      this.broadcastOnlineCount();
+      return;
+    }
     try {
       const payload = this.auth.verifyAccessToken(token);
       client.data.user = payload;
@@ -68,14 +76,42 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       // Модераторы и админы подписываются на общую комнату тикетов
       if (payload.role === 'MODERATOR' || payload.role === 'SUPER_ADMIN') {
         await client.join('admin:tickets');
+      } else {
+        // Обычный юзер с веб-сайта
+        this.webClientCount += 1;
+        this.broadcastOnlineCount();
       }
     } catch {
       // невалидный токен — оставляем как гостя
+      this.webClientCount += 1;
+      this.broadcastOnlineCount();
     }
   }
 
-  handleDisconnect(_client: AuthedSocket): void {
+  handleDisconnect(client: AuthedSocket): void {
+    const user = client.data.user;
+    const isMod = user?.role === 'MODERATOR' || user?.role === 'SUPER_ADMIN';
+    if (!isMod) {
+      this.webClientCount = Math.max(0, this.webClientCount - 1);
+      this.broadcastOnlineCount();
+    }
     // socket.io сам убирает из комнат
+  }
+
+  /** Рассылает текущее количество онлайн-пользователей всем в комнате рулетки. */
+  private broadcastOnlineCount(): void {
+    this.server.to(ROULETTE_ROOM).emit('online:count', { count: this.webClientCount });
+  }
+
+  /** Возвращает текущее количество онлайн-пользователей. */
+  getOnlineCount(): number {
+    return this.webClientCount;
+  }
+
+  /** Клиент запрашивает текущее количество онлайн-пользователей. */
+  @SubscribeMessage('get:online')
+  getOnline(): { count: number } {
+    return { count: this.webClientCount };
   }
 
   /** Клиент запрашивает подписку на конкретный тикет. */

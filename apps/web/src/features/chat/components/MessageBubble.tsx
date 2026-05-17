@@ -25,7 +25,17 @@ export function MessageBubble({ message, locale }: MessageBubbleProps): JSX.Elem
           mine ? 'bg-brand text-bg-base' : 'bg-bg-elevated text-text-primary',
         )}
       >
-        <div className="whitespace-pre-wrap break-words">{message.body}</div>
+        {message.kind === 'FILE' ? (
+          <a href={message.body} target="_blank" rel="noopener noreferrer">
+            <img
+              src={message.body}
+              alt="Изображение"
+              className="max-w-[260px] max-h-[260px] rounded-lg cursor-pointer object-contain"
+            />
+          </a>
+        ) : (
+          <div className="whitespace-pre-wrap break-words">{message.body}</div>
+        )}
         <div className={cn('mt-1 text-[10px]', mine ? 'text-bg-base/70' : 'text-text-muted')}>
           {new Date(message.createdAt).toLocaleTimeString(
             locale === 'az' ? 'az-AZ' : 'ru-RU',

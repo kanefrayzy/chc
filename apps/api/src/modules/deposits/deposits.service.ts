@@ -12,6 +12,7 @@ import { PrismaService } from '../../common/prisma/prisma.module';
 import { PaymentProviderRegistry } from '../payments/payments.module';
 import { PaymentMethodsService } from '../payment-methods/payment-methods.service';
 import { SettingsService } from '../settings/settings.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 const DEPOSIT_EXPIRE_MINUTES = 15;
 
@@ -25,6 +26,7 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
     private readonly providers: PaymentProviderRegistry,
     private readonly settings: SettingsService,
     private readonly methods: PaymentMethodsService,
+    private readonly realtime: RealtimeGateway,
   ) {}
 
   onModuleInit(): void {
@@ -330,6 +332,17 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
     });
 
     this.logger.log(`Deposit ${deposit.id} COMPLETED via ${deposit.provider}`);
+
+    // Уведомляем пользователя через WebSocket
+    try {
+      this.realtime.emitToUser(deposit.userId, 'deposit:updated', {
+        depositId: deposit.id,
+        status: 'COMPLETED',
+      });
+    } catch {
+      // не блокируем
+    }
+
     return { ok: true, alreadyProcessed: false };
   }
 }

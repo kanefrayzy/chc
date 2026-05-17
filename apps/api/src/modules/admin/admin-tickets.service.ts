@@ -115,6 +115,8 @@ export class AdminTicketsService {
         id: message.id,
         ticketId: message.ticketId,
         authorId: message.authorId,
+        authorUsername: message.author?.username ?? null,
+        authorRole: message.author?.role ?? null,
         kind: message.kind,
         body: message.body,
         createdAt: message.createdAt.toISOString(),

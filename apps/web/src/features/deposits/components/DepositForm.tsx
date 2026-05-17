@@ -9,6 +9,7 @@ import { PendingDepositCard } from './PendingDepositCard';
 import { depositsApi, type DepositDto } from '@/lib/api/deposits';
 import { paymentMethodsApi, type PublicPaymentMethod } from '@/lib/api/payment-methods';
 import { ApiException } from '@/lib/api/client';
+import { getRealtimeSocket } from '@/lib/realtime/socket';
 
 const FALLBACK_MIN = 100n;
 const FALLBACK_MAX = 1_000_000n;
@@ -32,6 +33,26 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
   // H2H активный депозит — блокирует форму; WestWallet — не блокирует (статичный адрес)
   const [activeDeposit, setActiveDeposit] = useState<DepositDto | null | undefined>(undefined);
   const [walletDeposit, setWalletDeposit] = useState<DepositDto | null>(null);
+
+  // Слушаем WS: когда депозит завершён — закрываем карточку и уведомляем родителя
+  useEffect(() => {
+    const socket = getRealtimeSocket();
+    const handler = (data: { depositId: string; status: string }): void => {
+      if (data.status !== 'COMPLETED') return;
+      setActiveDeposit((prev) => {
+        if (prev && prev.id === data.depositId) return null;
+        return prev;
+      });
+      setWalletDeposit((prev) => {
+        if (prev && prev.id === data.depositId) return null;
+        return prev;
+      });
+      if (onSuccess) onSuccess();
+      router.refresh();
+    };
+    socket.on('deposit:updated', handler);
+    return () => { socket.off('deposit:updated', handler); };
+  }, [onSuccess, router]);
 
   const checkActiveDeposit = useCallback((): void => {
     depositsApi

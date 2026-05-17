@@ -133,7 +133,7 @@ export function TicketConversation({
     setImageError(null);
     try {
       const msg = await adminApi.tickets.uploadImage(ticketId, file);
-      setMessages((prev) => [...prev, msg]);
+      setMessages((prev) => (prev.some((x) => x.id === msg.id) ? prev : [...prev, msg]));
       playSentSound();
     } catch (err) {
       setImageError(err instanceof ApiException ? err.message : 'Ошибка загрузки изображения');
@@ -172,7 +172,7 @@ export function TicketConversation({
     if (socket.connected) socket.emit('typing:ticket', { ticketId, isTyping: false });
     try {
       const msg = await adminApi.tickets.send(ticketId, { body: body.trim() });
-      setMessages((prev) => [...prev, msg]);
+      setMessages((prev) => (prev.some((x) => x.id === msg.id) ? prev : [...prev, msg]));
       setBody('');
       playSentSound();
     } catch (e) {
