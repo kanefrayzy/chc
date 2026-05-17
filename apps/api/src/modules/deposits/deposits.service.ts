@@ -70,13 +70,34 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
 
     const method = await this.methods.getUsable(paymentMethodId, 'DEPOSIT');
 
-    // Блокируем создание второго депозита, если уже есть активный
-    const activeDeposit = await this.prisma.deposit.findFirst({
-      where: { userId, status: { in: ['PENDING', 'PROCESSING'] } },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (activeDeposit) {
-      throw new ConflictException('У вас уже есть активный счёт на оплату. Оплатите его или дождитесь истечения таймера.');
+    const provider: PaymentProviderEnum = method.provider;
+    const isStaticWallet = provider === 'WESTWALLET';
+
+    // Для WestWallet: если уже есть активный депозит с тем же методом — возвращаем его.
+    // Адрес статичен, создавать новый не нужно.
+    if (isStaticWallet) {
+      const existing = await this.prisma.deposit.findFirst({
+        where: { userId, paymentMethodId: method.id, status: { in: ['PENDING', 'PROCESSING'] } },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (existing) {
+        // Обновляем запрошенную сумму (пользователь мог ввести новую)
+        return this.prisma.deposit.update({
+          where: { id: existing.id },
+          data: { amountMinor },
+        });
+      }
+    } else {
+      // Для H2H провайдеров блокируем параллельные депозиты
+      const activeDeposit = await this.prisma.deposit.findFirst({
+        where: { userId, status: { in: ['PENDING', 'PROCESSING'] } },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (activeDeposit) {
+        throw new ConflictException(
+          'У вас уже есть активный счёт на оплату. Оплатите его или дождитесь истечения таймера.',
+        );
+      }
     }
 
     // Лимиты: приоритет у метода (если заданы), иначе глобальные настройки.
@@ -89,10 +110,12 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    const provider: PaymentProviderEnum = method.provider;
     const provImpl = this.providers.get(provider);
 
-    const expiresAt = new Date(Date.now() + DEPOSIT_EXPIRE_MINUTES * 60 * 1000);
+    // WestWallet — статичный кошелёк, не нужен таймер
+    const expiresAt = isStaticWallet
+      ? null
+      : new Date(Date.now() + DEPOSIT_EXPIRE_MINUTES * 60 * 1000);
 
     // создаём запись со статусом PENDING, чтобы получить depositId
     const draft = await this.prisma.deposit.create({
@@ -136,6 +159,7 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
         convertedCurrency,
         exchangeRate: exchangeRateStr,
       });
+
       const updated = await this.prisma.deposit.update({
         where: { id: draft.id },
         data: {
@@ -146,7 +170,8 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
           originalCurrency: result.originalCurrency ?? null,
           exchangeRate: result.exchangeRate ?? null,
           status: 'PROCESSING',
-          expiresAt,
+          // Если провайдер сигнализирует «без истечения», сбрасываем expiresAt в null
+          expiresAt: result.noExpiry ? null : expiresAt,
         },
       });
       return updated;

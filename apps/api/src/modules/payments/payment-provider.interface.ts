@@ -36,6 +36,11 @@ export interface CreateDepositResult {
   originalAmount?: string;
   originalCurrency?: string;
   exchangeRate?: string;
+  /**
+   * Если true — для этого депозита не нужен таймер истечения.
+   * Используется WestWallet: статичный адрес кошелька не истекает.
+   */
+  noExpiry?: boolean;
 }
 
 export interface ParsedWebhook {

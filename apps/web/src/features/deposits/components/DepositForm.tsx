@@ -39,8 +39,9 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
         const found = res.items.find(
           (d) =>
             (d.status === 'PENDING' || d.status === 'PROCESSING') &&
-            d.expiresAt &&
-            new Date(d.expiresAt) > new Date(),
+            // WestWallet: expiresAt === null (статичный кошелёк, без таймера)
+            // H2H: проверяем что ещё не истёк
+            (d.expiresAt === null || new Date(d.expiresAt) > new Date()),
         );
         setActiveDeposit(found ?? null);
       })
@@ -170,10 +171,10 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
                       onClick={() => setSelectedId(m.id)}
                       disabled={isPending}
                       className={[
-                        'flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition',
+                        'flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition',
                         active
-                          ? 'border-brand bg-brand/10 text-text-primary'
-                          : 'border-border-default bg-bg-surface text-text-secondary hover:border-border-strong',
+                          ? 'border-brand bg-brand/10 text-text-primary ring-1 ring-brand/30'
+                          : 'border-border-subtle bg-bg-surface text-text-secondary hover:border-brand/50 hover:bg-brand/5',
                       ].join(' ')}
                     >
                       {m.iconUrl ? (
@@ -181,19 +182,26 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
                         <img
                           src={m.iconUrl}
                           alt=""
-                          className="h-8 w-8 rounded-md object-contain bg-black/20"
+                          className="h-7 w-7 shrink-0 rounded-lg object-contain bg-black/20"
                         />
                       ) : (
-                        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-brand/20 text-xs font-semibold text-brand">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand/20 text-[10px] font-bold text-brand">
                           {m.name.slice(0, 2).toUpperCase()}
                         </span>
                       )}
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{m.name}</span>
-                        <span className="block truncate text-xs text-text-muted">
+                        <span className="block truncate text-sm font-medium leading-tight">{m.name}</span>
+                        <span className="block truncate text-[11px] text-text-muted leading-tight mt-0.5">
                           {m.description ?? m.currency}
                         </span>
                       </span>
+                      {active && (
+                        <span className="ml-auto h-4 w-4 shrink-0 rounded-full bg-brand flex items-center justify-center">
+                          <svg viewBox="0 0 12 12" className="h-2.5 w-2.5 fill-white">
+                            <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </span>
+                      )}
                     </button>
                   );
                 })}
