@@ -5,6 +5,7 @@ import {
   Req,
   Headers,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import type { PaymentProvider as PaymentProviderEnum } from '@prisma/client';
@@ -23,6 +24,8 @@ const ALLOWED: Record<string, PaymentProviderEnum> = {
  */
 @Controller('webhooks/deposits')
 export class DepositsWebhookController {
+  private readonly logger = new Logger(DepositsWebhookController.name);
+
   constructor(
     private readonly deposits: DepositsService,
     private readonly providers: PaymentProviderRegistry,
@@ -40,6 +43,8 @@ export class DepositsWebhookController {
     const raw = (req as Request & { rawBody?: Buffer }).rawBody;
     if (!raw) throw new BadRequestException('Raw body missing');
     const rawBody = raw.toString('utf8');
+
+    this.logger.log(`Webhook [${providerSlug}] body=${rawBody} headers=${JSON.stringify(headers)}`);
 
     const provider = this.providers.get(providerId);
     const parsed = provider.verifyAndParseWebhook(headers, rawBody);
