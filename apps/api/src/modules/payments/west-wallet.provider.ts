@@ -141,10 +141,16 @@ export class WestWalletProvider implements PaymentProvider {
         `currency=${params.get('currency') ?? '?'}`,
     );
 
+    // Фактически полученная сумма в USDT — DepositsService конвертирует в AZN
+    const receivedAmount = params.get('amount') ?? undefined;
+    const receivedCurrency = params.get('currency') ?? undefined;
+
     return {
       externalId: label, // label совпадает с Deposit.externalId (= depositId)
       status: mapWestStatus(status),
       rawPayload,
+      receivedAmount,
+      receivedCurrency,
     };
   }
 }

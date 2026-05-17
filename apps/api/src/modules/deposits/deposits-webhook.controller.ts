@@ -54,6 +54,8 @@ export class DepositsWebhookController {
       externalId: parsed.externalId,
       status: parsed.status,
       rawPayload: parsed.rawPayload,
+      receivedAmount: parsed.receivedAmount,
+      receivedCurrency: parsed.receivedCurrency,
     });
   }
 }

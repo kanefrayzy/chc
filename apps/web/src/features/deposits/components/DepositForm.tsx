@@ -29,23 +29,34 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // Активный незавершённый депозит (блокирует форму)
-  const [activeDeposit, setActiveDeposit] = useState<DepositDto | null | undefined>(undefined); // undefined = loading
+  // H2H активный депозит — блокирует форму; WestWallet — не блокирует (статичный адрес)
+  const [activeDeposit, setActiveDeposit] = useState<DepositDto | null | undefined>(undefined);
+  const [walletDeposit, setWalletDeposit] = useState<DepositDto | null>(null);
 
   const checkActiveDeposit = useCallback((): void => {
     depositsApi
-      .list({ limit: 5 })
+      .list({ limit: 10 })
       .then((res) => {
-        const found = res.items.find(
+        // H2H (Betra) — блокирует форму (один активный счёт в раз время)
+        const blocking = res.items.find(
           (d) =>
+            d.provider !== 'WESTWALLET' &&
             (d.status === 'PENDING' || d.status === 'PROCESSING') &&
-            // WestWallet: expiresAt === null (статичный кошелёк, без таймера)
-            // H2H: проверяем что ещё не истёк
             (d.expiresAt === null || new Date(d.expiresAt) > new Date()),
         );
-        setActiveDeposit(found ?? null);
+        // WestWallet — показываем отдельно, не блокируем
+        const wallet = res.items.find(
+          (d) =>
+            d.provider === 'WESTWALLET' &&
+            (d.status === 'PENDING' || d.status === 'PROCESSING'),
+        );
+        setActiveDeposit(blocking ?? null);
+        setWalletDeposit(wallet ?? null);
       })
-      .catch(() => setActiveDeposit(null));
+      .catch(() => {
+        setActiveDeposit(null);
+        setWalletDeposit(null);
+      });
   }, []);
 
   useEffect(() => {
@@ -82,6 +93,7 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
   }, [router, checkActiveDeposit]);
 
   const selected = methods.find((m) => m.id === selectedId) ?? null;
+  const isStaticWallet = selected?.provider === 'WESTWALLET';
   const minMinor =
     selected && BigInt(selected.minAmountMinor) > 0n
       ? BigInt(selected.minAmountMinor)
@@ -98,14 +110,22 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
       setErrorMessage(t('errors.selectMethod'));
       return;
     }
-    const minor = parseAmountToMinor(amount);
-    if (minor === null) {
-      setErrorMessage(t('errors.invalidAmount'));
-      return;
-    }
-    if (minor < minMinor || minor > maxMinor) {
-      setErrorMessage(t('errors.outOfRange'));
-      return;
+
+    // WestWallet: сумма не требуется — зачисление по факту IPN
+    let minor: bigint;
+    if (isStaticWallet) {
+      minor = 1n;
+    } else {
+      const parsed = parseAmountToMinor(amount);
+      if (parsed === null) {
+        setErrorMessage(t('errors.invalidAmount'));
+        return;
+      }
+      if (parsed < minMinor || parsed > maxMinor) {
+        setErrorMessage(t('errors.outOfRange'));
+        return;
+      }
+      minor = parsed;
     }
 
     startTransition(async () => {
@@ -114,7 +134,11 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
           paymentMethodId: selected.id,
           amountMinor: minor.toString(),
         });
-        setActiveDeposit(created);
+        if (isStaticWallet) {
+          setWalletDeposit(created);
+        } else {
+          setActiveDeposit(created);
+        }
         router.refresh();
         setAmount('');
         if (onSuccess) onSuccess();
@@ -137,10 +161,13 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
     );
   }
 
-  // Есть активный депозит — показываем его карточку вместо формы
+  // Есть активный H2H депозит — показываем его карточку вместо формы
   if (activeDeposit !== null) {
     return (
       <div className="space-y-3">
+        {walletDeposit && (
+          <PendingDepositCard deposit={walletDeposit} locale={locale} />
+        )}
         <p className="text-sm text-text-secondary">{t('activeDepositHint')}</p>
         <PendingDepositCard deposit={activeDeposit} locale={locale} onExpire={handleExpire} />
       </div>
@@ -149,6 +176,12 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
 
   return (
     <div>
+      {/* WestWallet: показываем адрес кошелька над формой, не блокируя её */}
+      {walletDeposit && (
+        <div className="mb-4">
+          <PendingDepositCard deposit={walletDeposit} locale={locale} />
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <div className="mb-2 text-sm font-medium text-text-secondary">
@@ -209,14 +242,23 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
             )}
           </div>
 
-          <AmountInput
-            label={t('amountLabel')}
-            value={amount}
-            onChange={setAmount}
-            disabled={isPending || !selected}
-            minMinor={minMinor}
-            maxMinor={maxMinor}
-          />
+          {/* Поле суммы только для H2H (карта/банк). WestWallet — любую сумму принимает */}
+          {!isStaticWallet && (
+            <AmountInput
+              label={t('amountLabel')}
+              value={amount}
+              onChange={setAmount}
+              disabled={isPending || !selected}
+              minMinor={minMinor}
+              maxMinor={maxMinor}
+            />
+          )}
+
+          {isStaticWallet && (
+            <p className="text-sm text-text-secondary">
+              Переведите любую сумму USDT на указанный адрес — зачисление произойдёт автоматически.
+            </p>
+          )}
 
           {errorMessage ? <Alert variant="danger">{errorMessage}</Alert> : null}
 

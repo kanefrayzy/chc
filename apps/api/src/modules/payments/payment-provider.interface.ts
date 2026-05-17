@@ -50,6 +50,12 @@ export interface ParsedWebhook {
   status: 'COMPLETED' | 'FAILED' | 'EXPIRED';
   /** Полезная нагрузка для записи в Deposit.rawWebhookPayload */
   rawPayload: unknown;
+  /**
+   * Фактически полученная сумма (для WestWallet IPN — сколько USDT пришло).
+   * Если задано, DepositsService пересчитает amountMinor в AZN по курсу.
+   */
+  receivedAmount?: string;
+  receivedCurrency?: string;
 }
 
 export interface PaymentProvider {

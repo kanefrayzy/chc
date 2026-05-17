@@ -74,23 +74,18 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
     const isStaticWallet = provider === 'WESTWALLET';
 
     // Для WestWallet: если уже есть активный депозит с тем же методом — возвращаем его.
-    // Адрес статичен, создавать новый не нужно.
+    // Адрес статичен, создавать новый не нужно. Сумма не обновляется — её задаст webhook.
     if (isStaticWallet) {
       const existing = await this.prisma.deposit.findFirst({
         where: { userId, paymentMethodId: method.id, status: { in: ['PENDING', 'PROCESSING'] } },
         orderBy: { createdAt: 'desc' },
       });
-      if (existing) {
-        // Обновляем запрошенную сумму (пользователь мог ввести новую)
-        return this.prisma.deposit.update({
-          where: { id: existing.id },
-          data: { amountMinor },
-        });
-      }
+      if (existing) return existing;
     } else {
-      // Для H2H провайдеров блокируем параллельные депозиты
+      // Для H2H провайдеров блокируем параллельные депозиты.
+      // WestWallet депозиты не блокируют: статичный кошелёк всегда доступен параллельно.
       const activeDeposit = await this.prisma.deposit.findFirst({
-        where: { userId, status: { in: ['PENDING', 'PROCESSING'] } },
+        where: { userId, provider: { not: 'WESTWALLET' }, status: { in: ['PENDING', 'PROCESSING'] } },
         orderBy: { createdAt: 'desc' },
       });
       if (activeDeposit) {
@@ -100,14 +95,16 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    // Лимиты: приоритет у метода (если заданы), иначе глобальные настройки.
-    const global = await this.getGlobalLimits();
-    const minMinor = method.minAmountMinor > 0n ? method.minAmountMinor : global.minMinor;
-    const maxMinor = method.maxAmountMinor > 0n ? method.maxAmountMinor : global.maxMinor;
-    if (amountMinor < minMinor || amountMinor > maxMinor) {
-      throw new BadRequestException(
-        `Amount must be between ${minMinor} and ${maxMinor} qəpik`,
-      );
+    // Лимиты: только для H2H провайдеров — для WestWallet сумма определяется фактической оплатой.
+    if (!isStaticWallet) {
+      const global = await this.getGlobalLimits();
+      const minMinor = method.minAmountMinor > 0n ? method.minAmountMinor : global.minMinor;
+      const maxMinor = method.maxAmountMinor > 0n ? method.maxAmountMinor : global.maxMinor;
+      if (amountMinor < minMinor || amountMinor > maxMinor) {
+        throw new BadRequestException(
+          `Amount must be between ${minMinor} and ${maxMinor} qəpik`,
+        );
+      }
     }
 
     const provImpl = this.providers.get(provider);
@@ -217,6 +214,8 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
     externalId: string;
     status: 'COMPLETED' | 'FAILED' | 'EXPIRED';
     rawPayload: unknown;
+    receivedAmount?: string;
+    receivedCurrency?: string;
   }): Promise<{ ok: true; alreadyProcessed: boolean }> {
     const deposit = await this.prisma.deposit.findUnique({
       where: { externalId: params.externalId },
@@ -241,9 +240,32 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
       return { ok: true, alreadyProcessed: false };
     }
 
+    // Если webhook передал фактически полученную сумму (WestWallet IPN) — конвертируем в AZN.
+    // rate в настройках = сколько единиц валюты за 1 AZN (например USDT per AZN).
+    let actualAmountMinor = deposit.amountMinor;
+    if (params.receivedAmount && params.receivedCurrency) {
+      // USDTTRC → USDT → USD
+      const currency = params.receivedCurrency.toUpperCase().replace(/TRC\d*$/i, '');
+      const settingsKey = (currency === 'USDT' || currency === 'USD')
+        ? 'exchange_rate.usd'
+        : `exchange_rate.${currency.toLowerCase()}`;
+      const rate = await this.settings.get<number>(settingsKey).catch(() => null);
+      if (rate && rate > 0) {
+        // rate = валюта / AZN  →  AZN = received / rate
+        const aznMajor = parseFloat(params.receivedAmount) / rate;
+        const computed = BigInt(Math.round(aznMajor * 100));
+        if (computed > 0n) {
+          actualAmountMinor = computed;
+          this.logger.log(
+            `WestWallet IPN: received=${params.receivedAmount} ${currency}, rate=${rate}, AZN=${aznMajor.toFixed(2)}, minor=${computed}`,
+          );
+        }
+      }
+    }
+
     // COMPLETED → атомарно: deposit + transaction + balance + бонус (если настроен)
     const bonusBps = await this.settings.get<number>('deposit.bonus_bps');
-    const bonusMinor = bonusBps > 0 ? (deposit.amountMinor * BigInt(Math.round(bonusBps))) / 10_000n : 0n;
+    const bonusMinor = bonusBps > 0 ? (actualAmountMinor * BigInt(Math.round(bonusBps))) / 10_000n : 0n;
     const idempotencyKey = `deposit:${deposit.id}`;
     await this.prisma.$transaction(async (tx) => {
       const existingTx = await tx.transaction.findUnique({ where: { idempotencyKey } });
@@ -251,7 +273,7 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
 
       const updatedUser = await tx.user.update({
         where: { id: deposit.userId },
-        data: { balanceMinor: { increment: deposit.amountMinor } },
+        data: { balanceMinor: { increment: actualAmountMinor } },
         select: { balanceMinor: true },
       });
 
@@ -260,7 +282,7 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
           userId: deposit.userId,
           type: 'DEPOSIT',
           status: 'COMPLETED',
-          amountMinor: deposit.amountMinor,
+          amountMinor: actualAmountMinor,
           balanceAfterMinor: updatedUser.balanceMinor,
           idempotencyKey,
           referenceType: 'deposit',
@@ -301,6 +323,7 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
         data: {
           status: 'COMPLETED',
           completedAt: new Date(),
+          amountMinor: actualAmountMinor,   // обновляем на фактическую сумму в AZN
           rawWebhookPayload: params.rawPayload as Prisma.InputJsonValue,
         },
       });
