@@ -18,12 +18,12 @@ export function OnlineCounter(): JSX.Element {
 
     socket.on('online:count', onCount);
 
-    // Запрашиваем начальное значение при монтировании
-    socket.emit('get:online', {}, (res: { count?: number } | undefined) => {
-      if (res && typeof res.count === 'number') {
-        setCount(BASE_OFFSET + Math.max(0, res.count));
-      }
-    });
+    // Запрашиваем начальное значение — сервер ответит через 'online:count'
+    if (socket.connected) {
+      socket.emit('get:online');
+    } else {
+      socket.once('connect', () => socket.emit('get:online'));
+    }
 
     return () => {
       socket.off('online:count', onCount);

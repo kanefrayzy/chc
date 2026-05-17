@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Button, Alert, Spinner } from '@chcgreen/ui';
 import { AmountInput, parseAmountToMinor } from './AmountInput';
 import { PendingDepositCard } from './PendingDepositCard';
@@ -47,6 +48,7 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
         if (prev && prev.id === data.depositId) return null;
         return prev;
       });
+      toast.success('Баланс пополнен!');
       if (onSuccess) onSuccess();
       router.refresh();
     };
@@ -287,7 +289,6 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
           {isPending ? t('submitting') : t('submit')}
         </Button>
       </form>
-      <p className="mt-4 text-xs text-text-muted">{t('hintLocale', { locale })}</p>
     </div>
   );
 }

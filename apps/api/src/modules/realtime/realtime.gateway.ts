@@ -110,8 +110,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   /** Клиент запрашивает текущее количество онлайн-пользователей. */
   @SubscribeMessage('get:online')
-  getOnline(): { count: number } {
-    return { count: this.webClientCount };
+  getOnline(@ConnectedSocket() client: AuthedSocket): void {
+    // Эмитируем напрямую клиенту, чтобы он подхватил через свой listener 'online:count'
+    client.emit('online:count', { count: this.webClientCount });
   }
 
   /** Клиент запрашивает подписку на конкретный тикет. */

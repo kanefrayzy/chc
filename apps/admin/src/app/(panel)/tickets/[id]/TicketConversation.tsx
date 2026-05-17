@@ -53,6 +53,12 @@ export function TicketConversation({
   const [imageUploading, setImageUploading] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
 
+  /**
+   * Множество ID сообщений, отправленных самим админом через HTTP.
+   * Когда WS эхо-дублирует эти сообщения, мы их пропускаем.
+   */
+  const sentMessageIdsRef = useRef(new Set<string>());
+
   // Блокировка пользователя
   const [blockReason, setBlockReason] = useState('');
   const [showBlockForm, setShowBlockForm] = useState(false);
@@ -76,6 +82,11 @@ export function TicketConversation({
 
     const onMessage = (m: AdminMessage & { ticketId: string }) => {
       if (m.ticketId !== ticketId) return;
+      // Пропускаем WS-эхо собственных сообщений (они уже добавлены через HTTP-ответ)
+      if (sentMessageIdsRef.current.has(m.id)) {
+        sentMessageIdsRef.current.delete(m.id);
+        return;
+      }
       setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
       const isUser = m.authorRole !== 'MODERATOR' && m.authorRole !== 'SUPER_ADMIN';
       if (isUser) playMessageSound();
@@ -133,6 +144,7 @@ export function TicketConversation({
     setImageError(null);
     try {
       const msg = await adminApi.tickets.uploadImage(ticketId, file);
+      sentMessageIdsRef.current.add(msg.id);
       setMessages((prev) => (prev.some((x) => x.id === msg.id) ? prev : [...prev, msg]));
       playSentSound();
     } catch (err) {
@@ -172,6 +184,7 @@ export function TicketConversation({
     if (socket.connected) socket.emit('typing:ticket', { ticketId, isTyping: false });
     try {
       const msg = await adminApi.tickets.send(ticketId, { body: body.trim() });
+      sentMessageIdsRef.current.add(msg.id);
       setMessages((prev) => (prev.some((x) => x.id === msg.id) ? prev : [...prev, msg]));
       setBody('');
       playSentSound();

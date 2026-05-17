@@ -108,7 +108,7 @@ export class TicketsService {
     if (ticket.status === 'CLOSED') {
       throw new BadRequestException('TICKET_CLOSED');
     }
-    const [, message] = await this.prisma.$transaction([
+    const [, message, author] = await this.prisma.$transaction([
       this.prisma.ticket.update({
         where: { id: ticket.id },
         data: { status: 'WAITING_MODERATOR' },
@@ -121,12 +121,18 @@ export class TicketsService {
           body: params.body,
         },
       }),
+      this.prisma.user.findUniqueOrThrow({
+        where: { id: params.userId },
+        select: { username: true },
+      }),
     ]);
     try {
       this.realtime.emitToTicket(ticket.id, 'ticket:message', {
         id: message.id,
         ticketId: message.ticketId,
         authorId: message.authorId,
+        authorUsername: author.username ?? null,
+        authorRole: 'USER',
         kind: message.kind,
         body: message.body,
         createdAt: message.createdAt.toISOString(),
