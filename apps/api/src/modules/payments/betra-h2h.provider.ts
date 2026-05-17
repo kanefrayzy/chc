@@ -190,7 +190,6 @@ export class BetraH2HProvider implements PaymentProvider {
         }
         this.logger.warn(`Betra mirror_transaction_id callback accepted without signature verification (id=${numericId})`);
       }
-      }
     }
 
     return {
