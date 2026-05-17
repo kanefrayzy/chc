@@ -15,6 +15,9 @@ export interface PublicSettings {
   'withdrawal.min_amount_minor': string;
   'roulette.min_bet_minor': string;
   'roulette.max_bet_minor': string;
+  'roulette.icon_url.green': string;
+  'roulette.icon_url.red': string;
+  'roulette.icon_url.black': string;
   'brand.site_name': string;
   'brand.logo_url': string;
   'brand.support_email': string;
@@ -43,6 +46,9 @@ const DEFAULTS: PublicSettings = {
   'withdrawal.min_amount_minor': '1000',
   'roulette.min_bet_minor': '100',
   'roulette.max_bet_minor': '100000',
+  'roulette.icon_url.green': '',
+  'roulette.icon_url.red': '',
+  'roulette.icon_url.black': '',
   'brand.site_name': 'CHCGREEN',
   'brand.logo_url': '',
   'brand.support_email': '',
