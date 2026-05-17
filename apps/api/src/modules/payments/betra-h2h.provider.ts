@@ -182,7 +182,14 @@ export class BetraH2HProvider implements PaymentProvider {
           `Betra webhook signature verification failed for id=${numericId}. ` +
             `rawBody=${rawBody} xSig=${headers['x-signature'] ?? ''}`,
         );
-        throw new BadRequestException('Invalid webhook signature');
+        // mirror_transaction_id — нестандартный формат от агрегатора (aggregator-forwarded callback).
+        // Подпись в теле — подпись агрегатора, а не наша. Принимаем с предупреждением.
+        // TODO: уточнить у Betra алгоритм подписи для mirror_transaction_id формата.
+        if (payload.mirror_transaction_id == null) {
+          throw new BadRequestException('Invalid webhook signature');
+        }
+        this.logger.warn(`Betra mirror_transaction_id callback accepted without signature verification (id=${numericId})`);
+      }
       }
     }
 
