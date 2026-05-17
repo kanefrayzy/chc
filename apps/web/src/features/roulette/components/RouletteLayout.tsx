@@ -377,6 +377,9 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance, minBetM
           minBetMinor={minBetMinor}
           maxBetMinor={maxBetMinor}
           placedColors={myColors}
+          iconGreen={iconGreen}
+          iconRed={iconRed}
+          iconBlack={iconBlack}
           onBetPlaced={(color) => {
             setMyColors((prev) => (prev.includes(color) ? prev : [...prev, color]));
             void reloadBalance();

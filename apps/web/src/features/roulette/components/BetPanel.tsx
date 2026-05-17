@@ -28,6 +28,9 @@ export interface BetPanelProps {
   /** На какие цвета пользователь уже поставил в текущем раунде. */
   placedColors: RouletteColor[];
   onBetPlaced?: (color: RouletteColor, amountMinor: string) => void;
+  iconGreen?: string;
+  iconRed?: string;
+  iconBlack?: string;
 }
 
 export function BetPanel({
@@ -38,6 +41,9 @@ export function BetPanel({
   maxBetMinor: maxBetMinorStr,
   placedColors,
   onBetPlaced,
+  iconGreen,
+  iconRed,
+  iconBlack,
 }: BetPanelProps): JSX.Element {
   const t = useTranslations('roulette.bet');
   const [amount, setAmount] = useState('');
@@ -186,6 +192,7 @@ export function BetPanel({
           const mul = multipliers[color] ?? (color === 'GREEN' ? 14 : 2);
           const blocked = isColorBlocked(color);
           const isPlaced = placedSet.has(color);
+          const colorIconUrl = color === 'GREEN' ? iconGreen : color === 'RED' ? iconRed : iconBlack;
           return (
             <button
               key={color}
@@ -205,7 +212,12 @@ export function BetPanel({
                 isPlaced && 'ring-2 ring-yellow-300/80',
               )}
             >
-              {color === 'GREEN' ? (
+              {colorIconUrl ? (
+                <span className="absolute -top-3 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 ring-1 ring-white/20 overflow-hidden shadow-md">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={colorIconUrl} alt="" className="h-5 w-5 object-contain" />
+                </span>
+              ) : color === 'GREEN' ? (
                 <span className="absolute -top-2 text-warning drop-shadow-[0_0_4px_rgba(255,184,0,0.8)]">
                   <CrownIcon className="h-4 w-4" />
                 </span>

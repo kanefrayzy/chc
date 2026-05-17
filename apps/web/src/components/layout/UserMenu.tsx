@@ -5,6 +5,7 @@ import { useState, useRef, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { authApi } from '@/lib/api/auth';
+import { useUi } from '@/components/layout/ui-context';
 import {
   ChevronDownIcon,
   UserIcon,
@@ -22,6 +23,7 @@ export interface UserMenuProps {
 export function UserMenu({ username, localePrefix, avatarUrl }: UserMenuProps): JSX.Element {
   const t = useTranslations('common');
   const router = useRouter();
+  const { openDeposit, openWithdraw } = useUi();
   const [open, setOpen] = useState(false);
   const [, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement | null>(null);
@@ -54,10 +56,13 @@ export function UserMenu({ username, localePrefix, avatarUrl }: UserMenuProps): 
     });
   };
 
-  const items: { href: string; label: string; icon: JSX.Element }[] = [
-    { href: `${localePrefix}/profile`, label: t('profileMenu'), icon: <UserIcon className="h-4 w-4" /> },
-    { href: `${localePrefix}/deposit`, label: t('depositMenu'), icon: <ArrowDownIcon className="h-4 w-4" /> },
-    { href: `${localePrefix}/withdraw`, label: t('withdrawMenu'), icon: <ArrowUpIcon className="h-4 w-4" /> },
+  const items = [
+    { href: `${localePrefix}/profile`, label: t('profileMenu'), icon: <UserIcon className="h-4 w-4" />, onClick: undefined as (() => void) | undefined },
+  ];
+
+  const actionItems = [
+    { label: t('depositMenu'), icon: <ArrowDownIcon className="h-4 w-4" />, onClick: () => { setOpen(false); openDeposit(); } },
+    { label: t('withdrawMenu'), icon: <ArrowUpIcon className="h-4 w-4" />, onClick: () => { setOpen(false); openWithdraw(); } },
   ];
 
   return (
@@ -108,6 +113,18 @@ export function UserMenu({ username, localePrefix, avatarUrl }: UserMenuProps): 
               <span className="text-text-muted">{it.icon}</span>
               {it.label}
             </Link>
+          ))}
+          {actionItems.map((it) => (
+            <button
+              key={it.label}
+              type="button"
+              onClick={it.onClick}
+              role="menuitem"
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-text-secondary transition-colors hover:bg-bg-card-hover hover:text-text-primary"
+            >
+              <span className="text-text-muted">{it.icon}</span>
+              {it.label}
+            </button>
           ))}
           <button
             type="button"

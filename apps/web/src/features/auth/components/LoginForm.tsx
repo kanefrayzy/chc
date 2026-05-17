@@ -95,7 +95,13 @@ export function LoginForm({ onSuccessRedirect, onSuccess }: LoginFormProps): JSX
         )}
       </FormField>
 
-      <Button type="submit" loading={isPending} fullWidth size="lg">
+      <Button
+        type="submit"
+        loading={isPending}
+        fullWidth
+        size="lg"
+        className="bg-gradient-to-r from-brand to-[#00d46a] text-black font-bold tracking-wide shadow-[0_0_24px_rgba(0,255,136,0.35)] hover:shadow-[0_0_36px_rgba(0,255,136,0.55)] hover:brightness-110 active:scale-[0.98]"
+      >
         {t('actions.login')}
       </Button>
     </form>
