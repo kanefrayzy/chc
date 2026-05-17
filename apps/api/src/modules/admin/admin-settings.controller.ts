@@ -44,7 +44,7 @@ function clientMeta(req: Request): { ip?: string; userAgent?: string } {
 
 @Controller('admin/settings')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('MODERATOR', 'SUPER_ADMIN')
+@Roles('SUPER_ADMIN')
 export class AdminSettingsController {
   constructor(
     private readonly settings: SettingsService,

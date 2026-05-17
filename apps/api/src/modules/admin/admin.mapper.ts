@@ -111,6 +111,7 @@ export interface AdminTicketRowDto {
   id: string;
   userId: string;
   username: string | null;
+  userBalanceMinor: string | null;
   moderatorId: string | null;
   moderatorUsername: string | null;
   type: Ticket['type'];
@@ -125,7 +126,7 @@ export interface AdminTicketRowDto {
 
 export function toAdminTicket(
   t: Ticket & {
-    user?: { username: string } | null;
+    user?: { username: string; balanceMinor?: bigint } | null;
     moderator?: { username: string } | null;
     messages?: Message[];
   },
@@ -135,6 +136,10 @@ export function toAdminTicket(
     id: t.id,
     userId: t.userId,
     username: t.user?.username ?? null,
+    userBalanceMinor:
+      t.user?.balanceMinor !== undefined && t.user.balanceMinor !== null
+        ? minorToJson(t.user.balanceMinor)
+        : null,
     moderatorId: t.moderatorId,
     moderatorUsername: t.moderator?.username ?? null,
     type: t.type,

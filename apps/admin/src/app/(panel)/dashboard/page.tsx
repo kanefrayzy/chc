@@ -17,6 +17,7 @@ export default async function DashboardPage() {
         subtitle="Текущая операционная нагрузка"
       />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Withdrawals */}
         <StatCard
           label="Выводы на модерации"
           value={String(stats.pendingWithdrawalsCount)}
@@ -24,6 +25,44 @@ export default async function DashboardPage() {
           tone="warning"
           href="/withdrawals?status=PENDING"
         />
+        <StatCard
+          label="Выплачено всего"
+          value={minorToAzn(stats.completedWithdrawalsAmountMinor)}
+          tone="neutral"
+        />
+        {/* Users */}
+        <StatCard
+          label="Всего пользователей"
+          value={String(stats.usersTotal)}
+          hint={`FTD: ${stats.ftdUsersCount}`}
+          tone="neutral"
+          href="/users"
+        />
+        <StatCard
+          label="Активны за сутки"
+          value={String(stats.usersActive24h)}
+          tone="success"
+        />
+        <StatCard
+          label="Баланс пользователей"
+          value={minorToAzn(stats.totalUsersBalanceMinor)}
+          hint="суммарно на всех счетах"
+          tone="primary"
+        />
+        {/* Deposits */}
+        <StatCard
+          label="Пополнения сегодня"
+          value={String(stats.depositsTodayCount)}
+          hint={minorToAzn(stats.depositsTodayAmountMinor)}
+          tone="success"
+        />
+        <StatCard
+          label="Пополнения всего"
+          value={String(stats.depositsAllTimeCount)}
+          hint={minorToAzn(stats.depositsAllTimeAmountMinor)}
+          tone="info"
+        />
+        {/* Operations */}
         <StatCard
           label="Открытые покупки кода"
           value={String(stats.openCodePurchasesCount)}
@@ -35,17 +74,6 @@ export default async function DashboardPage() {
           value={String(stats.openTicketsCount)}
           tone="primary"
           href="/tickets?status=WAITING_MODERATOR"
-        />
-        <StatCard
-          label="Всего пользователей"
-          value={String(stats.usersTotal)}
-          tone="neutral"
-          href="/users"
-        />
-        <StatCard
-          label="Активны за сутки"
-          value={String(stats.usersActive24h)}
-          tone="success"
         />
       </div>
     </>

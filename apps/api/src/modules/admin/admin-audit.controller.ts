@@ -14,7 +14,7 @@ import { toAdminAudit, type AdminAuditRowDto } from './admin.mapper';
 
 @Controller('admin/audit')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('MODERATOR', 'SUPER_ADMIN')
+@Roles('SUPER_ADMIN')
 export class AdminAuditController {
   constructor(private readonly service: AdminAuditService) {}
 
@@ -27,3 +27,4 @@ export class AdminAuditController {
     return { items: items.map(toAdminAudit), nextCursor };
   }
 }
+

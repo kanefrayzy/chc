@@ -4,7 +4,7 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
-import type { User, UserStatus } from '@prisma/client';
+import type { User, UserStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
 import { AdminAuditService } from './admin-audit.service';
 
@@ -123,6 +123,29 @@ export class AdminUsersService {
       entityType: 'user',
       entityId: params.userId,
       payload: { status: params.status, reason: params.reason ?? null },
+      ip: params.ip,
+      userAgent: params.userAgent,
+    });
+    return updated;
+  }
+
+  async setRole(params: {
+    actorId: string;
+    userId: string;
+    role: UserRole;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<User> {
+    const updated = await this.prisma.user.update({
+      where: { id: params.userId },
+      data: { role: params.role },
+    });
+    await this.audit.log({
+      actorId: params.actorId,
+      action: 'user.role',
+      entityType: 'user',
+      entityId: params.userId,
+      payload: { role: params.role },
       ip: params.ip,
       userAgent: params.userAgent,
     });

@@ -17,7 +17,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AccessTokenPayload } from '../auth/auth.service';
 import { AdminUsersService } from './admin-users.service';
-import { BalanceAdjustDto, UserStatusDto } from './admin.dto';
+import { BalanceAdjustDto, UserStatusDto, UserRoleDto } from './admin.dto';
 import { toAdminUser, type AdminUserRowDto } from './admin.mapper';
 
 function clientMeta(req: Request) {
@@ -28,7 +28,7 @@ function clientMeta(req: Request) {
 
 @Controller('admin/users')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('MODERATOR', 'SUPER_ADMIN')
+@Roles('SUPER_ADMIN')
 export class AdminUsersController {
   constructor(private readonly users: AdminUsersService) {}
 
@@ -82,6 +82,25 @@ export class AdminUsersController {
       userId: id,
       status: body.status,
       reason: body.reason,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+    return toAdminUser(u);
+  }
+
+  @Post(':id/role')
+  @Roles('SUPER_ADMIN')
+  async setRole(
+    @CurrentUser() actor: AccessTokenPayload,
+    @Param('id') id: string,
+    @Body() body: UserRoleDto,
+    @Req() req: Request,
+  ): Promise<AdminUserRowDto> {
+    const meta = clientMeta(req);
+    const u = await this.users.setRole({
+      actorId: actor.sub,
+      userId: id,
+      role: body.role,
       ip: meta.ip,
       userAgent: meta.userAgent,
     });

@@ -11,6 +11,7 @@ import { Input } from '../../../components/ui/Input';
 import { DataTable } from '../../../components/ui/DataTable';
 import { BalanceAdjustModal } from './BalanceAdjustModal';
 import { UserStatusModal } from './UserStatusModal';
+import { UserRoleModal } from './UserRoleModal';
 
 const statusTone: Record<AdminUserRow['status'], 'success' | 'warning' | 'danger'> = {
   ACTIVE: 'success',
@@ -38,6 +39,7 @@ export function UsersTable({
   const [query, setQuery] = useState(search);
   const [adjustTarget, setAdjustTarget] = useState<AdminUserRow | null>(null);
   const [statusTarget, setStatusTarget] = useState<AdminUserRow | null>(null);
+  const [roleTarget, setRoleTarget] = useState<AdminUserRow | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function applySearch(e: FormEvent) {
@@ -72,6 +74,17 @@ export function UsersTable({
       setStatusTarget(null);
     } catch (e) {
       setError(e instanceof ApiException ? e.message : 'Не удалось изменить статус');
+    }
+  }
+
+  async function onSetRole(id: string, role: AdminUserRow['role']) {
+    setError(null);
+    try {
+      const updated = await adminApi.users.setRole(id, { role });
+      setItems((prev) => prev.map((u) => (u.id === id ? updated : u)));
+      setRoleTarget(null);
+    } catch (e) {
+      setError(e instanceof ApiException ? e.message : 'Не удалось изменить роль');
     }
   }
 
@@ -152,6 +165,11 @@ export function UsersTable({
                     Статус
                   </Button>
                 )}
+                {canAdjust && (
+                  <Button size="sm" variant="ghost" onClick={() => { setRoleTarget(u); }}>
+                    Роль
+                  </Button>
+                )}
               </div>
             ),
           },
@@ -167,6 +185,11 @@ export function UsersTable({
         target={statusTarget}
         onClose={() => setStatusTarget(null)}
         onSubmit={onSetStatus}
+      />
+      <UserRoleModal
+        target={roleTarget}
+        onClose={() => setRoleTarget(null)}
+        onSubmit={onSetRole}
       />
     </div>
   );

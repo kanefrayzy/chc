@@ -10,6 +10,7 @@ interface NavItem {
   icon: React.ReactNode;
   badge?: number;
   superAdminOnly?: boolean;
+  moderatorHidden?: boolean;
 }
 
 function Icon({ d, size = 18 }: { d: string; size?: number }) {
@@ -30,11 +31,13 @@ const NAV: NavItem[] = [
     href: '/code-purchases',
     label: 'Покупки кода',
     icon: <Icon d="M15 5H9a2 2 0 00-2 2v12a2 2 0 002 2h6a2 2 0 002-2V7a2 2 0 00-2-2zM9 9h6M9 13h6M9 17h4" />,
+    moderatorHidden: true,
   },
   {
     href: '/withdrawals',
     label: 'Выводы',
     icon: <Icon d="M12 2v20M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 010 7H6" />,
+    moderatorHidden: true,
   },
   {
     href: '/tickets',
@@ -45,11 +48,13 @@ const NAV: NavItem[] = [
     href: '/users',
     label: 'Пользователи',
     icon: <Icon d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />,
+    moderatorHidden: true,
   },
   {
     href: '/audit',
     label: 'Аудит',
     icon: <Icon d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />,
+    moderatorHidden: true,
   },
   {
     href: '/ranks',
@@ -91,7 +96,11 @@ export function Sidebar({
   role: 'USER' | 'MODERATOR' | 'SUPER_ADMIN';
 }) {
   const pathname = usePathname();
-  const visibleNav = NAV.filter((item) => !item.superAdminOnly || role === 'SUPER_ADMIN');
+  const visibleNav = NAV.filter(
+    (item) =>
+      (!item.superAdminOnly || role === 'SUPER_ADMIN') &&
+      (!item.moderatorHidden || role !== 'MODERATOR'),
+  );
 
   return (
     <aside className="w-64 bg-sidebar flex flex-col h-screen overflow-hidden select-none shrink-0">

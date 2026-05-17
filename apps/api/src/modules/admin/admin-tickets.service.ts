@@ -39,7 +39,7 @@ export class AdminTicketsService {
     const t = await this.prisma.ticket.findUnique({
       where: { id },
       include: {
-        user: { select: { username: true } },
+        user: { select: { username: true, balanceMinor: true } },
         moderator: { select: { username: true } },
       },
     });

@@ -2,7 +2,7 @@ import { adminApi } from '../../../../lib/api/admin';
 import { cookieHeaderFromRequest } from '../../../../lib/api/server';
 import { PageHeader } from '../../../../components/ui/PageHeader';
 import { Card } from '../../../../components/ui/Card';
-import { formatDateTime, shortId } from '../../../../lib/format';
+import { formatDateTime, minorToAzn, shortId } from '../../../../lib/format';
 import { Badge } from '../../../../components/ui/Badge';
 import { TicketConversation } from './TicketConversation';
 
@@ -48,6 +48,12 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
                 <dt className="text-ink-500">Пользователь</dt>
                 <dd className="text-ink-900">{ticket.username ?? shortId(ticket.userId)}</dd>
               </div>
+              {ticket.userBalanceMinor !== null && (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-ink-500">Баланс</dt>
+                  <dd className="text-ink-900 font-mono font-medium">{minorToAzn(ticket.userBalanceMinor)}</dd>
+                </div>
+              )}
               <div className="flex justify-between gap-3">
                 <dt className="text-ink-500">Модератор</dt>
                 <dd className="text-ink-900">{ticket.moderatorUsername ?? '—'}</dd>

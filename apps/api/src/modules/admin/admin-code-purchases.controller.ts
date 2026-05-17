@@ -28,7 +28,7 @@ function clientMeta(req: Request) {
 
 @Controller('admin/code-purchases')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('MODERATOR', 'SUPER_ADMIN')
+@Roles('SUPER_ADMIN')
 export class AdminCodePurchasesController {
   constructor(private readonly service: AdminCodePurchasesService) {}
 
@@ -79,3 +79,4 @@ export class AdminCodePurchasesController {
     return toAdminCodePurchase(p);
   }
 }
+

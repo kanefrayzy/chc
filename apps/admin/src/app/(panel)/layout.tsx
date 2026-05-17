@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getServerUser, isStaff } from '../../lib/api/server';
 import { Sidebar } from '../../components/layout/Sidebar';
@@ -10,6 +11,17 @@ export default async function PanelLayout({ children }: { children: ReactNode })
   const user = await getServerUser();
   if (!isStaff(user) || !user) {
     redirect('/login');
+  }
+
+  // Moderators can only access /tickets and /dashboard
+  if (user.role === 'MODERATOR') {
+    const headersList = headers();
+    const pathname = headersList.get('x-invoke-path') ?? headersList.get('x-pathname') ?? '';
+    const allowed = ['/tickets', '/dashboard'];
+    const isAllowed = allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
+    if (pathname && !isAllowed) {
+      redirect('/tickets');
+    }
   }
 
   return (

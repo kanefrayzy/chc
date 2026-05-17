@@ -34,3 +34,8 @@ export const ApproveWithdrawalSchema = z.object({
   note: z.string().trim().max(500).optional(),
 });
 export class ApproveWithdrawalDto extends createZodDto(ApproveWithdrawalSchema) {}
+
+export const UserRoleSchema = z.object({
+  role: z.enum(['USER', 'MODERATOR', 'SUPER_ADMIN']),
+});
+export class UserRoleDto extends createZodDto(UserRoleSchema) {}

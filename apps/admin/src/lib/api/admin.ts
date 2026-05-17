@@ -39,6 +39,13 @@ export interface DashboardStats {
   openTicketsCount: number;
   usersTotal: number;
   usersActive24h: number;
+  depositsAllTimeCount: number;
+  depositsAllTimeAmountMinor: string;
+  depositsTodayCount: number;
+  depositsTodayAmountMinor: string;
+  ftdUsersCount: number;
+  totalUsersBalanceMinor: string;
+  completedWithdrawalsAmountMinor: string;
 }
 
 // ─── Users ───────────────────────────────────────────────────────────────
@@ -117,6 +124,7 @@ export interface AdminTicketRow {
   id: string;
   userId: string;
   username: string | null;
+  userBalanceMinor: string | null;
   moderatorId: string | null;
   moderatorUsername: string | null;
   type: TicketType;
@@ -245,6 +253,8 @@ export const adminApi = {
       apiFetch<AdminUserRow>(`/admin/users/${id}/balance-adjust`, { method: 'POST', body }),
     setStatus: (id: string, body: { status: 'ACTIVE' | 'BANNED' | 'MUTED'; reason?: string }) =>
       apiFetch<AdminUserRow>(`/admin/users/${id}/status`, { method: 'POST', body }),
+    setRole: (id: string, body: { role: 'USER' | 'MODERATOR' | 'SUPER_ADMIN' }) =>
+      apiFetch<AdminUserRow>(`/admin/users/${id}/role`, { method: 'POST', body }),
   },
 
   codePurchases: {

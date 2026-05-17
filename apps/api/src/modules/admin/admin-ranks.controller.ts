@@ -50,7 +50,7 @@ class UpdateRankDto extends createZodDto(UpdateRankSchema) {}
 
 @Controller('admin/ranks')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('MODERATOR', 'SUPER_ADMIN')
+@Roles('SUPER_ADMIN')
 export class AdminRanksController {
   constructor(private readonly ranks: RanksService) {}
 
