@@ -5,8 +5,8 @@ import { cn } from '@chcgreen/ui';
 import { useUi } from './ui-context';
 import { ChatIcon, CloseIcon, SendIcon } from '@/components/icons';
 import { ticketsApi, type TicketDto, type MessageDto } from '@/lib/api/tickets';
-
-const POLL_MS = 6000;
+import { useTicketSocket, type TicketMessageEvent } from '@/lib/realtime/useTicketSocket';
+import { playMessageSound } from '@/lib/sounds';
 
 export interface ChatWidgetProps {
   viewerId: string | null;
@@ -20,7 +20,7 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isOpenRef = useRef(false);
 
   // Закрываем виджет нажатием Escape
   useEffect(() => {
@@ -29,51 +29,62 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
     return () => window.removeEventListener('keydown', onKey);
   }, [chatOpen, closeChat]);
 
-  // Polling тикетов
+  // Загружаем тикеты при первом открытии
   useEffect(() => {
     if (!chatOpen || !viewerId) return;
-    let cancelled = false;
-    const pull = async (): Promise<void> => {
-      try {
-        const res = await ticketsApi.list({ limit: 10 });
-        if (cancelled) return;
-        setTickets(res.items);
-        if (!activeId && res.items[0]) setActiveId(res.items[0].id);
-      } catch { /* */ } finally {
-        if (!cancelled) timerRef.current = setTimeout(pull, POLL_MS);
-      }
-    };
-    pull();
-    return () => { cancelled = true; if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [chatOpen, viewerId, activeId]);
+    isOpenRef.current = true;
+    ticketsApi.list({ limit: 10 }).then((res) => {
+      setTickets(res.items);
+      if (!activeId && res.items[0]) setActiveId(res.items[0].id);
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatOpen, viewerId]);
 
-  // Polling сообщений активного тикета
+  // Загружаем сообщения при смене активного тикета
   useEffect(() => {
-    if (!chatOpen || !activeId || !viewerId) return;
-    let cancelled = false;
-    const pullMsgs = async (): Promise<void> => {
-      try {
-        const res = await ticketsApi.messages(activeId, { limit: 50 });
-        if (cancelled) return;
-        setMessages(res.items);
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-      } catch { /* */ }
-    };
-    const id = setInterval(pullMsgs, 4000);
-    pullMsgs();
-    return () => { cancelled = true; clearInterval(id); };
-  }, [chatOpen, activeId, viewerId]);
+    if (!activeId || !viewerId) return;
+    ticketsApi.messages(activeId, { limit: 50 }).then((res) => {
+      setMessages(res.items);
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'instant' }), 0);
+    }).catch(() => {});
+  }, [activeId, viewerId]);
+
+  // WebSocket — новые сообщения в реальном времени
+  useTicketSocket(activeId, {
+    onMessage: (event: TicketMessageEvent) => {
+      const isStaff =
+        event.authorRole === 'MODERATOR' || event.authorRole === 'SUPER_ADMIN';
+      const msg: MessageDto = {
+        id: event.id,
+        ticketId: event.ticketId,
+        body: event.body,
+        kind: event.kind,
+        authorId: event.authorId,
+        isMine: !isStaff,
+        createdAt: event.createdAt,
+      };
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
+      if (isStaff) {
+        playMessageSound();
+      }
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    },
+  });
 
   const handleSend = async (): Promise<void> => {
     if (!input.trim() || !activeId || sending) return;
     setSending(true);
+    const body = input.trim();
+    setInput('');
     try {
-      await ticketsApi.sendMessage(activeId, input.trim());
-      setInput('');
-      const res = await ticketsApi.messages(activeId, { limit: 50 });
-      setMessages(res.items);
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    } catch { /* */ } finally {
+      await ticketsApi.sendMessage(activeId, body);
+      // WS принесёт сообщение обратно; на случай если нет — добавляем optimistically
+    } catch {
+      setInput(body); // вернуть если ошибка
+    } finally {
       setSending(false);
     }
   };
