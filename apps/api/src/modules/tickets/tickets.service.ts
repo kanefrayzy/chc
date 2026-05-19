@@ -95,12 +95,14 @@ export class TicketsService {
       });
       return msgs.reverse();
     }
-    return this.prisma.message.findMany({
+    // Возвращаем последние N сообщений в хронологическом порядке
+    const latest = await this.prisma.message.findMany({
       where: { ticketId: params.ticketId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
       take,
       ...(params.afterId ? { cursor: { id: params.afterId }, skip: 1 } : {}),
     });
+    return latest.reverse();
   }
 
   async postUserMessage(params: { userId: string; ticketId: string; body: string }): Promise<Message> {

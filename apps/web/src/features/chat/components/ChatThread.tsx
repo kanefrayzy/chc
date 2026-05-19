@@ -30,7 +30,6 @@ export function ChatThread({ ticket, viewerId, locale }: ChatThreadProps): JSX.E
   const [sendError, setSendError] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
   /** Курсор пагинации — ref, чтобы не триггерить re-render */
   const oldestIdRef = useRef<string | null>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -62,9 +61,22 @@ export function ChatThread({ ticket, viewerId, locale }: ChatThreadProps): JSX.E
   }, [ticket.id]);
 
   // ── Авто-прокрутка вниз ────────────────────────────────────────────────────
+  const isFirstLoadRef = useRef(true);
+
+  // При смене тикета сбрасываем флаг
   useEffect(() => {
-    if (!initialLoading) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    isFirstLoadRef.current = true;
+  }, [ticket.id]);
+
+  useEffect(() => {
+    if (initialLoading || !scrollRef.current) return;
+    if (isFirstLoadRef.current) {
+      // Начальная загрузка — мгновенный скролл в конец
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      isFirstLoadRef.current = false;
+    } else {
+      // Новое сообщение — плавный скролл
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }
   }, [messages.length, initialLoading]);
 
@@ -209,7 +221,7 @@ export function ChatThread({ ticket, viewerId, locale }: ChatThreadProps): JSX.E
               {t('thread.typing', { defaultMessage: 'Поддержка печатает...' })}
             </div>
           )}
-          <div ref={bottomRef} />
+
         </div>
       </CardBody>
 

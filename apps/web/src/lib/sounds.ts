@@ -13,20 +13,31 @@ function getCtx(): AudioContext | null {
 function beep(frequency: number, duration: number, volume: number, type: OscillatorType = 'sine'): void {
   const ac = getCtx();
   if (!ac) return;
-  try {
-    const oscillator = ac.createOscillator();
-    const gainNode = ac.createGain();
-    oscillator.connect(gainNode);
-    gainNode.connect(ac.destination);
-    oscillator.frequency.setValueAtTime(frequency, ac.currentTime);
-    oscillator.type = type;
-    gainNode.gain.setValueAtTime(0, ac.currentTime);
-    gainNode.gain.linearRampToValueAtTime(volume, ac.currentTime + 0.01);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + duration);
-    oscillator.start(ac.currentTime);
-    oscillator.stop(ac.currentTime + duration);
-  } catch {
-    // Audio not available
+
+  const play = (): void => {
+    try {
+      const oscillator = ac.createOscillator();
+      const gainNode = ac.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ac.destination);
+      oscillator.frequency.setValueAtTime(frequency, ac.currentTime);
+      oscillator.type = type;
+      gainNode.gain.setValueAtTime(0, ac.currentTime);
+      gainNode.gain.linearRampToValueAtTime(volume, ac.currentTime + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + duration);
+      oscillator.start(ac.currentTime);
+      oscillator.stop(ac.currentTime + duration);
+    } catch {
+      // Audio not available
+    }
+  };
+
+  // Браузеры блокируют AudioContext до первого взаимодействия пользователя.
+  // resume() — no-op если уже running; если suspended — разблокирует и играет.
+  if (ac.state === 'suspended') {
+    ac.resume().then(play).catch(() => {});
+  } else {
+    play();
   }
 }
 
