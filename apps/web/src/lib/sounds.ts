@@ -42,6 +42,14 @@ function beep(frequency: number, duration: number, volume: number, type: Oscilla
 }
 
 /** Мягкий звук нового сообщения от поддержки */
+// Предварительный разблок аудио при первом взаимодействии
+// Браузер блокирует AudioContext до жеста пользователя
+if (typeof window !== 'undefined') {
+  const warmUp = (): void => { getCtx()?.resume().catch(() => {}); };
+  window.addEventListener('click', warmUp, { capture: true });
+  window.addEventListener('keydown', warmUp, { capture: true });
+}
+
 export function playMessageSound(): void {
   beep(880, 0.15, 0.12, 'sine');
   setTimeout(() => beep(1100, 0.12, 0.10, 'sine'), 80);

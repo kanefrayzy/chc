@@ -13,21 +13,38 @@ function getCtx(): AudioContext | null {
 function beep(frequency: number, duration: number, volume: number, type: OscillatorType = 'sine'): void {
   const ac = getCtx();
   if (!ac) return;
-  try {
-    const oscillator = ac.createOscillator();
-    const gainNode = ac.createGain();
-    oscillator.connect(gainNode);
-    gainNode.connect(ac.destination);
-    oscillator.frequency.setValueAtTime(frequency, ac.currentTime);
-    oscillator.type = type;
-    gainNode.gain.setValueAtTime(0, ac.currentTime);
-    gainNode.gain.linearRampToValueAtTime(volume, ac.currentTime + 0.01);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + duration);
-    oscillator.start(ac.currentTime);
-    oscillator.stop(ac.currentTime + duration);
-  } catch {
-    // Audio not available
+
+  const play = (): void => {
+    try {
+      const oscillator = ac.createOscillator();
+      const gainNode = ac.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ac.destination);
+      oscillator.frequency.setValueAtTime(frequency, ac.currentTime);
+      oscillator.type = type;
+      gainNode.gain.setValueAtTime(0, ac.currentTime);
+      gainNode.gain.linearRampToValueAtTime(volume, ac.currentTime + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + duration);
+      oscillator.start(ac.currentTime);
+      oscillator.stop(ac.currentTime + duration);
+    } catch {
+      // Audio not available
+    }
+  };
+
+  if (ac.state === 'suspended') {
+    ac.resume().then(play).catch(() => {});
+  } else {
+    play();
   }
+}
+
+// Предварительный разблок аудио при первом взаимодействии
+// Браузер блокирует AudioContext до жеста пользователя
+if (typeof window !== 'undefined') {
+  const warmUp = (): void => { getCtx()?.resume().catch(() => {}); };
+  window.addEventListener('click', warmUp, { capture: true });
+  window.addEventListener('keydown', warmUp, { capture: true });
 }
 
 /** Мягкий звук для нового сообщения (клиент + модератор) */

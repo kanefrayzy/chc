@@ -16,6 +16,8 @@ interface TicketConversationProps {
   initialMessages: AdminMessage[];
   ticketStatus: TicketStatus;
   oldestMessageId?: string | null;
+  /** Панельный режим: компонент занимает всю высоту парента (flex-1) */
+  panelMode?: boolean;
 }
 
 export function TicketConversation({
@@ -24,6 +26,7 @@ export function TicketConversation({
   initialMessages,
   ticketStatus,
   oldestMessageId,
+  panelMode = false,
 }: TicketConversationProps) {
   const [messages, setMessages] = useState(initialMessages);
   const [body, setBody] = useState('');
@@ -249,9 +252,9 @@ export function TicketConversation({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className={panelMode ? 'flex flex-col h-full' : 'flex flex-col gap-3'}>
       {/* Список сообщений */}
-      <div ref={listRef} className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+      <div ref={listRef} className={panelMode ? 'flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3 pr-1' : 'space-y-3 max-h-[60vh] overflow-y-auto pr-1'}>
         {hasMore && (
           <div className="text-center py-1">
             <button
@@ -284,6 +287,7 @@ export function TicketConversation({
         <div ref={messagesEndRef} />
       </div>
 
+      <div className={panelMode ? 'flex-shrink-0 border-t border-border px-4 pt-3 pb-4 space-y-2' : 'space-y-2'}>
       {balanceSuccess && (
         <div className="rounded-xl bg-success/10 border border-success/30 px-3 py-2 text-sm text-success">
           {balanceSuccess}
@@ -403,6 +407,7 @@ export function TicketConversation({
           Тикет закрыт
         </div>
       )}
+      </div>{/* end bottom section wrapper */}
     </div>
   );
 }

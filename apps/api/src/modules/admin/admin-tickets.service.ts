@@ -60,13 +60,15 @@ export class AdminTicketsService {
       });
       return msgs.reverse();
     }
-    return this.prisma.message.findMany({
+    // Возвращаем последние N сообщений в хронологическом порядке
+    const msgs = await this.prisma.message.findMany({
       where: { ticketId },
       include: { author: { select: { username: true, role: true } } },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
       take,
       ...(params?.afterId ? { cursor: { id: params.afterId }, skip: 1 } : {}),
     });
+    return msgs.reverse();
   }
 
   async postMessage(params: {
@@ -100,16 +102,7 @@ export class AdminTicketsService {
       }),
     ]);
 
-    await this.audit.log({
-      actorId: params.actorId,
-      action: 'ticket.message',
-      entityType: 'ticket',
-      entityId: ticket.id,
-      payload: { messageId: message.id },
-      ip: params.ip,
-      userAgent: params.userAgent,
-    });
-
+    // Emit realtime events BEFORE audit so there's no delay for the client
     try {
       this.realtime.emitToTicket(ticket.id, 'ticket:message', {
         id: message.id,
@@ -121,9 +114,32 @@ export class AdminTicketsService {
         body: message.body,
         createdAt: message.createdAt.toISOString(),
       });
+      // Уведомляем клиента о смене статуса
+      this.realtime.emitToTicket(ticket.id, 'ticket:status', {
+        ticketId: ticket.id,
+        status: 'WAITING_USER',
+        closedAt: null,
+      });
+      // Обновляем список тикетов в админке
+      this.realtime.emitTicketUpdated(ticket.id, {
+        status: 'WAITING_USER',
+        lastMessagePreview: message.body.slice(0, 100),
+        lastMessageAt: message.createdAt.toISOString(),
+      });
     } catch {
       // не блокируем
     }
+
+    // Аудит — не блокируем основной поток
+    this.audit.log({
+      actorId: params.actorId,
+      action: 'ticket.message',
+      entityType: 'ticket',
+      entityId: ticket.id,
+      payload: { messageId: message.id },
+      ip: params.ip,
+      userAgent: params.userAgent,
+    }).catch(() => {});
 
     return message;
   }
