@@ -8,7 +8,7 @@ import { MessageComposer } from './MessageComposer';
 import { ticketsApi, type MessageDto, type TicketDto } from '@/lib/api/tickets';
 import { useTicketSocket } from '@/lib/realtime/useTicketSocket';
 import { getRealtimeSocket } from '@/lib/realtime/socket';
-import { playMessageSound, playSentSound } from '@/lib/sounds';
+import { playMessageSound } from '@/lib/sounds';
 
 export interface ChatThreadProps {
   ticket: TicketDto;
@@ -115,7 +115,6 @@ export function ChatThread({ ticket, viewerId, locale }: ChatThreadProps): JSX.E
       // Регистрируем ДО setMessages — WS-эхо приходит почти одновременно
       sentIdsRef.current.add(msg.id);
       setMessages((prev) => prev.some((x) => x.id === msg.id) ? prev : [...prev, msg]);
-      playSentSound();
     } catch (err) {
       const text = err instanceof Error ? err.message : String(err);
       setSendError(text);

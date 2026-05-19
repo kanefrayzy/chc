@@ -8,7 +8,7 @@ import { formatDateTime } from '../../../../lib/format';
 import { Button } from '../../../../components/ui/Button';
 import { Textarea } from '../../../../components/ui/Input';
 import { cn } from '../../../../lib/cn';
-import { playMessageSound, playSentSound } from '../../../../lib/sounds';
+import { playMessageSound } from '../../../../lib/sounds';
 
 interface TicketConversationProps {
   ticketId: string;
@@ -155,7 +155,6 @@ export function TicketConversation({
       const msg = await adminApi.tickets.uploadImage(ticketId, file);
       sentMessageIdsRef.current.add(msg.id);
       setMessages((prev) => (prev.some((x) => x.id === msg.id) ? prev : [...prev, msg]));
-      playSentSound();
     } catch (err) {
       setImageError(err instanceof ApiException ? err.message : 'Ошибка загрузки изображения');
     } finally {
@@ -198,7 +197,6 @@ export function TicketConversation({
       sentMessageIdsRef.current.add(msg.id);
       setMessages((prev) => (prev.some((x) => x.id === msg.id) ? prev : [...prev, msg]));
       setBody('');
-      playSentSound();
     } catch (e) {
       setError(e instanceof ApiException ? e.message : 'Ошибка отправки');
     } finally {
