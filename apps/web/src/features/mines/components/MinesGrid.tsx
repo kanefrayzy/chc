@@ -21,7 +21,7 @@ export interface MinesGridProps {
   bombIconUrl?: string;
 }
 
-type TileVisualState = 'hidden' | 'revealed-gem' | 'revealed-mine' | 'busted-mine' | 'pending';
+type TileVisualState = 'hidden' | 'revealed-gem' | 'final-gem' | 'revealed-mine' | 'busted-mine' | 'pending';
 
 export function MinesGrid({
   game,
@@ -42,6 +42,7 @@ export function MinesGrid({
     if (idx === bustedTile) return 'busted-mine';
     if (revealedSet.has(idx)) return 'revealed-gem';
     if (isCompleted && mineSet.has(idx)) return 'revealed-mine';
+    if (isCompleted) return 'final-gem';
     if (idx === pendingTile) return 'pending';
     return 'hidden';
   };
@@ -76,6 +77,7 @@ export function MinesGrid({
               s === 'hidden' && 'border-border bg-[#1f2a3a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] hover:border-brand hover:bg-[#243245] active:scale-[0.97]',
               s === 'pending' && 'border-brand/60 bg-[#243245] animate-pulse',
               s === 'revealed-gem' && 'border-brand/40 bg-gradient-to-br from-[#0e2e23] to-[#0a3a2d] shadow-[0_0_22px_rgba(0,255,140,0.18)] scale-[1.02]',
+              s === 'final-gem' && 'border-brand/20 bg-gradient-to-br from-[#0e2e23]/60 to-[#0a3a2d]/60 opacity-70',
               s === 'revealed-mine' && 'border-danger/40 bg-gradient-to-br from-[#3a1116] to-[#240a0e] opacity-70',
               s === 'busted-mine' && 'border-danger bg-gradient-to-br from-[#7a1626] to-[#3a0a14] shadow-[0_0_26px_rgba(255,59,92,0.55)] animate-[pulse_0.6s_ease-out_1]',
               !interactive && s === 'hidden' && 'opacity-60',
@@ -84,6 +86,8 @@ export function MinesGrid({
             <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-2xl sm:text-3xl">
               {s === 'revealed-gem' ? (
                 <GemGlyph iconUrl={gemIconUrl} />
+              ) : s === 'final-gem' ? (
+                <GemGlyph iconUrl={gemIconUrl} dim />
               ) : s === 'revealed-mine' || s === 'busted-mine' ? (
                 <BombGlyph emphasized={s === 'busted-mine'} iconUrl={bombIconUrl} />
               ) : null}
@@ -95,19 +99,22 @@ export function MinesGrid({
   );
 }
 
-function GemGlyph({ iconUrl }: { iconUrl?: string }): JSX.Element {
+function GemGlyph({ iconUrl, dim = false }: { iconUrl?: string; dim?: boolean }): JSX.Element {
   if (iconUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={iconUrl}
         alt="gem"
-        className="h-7 w-7 object-contain drop-shadow-[0_0_8px_rgba(0,255,140,0.55)] sm:h-9 sm:w-9"
+        className={cn(
+          'h-7 w-7 object-contain drop-shadow-[0_0_8px_rgba(0,255,140,0.55)] sm:h-9 sm:w-9',
+          dim && 'opacity-60 drop-shadow-none',
+        )}
       />
     );
   }
   return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7 sm:h-9 sm:w-9 drop-shadow-[0_0_8px_rgba(0,255,140,0.55)]" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className={cn('h-7 w-7 sm:h-9 sm:w-9', dim ? 'opacity-60' : 'drop-shadow-[0_0_8px_rgba(0,255,140,0.55)]')} aria-hidden="true">
       <defs>
         <linearGradient id="gem-grad" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#00ffae" />

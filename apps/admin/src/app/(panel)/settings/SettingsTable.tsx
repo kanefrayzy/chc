@@ -68,6 +68,7 @@ const GROUPS: { id: string; label: string; description: string; keys: string[] }
     description: 'Изображения плиток игр на главной странице',
     keys: [
       'landing.game_image_url.roulette',
+      'landing.game_image_url.mines',
       'landing.game_image_url.classic',
       'landing.game_image_url.cases',
     ],
@@ -99,6 +100,7 @@ const LABELS: Record<string, string> = {
   'brand.tagline': 'Слоган / описание',
   'brand.hero_image_url': 'Hero-изображение',
   'landing.game_image_url.roulette': 'Плитка «Рулетка»',
+  'landing.game_image_url.mines': 'Плитка «Mines»',
   'landing.game_image_url.classic': 'Плитка «Классика»',
   'landing.game_image_url.cases': 'Плитка «Кейсы»',
 };

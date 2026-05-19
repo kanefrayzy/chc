@@ -375,7 +375,6 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
       <div className="flex items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold text-text-primary sm:text-2xl">{t('pageTitle')}</h1>
-          <p className="text-sm text-text-muted">{t('description')}</p>
         </div>
         <button
           type="button"
@@ -412,37 +411,6 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
             gemIconUrl={gemIconUrl}
             bombIconUrl={bombIconUrl}
           />
-
-          {/* Provably-fair раскрытие после завершения */}
-          {game && game.status !== 'ACTIVE' && game.serverSeed ? (
-            <div className="w-full max-w-[640px] rounded-lg border border-border bg-bg-elevated p-3 text-xs">
-              <div className="mb-1 text-text-muted">{t('fair.title')}</div>
-              <dl className="space-y-1">
-                <div className="flex items-start justify-between gap-2">
-                  <dt className="text-text-muted">{t('fair.serverSeedHash')}</dt>
-                  <dd className="truncate font-mono text-[11px] text-text-secondary" title={game.serverSeedHash}>
-                    {game.serverSeedHash.slice(0, 16)}…
-                  </dd>
-                </div>
-                <div className="flex items-start justify-between gap-2">
-                  <dt className="text-text-muted">{t('fair.serverSeed')}</dt>
-                  <dd className="truncate font-mono text-[11px] text-text-secondary" title={game.serverSeed}>
-                    {game.serverSeed.slice(0, 16)}…
-                  </dd>
-                </div>
-                <div className="flex items-start justify-between gap-2">
-                  <dt className="text-text-muted">{t('fair.clientSeed')}</dt>
-                  <dd className="truncate font-mono text-[11px] text-text-secondary" title={game.clientSeed}>
-                    {game.clientSeed}
-                  </dd>
-                </div>
-                <div className="flex items-start justify-between gap-2">
-                  <dt className="text-text-muted">{t('fair.nonce')}</dt>
-                  <dd className="font-mono text-[11px] text-text-secondary">{game.nonce}</dd>
-                </div>
-              </dl>
-            </div>
-          ) : null}
         </div>
 
         <div className="space-y-4">
@@ -477,6 +445,37 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
           <MinesHistory items={history} />
         </div>
       </div>
+
+      {/* Provably-fair раскрытие после завершения */}
+      {game && game.status !== 'ACTIVE' && game.serverSeed ? (
+        <div className="rounded-lg border border-border bg-bg-elevated p-3 text-xs">
+          <div className="mb-1 text-text-muted">{t('fair.title')}</div>
+          <dl className="space-y-1">
+            <div className="flex items-start justify-between gap-2">
+              <dt className="text-text-muted">{t('fair.serverSeedHash')}</dt>
+              <dd className="truncate font-mono text-[11px] text-text-secondary" title={game.serverSeedHash}>
+                {game.serverSeedHash.slice(0, 16)}…
+              </dd>
+            </div>
+            <div className="flex items-start justify-between gap-2">
+              <dt className="text-text-muted">{t('fair.serverSeed')}</dt>
+              <dd className="truncate font-mono text-[11px] text-text-secondary" title={game.serverSeed}>
+                {game.serverSeed.slice(0, 16)}…
+              </dd>
+            </div>
+            <div className="flex items-start justify-between gap-2">
+              <dt className="text-text-muted">{t('fair.clientSeed')}</dt>
+              <dd className="truncate font-mono text-[11px] text-text-secondary" title={game.clientSeed}>
+                {game.clientSeed}
+              </dd>
+            </div>
+            <div className="flex items-start justify-between gap-2">
+              <dt className="text-text-muted">{t('fair.nonce')}</dt>
+              <dd className="font-mono text-[11px] text-text-secondary">{game.nonce}</dd>
+            </div>
+          </dl>
+        </div>
+      ) : null}
 
       <MinesInfoModal
         open={infoOpen}

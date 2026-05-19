@@ -270,6 +270,13 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     description: 'Картинка плитки игры «Рулетка» на главной (можно загрузить файлом).',
   },
   {
+    key: 'landing.game_image_url.mines',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'Картинка плитки игры «Mines» на главной (можно загрузить файлом).',
+  },
+  {
     key: 'landing.game_image_url.classic',
     type: 'string',
     defaultValue: '',
