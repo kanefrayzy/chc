@@ -6,8 +6,6 @@ import { Spinner, Alert } from '@chcgreen/ui';
 import { ChatThread } from './ChatThread';
 import { ticketsApi, type TicketDto } from '@/lib/api/tickets';
 
-const POLL_INTERVAL_MS = 8000;
-
 export interface ChatLayoutProps {
   locale: string;
   viewerId: string;
@@ -23,22 +21,21 @@ export function ChatLayout({ locale, viewerId, initialTicketId }: ChatLayoutProp
 
   useEffect(() => {
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
+    setInitialLoading(true);
 
-    const pull = async (): Promise<void> => {
+    (async () => {
       try {
         const res = await ticketsApi.list({ limit: 30 });
         if (cancelled) return;
 
-        // Ищем существующий SUPPORT тикет
         const supportTicket =
           res.items.find((tk) => tk.type === 'SUPPORT') ?? res.items[0] ?? null;
 
         if (supportTicket) {
           setTicket(supportTicket);
           setActiveId(supportTicket.id);
-        } else if (!activeId) {
-          // Если тикетов нет — создаём единственный автоматически
+        } else {
+          // Нет тикетов — создаём единственный автоматически
           const created = await ticketsApi.create({ subject: 'Поддержка', type: 'SUPPORT' });
           if (!cancelled) {
             setTicket(created);
@@ -49,18 +46,11 @@ export function ChatLayout({ locale, viewerId, initialTicketId }: ChatLayoutProp
       } catch {
         if (!cancelled) setErrorMessage(t('list.errors.loadFailed'));
       } finally {
-        if (!cancelled) {
-          setInitialLoading(false);
-          timer = setTimeout(pull, POLL_INTERVAL_MS);
-        }
+        if (!cancelled) setInitialLoading(false);
       }
-    };
+    })();
 
-    pull();
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

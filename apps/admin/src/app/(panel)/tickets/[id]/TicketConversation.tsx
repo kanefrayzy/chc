@@ -59,6 +59,11 @@ export function TicketConversation({
    */
   const sentMessageIdsRef = useRef(new Set<string>());
 
+  /** Защита от двойного клика на «Отправить» — ref обновляется синхронно */
+  const submittingRef = useRef(false);
+  /** Защита от повторной загрузки изображения */
+  const imageSubmittingRef = useRef(false);
+
   // Блокировка пользователя
   const [blockReason, setBlockReason] = useState('');
   const [showBlockForm, setShowBlockForm] = useState(false);
@@ -72,12 +77,13 @@ export function TicketConversation({
   }, [messages.length]);
 
   // WebSocket: real-time подписка
+  // Deps: только ticketId — статус управляется через onStatus, не нужно пересоздавать WS-листенеры
   useEffect(() => {
-    if (status === 'CLOSED') return;
     const socket = getAdminSocket();
 
     const subscribe = () => socket.emit('subscribe:ticket', { ticketId });
     if (socket.connected) subscribe();
+    // Всегда добавляем connect-слушатель — ловит reconnect
     socket.on('connect', subscribe);
 
     const onMessage = (m: AdminMessage & { ticketId: string }) => {
@@ -90,7 +96,6 @@ export function TicketConversation({
       setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
       const isUser = m.authorRole !== 'MODERATOR' && m.authorRole !== 'SUPER_ADMIN';
       if (isUser) playMessageSound();
-      // Прекращаем индикатор печатания когда пришло сообщение
       setIsTyping(false);
     };
     const onStatus = (s: { ticketId: string; status: TicketStatus }) => {
@@ -103,6 +108,8 @@ export function TicketConversation({
       if (data.isTyping) {
         if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
         typingTimerRef.current = setTimeout(() => setIsTyping(false), 4000);
+      } else {
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       }
     };
 
@@ -118,7 +125,7 @@ export function TicketConversation({
       socket.off('ticket:typing', onTyping);
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
-  }, [ticketId, status]);
+  }, [ticketId]);
 
   // Эмитим typing при вводе
   const typingEmitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -139,6 +146,8 @@ export function TicketConversation({
   async function handleImageUpload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (imageSubmittingRef.current) return;
+    imageSubmittingRef.current = true;
     e.target.value = '';
     setImageUploading(true);
     setImageError(null);
@@ -151,6 +160,7 @@ export function TicketConversation({
       setImageError(err instanceof ApiException ? err.message : 'Ошибка загрузки изображения');
     } finally {
       setImageUploading(false);
+      imageSubmittingRef.current = false;
     }
   }
 
@@ -177,7 +187,8 @@ export function TicketConversation({
 
   async function send(e: FormEvent) {
     e.preventDefault();
-    if (body.trim().length < 1) return;
+    if (submittingRef.current || body.trim().length < 1) return;
+    submittingRef.current = true;
     setLoading(true);
     setError(null);
     const socket = getAdminSocket();
@@ -192,6 +203,7 @@ export function TicketConversation({
       setError(e instanceof ApiException ? e.message : 'Ошибка отправки');
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   }
 
