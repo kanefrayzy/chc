@@ -448,7 +448,21 @@
       "start": "Oyna",
       "cashout": "Qazancı götür",
       "openAtLeastOne": "Qazancı götürmək üçün ən azı bir xışn açın",
-      "loginRequired": "Oynamaq üçün daxil olun"
+      "loginRequired": "Oynamaq üçün daxil olun",
+      "modeManual": "Manual",
+      "modeAuto": "Avto",
+      "gemsLabel": "Kristallar",
+      "betsCountLabel": "Mərc sayı",
+      "settings": "Tənzimləmələr",
+      "onWin": "Qazanc zamanı",
+      "onLoss": "İtki zamanı",
+      "reset": "Sıfırla",
+      "increaseBy": "Artır:",
+      "stopOnWin": "Qazancda dayan",
+      "stopOnLoss": "İtkidə dayan",
+      "autoStart": "Avto mərclərə başla",
+      "autoStop": "Dayandır",
+      "autoRunning": "Avto mərclər gedir…"
     },
     "info": {
       "title": "Oyun haqqında məlumat",

@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Spinner } from '@chcgreen/ui';
 import { MinesGrid } from './MinesGrid';
-import { MinesControls } from './MinesControls';
+import { MinesControls, type MinesMode, type MinesAutoConfig } from './MinesControls';
 import { MinesHistory } from './MinesHistory';
 import { MinesInfoModal } from './MinesInfoModal';
 import { minesApi, type MinesGameDto, type MinesLimitsDto } from '@/lib/api/mines';
@@ -48,6 +48,22 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
   const [mineCount, setMineCount] = useState<number>(3);
   const [pendingTile, setPendingTile] = useState<number | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
+
+  // Авто-режим
+  const [mode, setMode] = useState<MinesMode>('manual');
+  const [autoConfig, setAutoConfig] = useState<MinesAutoConfig>({
+    targetGems: 1,
+    betsCount: 0,
+    onWin: 'reset',
+    winPct: 0,
+    onLoss: 'reset',
+    lossPct: 0,
+    stopWinAmount: '0',
+    stopLossAmount: '0',
+  });
+  const [autoRunning, setAutoRunning] = useState(false);
+  const [autoRoundsDone, setAutoRoundsDone] = useState(0);
+  const autoRunningRef = useRef(false);
 
   const prevStatusRef = useRef<string | null>(null);
   const bustedTile = useMemo<number | null>(() => {
@@ -188,6 +204,160 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
     }
   }, [game, busy, t]);
 
+  // ───────────── Авто-режим ─────────────
+  const handleAutoStop = useCallback((): void => {
+    autoRunningRef.current = false;
+  }, []);
+
+  const handleAutoStart = useCallback(async (): Promise<void> => {
+    if (autoRunningRef.current) return;
+    if (!isAuthed) return;
+    const baseBet = parseAmountToMinor(amount);
+    if (baseBet === null) {
+      toast.error(t('errors.invalidAmount'));
+      return;
+    }
+    autoRunningRef.current = true;
+    setAutoRunning(true);
+    setAutoRoundsDone(0);
+
+    const minBetLocal = BigInt(limits.minBetMinor);
+    const maxBetLocal = BigInt(limits.maxBetMinor);
+    const safeTotal = Math.max(1, limits.totalTiles - mineCount);
+    const targetGems = Math.max(1, Math.min(autoConfig.targetGems, safeTotal));
+    const stopWinMinor = (() => {
+      const v = parseAmountToMinor(autoConfig.stopWinAmount || '0');
+      return v && v > 0n ? v : 0n;
+    })();
+    const stopLossMinor = (() => {
+      const v = parseAmountToMinor(autoConfig.stopLossAmount || '0');
+      return v && v > 0n ? v : 0n;
+    })();
+
+    let curBet = baseBet;
+    let profit = 0n;
+    let rounds = 0;
+
+    try {
+      while (
+        autoRunningRef.current &&
+        (autoConfig.betsCount === 0 || rounds < autoConfig.betsCount)
+      ) {
+        if (curBet < minBetLocal) curBet = minBetLocal;
+        if (curBet > maxBetLocal) curBet = maxBetLocal;
+
+        // Старт раунда
+        let g: MinesGameDto;
+        try {
+          g = await minesApi.start({ amountMinor: curBet.toString(), mineCount });
+        } catch (e) {
+          handleApiError(e, t);
+          break;
+        }
+        setGame(g);
+        setPendingTile(null);
+        playClick();
+
+        // Открытие клеток в случайном порядке
+        const order = shuffledIndices(limits.totalTiles);
+        let idx = 0;
+        while (
+          autoRunningRef.current &&
+          g.status === 'ACTIVE' &&
+          g.revealedTiles.length < targetGems
+        ) {
+          let tile = -1;
+          while (idx < order.length) {
+            const candidate = order[idx++];
+            if (candidate === undefined) break;
+            if (!g.revealedTiles.includes(candidate)) {
+              tile = candidate;
+              break;
+            }
+          }
+          if (tile < 0) break;
+          setPendingTile(tile);
+          try {
+            g = await minesApi.reveal(tile);
+          } catch (e) {
+            handleApiError(e, t);
+            autoRunningRef.current = false;
+            break;
+          }
+          setGame(g);
+          if (g.status !== 'ACTIVE') break;
+          await sleep(180);
+        }
+
+        // Cashout если ещё активна и достигли цели
+        if (autoRunningRef.current && g.status === 'ACTIVE') {
+          try {
+            g = await minesApi.cashout();
+            setGame(g);
+          } catch (e) {
+            handleApiError(e, t);
+            autoRunningRef.current = false;
+            break;
+          }
+        }
+
+        const won = g.status === 'CASHED_OUT';
+        const bet = BigInt(g.betMinor);
+        const payout = BigInt(g.payoutMinor);
+        profit += won ? payout - bet : -bet;
+        rounds += 1;
+        setAutoRoundsDone(rounds);
+        void reloadBalance();
+        void refreshHistory();
+
+        // Стопы по суммарной прибыли/убытку
+        if (stopWinMinor > 0n && profit >= stopWinMinor) break;
+        if (stopLossMinor > 0n && profit <= -stopLossMinor) break;
+
+        // Корректировка следующей ставки
+        if (won) {
+          if (autoConfig.onWin === 'reset') {
+            curBet = baseBet;
+          } else {
+            const inc = (curBet * BigInt(Math.round(autoConfig.winPct * 100))) / 10000n;
+            curBet = curBet + inc;
+          }
+        } else if (autoConfig.onLoss === 'reset') {
+          curBet = baseBet;
+        } else {
+          const inc = (curBet * BigInt(Math.round(autoConfig.lossPct * 100))) / 10000n;
+          curBet = curBet + inc;
+        }
+        setAmount((Number(curBet) / 100).toFixed(2));
+
+        if (!autoRunningRef.current) break;
+        await sleep(450);
+      }
+    } finally {
+      autoRunningRef.current = false;
+      setAutoRunning(false);
+      setPendingTile(null);
+    }
+  }, [
+    isAuthed,
+    amount,
+    mineCount,
+    limits.minBetMinor,
+    limits.maxBetMinor,
+    limits.totalTiles,
+    autoConfig,
+    t,
+    reloadBalance,
+    refreshHistory,
+  ]);
+
+  // Останавливаем авто-цикл при размонтировании.
+  useEffect(() => {
+    return () => {
+      autoRunningRef.current = false;
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="flex min-h-[280px] items-center justify-center">
@@ -289,11 +459,20 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
             maxBetMinor={maxBet}
             minMines={limits.minMines}
             maxMines={limits.maxMines}
+            totalTiles={limits.totalTiles}
             multiplierBps={game?.multiplierBps ?? 10_000}
             currentPayoutMinor={game?.currentPayoutMinor ?? '0'}
             revealedCount={game?.revealedTiles.length ?? 0}
             onStart={handleStart}
             onCashout={handleCashout}
+            mode={mode}
+            onModeChange={setMode}
+            autoConfig={autoConfig}
+            onAutoConfigChange={setAutoConfig}
+            autoRunning={autoRunning}
+            autoRoundsDone={autoRoundsDone}
+            onAutoStart={() => { void handleAutoStart(); }}
+            onAutoStop={handleAutoStop}
           />
           <MinesHistory items={history} />
         </div>
@@ -327,4 +506,19 @@ function handleApiError(e: unknown, t: (k: string) => string): void {
     return;
   }
   toast.error(t('errors.unknown'));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function shuffledIndices(n: number): number[] {
+  const arr = Array.from({ length: n }, (_, i) => i);
+  for (let i = n - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = arr[i] as number;
+    arr[i] = arr[j] as number;
+    arr[j] = tmp;
+  }
+  return arr;
 }
