@@ -18,6 +18,10 @@ interface TicketConversationProps {
   oldestMessageId?: string | null;
   /** Панельный режим: компонент занимает всю высоту парента (flex-1) */
   panelMode?: boolean;
+  /** Внешний триггер для открытия формы (block/credit/debit) */
+  externalAction?: { type: 'block' | 'credit' | 'debit'; key: number } | null;
+  /** Колбэк после успешной корректировки баланса */
+  onBalanceUpdated?: (newBalanceMinor: string) => void;
 }
 
 export function TicketConversation({
@@ -27,6 +31,8 @@ export function TicketConversation({
   ticketStatus,
   oldestMessageId,
   panelMode = false,
+  externalAction,
+  onBalanceUpdated,
 }: TicketConversationProps) {
   const [messages, setMessages] = useState(initialMessages);
   const [body, setBody] = useState('');
@@ -78,6 +84,15 @@ export function TicketConversation({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
+
+  // Внешний триггер форм (из заголовка дашборда)
+  useEffect(() => {
+    if (!externalAction) return;
+    if (externalAction.type === 'block') { setShowBlockForm(true); setBlockError(null); }
+    else if (externalAction.type === 'credit') { setBalanceForm('credit'); setBalanceSuccess(null); }
+    else if (externalAction.type === 'debit') { setBalanceForm('debit'); setBalanceSuccess(null); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalAction?.key]);
 
   // WebSocket: real-time подписка
   // Deps: только ticketId — статус управляется через onStatus, не нужно пересоздавать WS-листенеры
@@ -187,8 +202,7 @@ export function TicketConversation({
     }
   }
 
-  async function send(e: FormEvent) {
-    e.preventDefault();
+  async function doSend() {
     if (submittingRef.current || body.trim().length < 1) return;
     submittingRef.current = true;
     setLoading(true);
@@ -206,6 +220,11 @@ export function TicketConversation({
       setLoading(false);
       submittingRef.current = false;
     }
+  }
+
+  async function send(e: FormEvent) {
+    e.preventDefault();
+    return doSend();
   }
 
   async function submitBalanceAdjust(e: FormEvent) {
@@ -227,6 +246,7 @@ export function TicketConversation({
       setBalanceAmount('');
       setBalanceReason('');
       setBalanceForm(null);
+      onBalanceUpdated?.(res.balanceAfterMinor);
       const fresh = await adminApi.tickets.messages(ticketId, { limit: 30 });
       setMessages(fresh);
     } catch (e) {
@@ -357,8 +377,14 @@ export function TicketConversation({
           <Textarea
             value={body}
             onChange={(e) => handleBodyChange(e.target.value)}
-            rows={3}
-            placeholder="Ответ пользователю…"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                void doSend();
+              }
+            }}
+            rows={panelMode ? 2 : 3}
+            placeholder={panelMode ? 'Ответ… (Enter — отправить, Shift+Enter — новая строка)' : 'Ответ пользователю…'}
           />
           {error && <div className="text-sm text-danger">{error}</div>}
           {imageError && <div className="text-sm text-danger">{imageError}</div>}
@@ -372,30 +398,34 @@ export function TicketConversation({
               >
                 {imageUploading ? '⏳' : '📎'} Изображение
               </Button>
-              <Button
-                type="button" variant="ghost" size="sm"
-                onClick={() => { setShowBlockForm(true); setBlockError(null); }}
-                disabled={loading || blockSuccess}
-                className="text-danger hover:text-danger"
-              >
-                🚫 Заблокировать
-              </Button>
-              <Button
-                type="button" variant="ghost" size="sm"
-                onClick={() => { setBalanceForm('credit'); setBalanceSuccess(null); }}
-                disabled={loading}
-                className="text-success hover:text-success"
-              >
-                ＋ Начислить
-              </Button>
-              <Button
-                type="button" variant="ghost" size="sm"
-                onClick={() => { setBalanceForm('debit'); setBalanceSuccess(null); }}
-                disabled={loading}
-                className="text-danger hover:text-danger"
-              >
-                － Списать
-              </Button>
+              {!panelMode && (
+                <>
+                  <Button
+                    type="button" variant="ghost" size="sm"
+                    onClick={() => { setShowBlockForm(true); setBlockError(null); }}
+                    disabled={loading || blockSuccess}
+                    className="text-danger hover:text-danger"
+                  >
+                    🚫 Заблокировать
+                  </Button>
+                  <Button
+                    type="button" variant="ghost" size="sm"
+                    onClick={() => { setBalanceForm('credit'); setBalanceSuccess(null); }}
+                    disabled={loading}
+                    className="text-success hover:text-success"
+                  >
+                    ＋ Начислить
+                  </Button>
+                  <Button
+                    type="button" variant="ghost" size="sm"
+                    onClick={() => { setBalanceForm('debit'); setBalanceSuccess(null); }}
+                    disabled={loading}
+                    className="text-danger hover:text-danger"
+                  >
+                    － Списать
+                  </Button>
+                </>
+              )}
             </div>
             <Button type="submit" loading={loading} disabled={body.trim().length === 0}>
               Отправить

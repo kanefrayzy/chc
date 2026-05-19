@@ -60,6 +60,11 @@ export function TicketsDashboard({ initialTickets }: TicketsDashboardProps) {
   const [panelLoading, setPanelLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [showClosed, setShowClosed] = useState(false);
+  // Balance shown in header (updates after adjust)
+  const [panelBalance, setPanelBalance] = useState<string | null>(null);
+  // External action trigger for TicketConversation forms
+  const [actionKey, setActionKey] = useState(0);
+  const [actionType, setActionType] = useState<'block' | 'credit' | 'debit' | null>(null);
 
   // Keep ref in sync for WS handlers
   useEffect(() => {
@@ -77,6 +82,8 @@ export function TicketsDashboard({ initialTickets }: TicketsDashboardProps) {
         adminApi.tickets.messages(id, { limit: 30 }),
       ]);
       setPanelData({ ticket, messages });
+      setPanelBalance(ticket.userBalanceMinor ?? null);
+      setActionType(null);
     } finally {
       setPanelLoading(false);
     }
@@ -138,6 +145,15 @@ export function TicketsDashboard({ initialTickets }: TicketsDashboardProps) {
       t.id.includes(searchLower)
     );
   });
+
+  const handleAction = (type: 'block' | 'credit' | 'debit') => {
+    setActionType(type);
+    setActionKey((k) => k + 1);
+  };
+
+  const handleBalanceUpdated = (newBalanceMinor: string) => {
+    setPanelBalance(newBalanceMinor);
+  };
 
   const unreadCount = tickets.filter((t) => t.status === 'WAITING_MODERATOR').length;
 
@@ -251,34 +267,75 @@ export function TicketsDashboard({ initialTickets }: TicketsDashboardProps) {
         ) : (
           <div className="flex flex-col h-full overflow-hidden">
             {/* Panel header */}
-            <div className="px-5 py-3 border-b border-border bg-elevated/50 flex items-center justify-between flex-shrink-0">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      'h-2.5 w-2.5 rounded-full flex-shrink-0',
-                      statusDot[panelData.ticket.status] ?? 'bg-zinc-300',
-                    )}
-                  />
+            <div className="px-5 py-3 border-b border-border bg-elevated/50 flex-shrink-0">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                {/* Left: user info */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={cn('h-2.5 w-2.5 rounded-full flex-shrink-0', statusDot[panelData.ticket.status] ?? 'bg-zinc-300')} />
                   <span className="text-sm font-semibold text-ink-900 truncate">
                     {panelData.ticket.username ?? shortId(panelData.ticket.userId)}
                   </span>
-                  <span className="text-xs text-ink-400 truncate hidden sm:block">
-                    · {panelData.ticket.subject ?? typeLabel[panelData.ticket.type]} · {shortId(panelData.ticket.id, 6)}
+                  <span className="text-xs text-ink-400 hidden sm:block truncate">
+                    · {panelData.ticket.subject ?? typeLabel[panelData.ticket.type]}
+                  </span>
+                  <span className={cn(
+                    'text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0',
+                    panelData.ticket.status === 'WAITING_MODERATOR' ? 'bg-red-100 text-red-600' :
+                    panelData.ticket.status === 'WAITING_USER' ? 'bg-yellow-100 text-yellow-700' :
+                    panelData.ticket.status === 'OPEN' ? 'bg-blue-100 text-blue-600' :
+                    'bg-zinc-100 text-zinc-500'
+                  )}>
+                    {statusLabel[panelData.ticket.status]}
                   </span>
                 </div>
-                <div className="text-xs text-ink-500 mt-0.5 ml-4.5">
-                  {statusLabel[panelData.ticket.status]}
+
+                {/* Right: balance + actions + link */}
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  {/* Balance – large and prominent */}
+                  {panelBalance !== null && (
+                    <div className="text-right border-r border-border pr-3">
+                      <div className="text-[10px] text-ink-400 leading-none uppercase tracking-wide">Баланс</div>
+                      <div className="text-xl font-bold text-ink-900 leading-tight tabular-nums">
+                        {(Number(panelBalance) / 100).toFixed(2)}
+                        <span className="text-xs font-normal text-ink-500 ml-1">AZN</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  {panelData.ticket.status !== 'CLOSED' && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleAction('credit')}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-success/10 text-success hover:bg-success/20 transition-colors"
+                      >
+                        ＋ Начислить
+                      </button>
+                      <button
+                        onClick={() => handleAction('debit')}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+                      >
+                        － Списать
+                      </button>
+                      <button
+                        onClick={() => handleAction('block')}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-100 text-zinc-600 hover:bg-zinc-200 transition-colors"
+                      >
+                        🚫 Бан
+                      </button>
+                    </div>
+                  )}
+
+                  <a
+                    href={`/vkadm/tickets/${panelData.ticket.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Открыть →
+                  </a>
                 </div>
               </div>
-              <a
-                href={`/vkadm/tickets/${panelData.ticket.id}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex-shrink-0 text-xs text-primary hover:underline ml-3"
-              >
-                Открыть полностью →
-              </a>
             </div>
 
             {/* Conversation */}
@@ -291,6 +348,8 @@ export function TicketsDashboard({ initialTickets }: TicketsDashboardProps) {
                 ticketStatus={panelData.ticket.status}
                 oldestMessageId={panelData.messages[0]?.id ?? null}
                 panelMode
+                externalAction={actionType ? { type: actionType, key: actionKey } : null}
+                onBalanceUpdated={handleBalanceUpdated}
               />
             </div>
           </div>
