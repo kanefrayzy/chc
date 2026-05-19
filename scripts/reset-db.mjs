@@ -33,6 +33,7 @@ async function main() {
   await prisma.$transaction([
     prisma.referralEarning.deleteMany(),
     prisma.rouletteBet.deleteMany(),
+    prisma.minesGame.deleteMany(),
     prisma.jackpotBet.deleteMany(),
     prisma.caseOpening.deleteMany(),
     prisma.message.deleteMany(),

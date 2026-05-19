@@ -64,6 +64,7 @@ model User {
   assignedTickets Ticket[]         @relation("TicketModerator")
   messages        Message[]
   rouletteBets    RouletteBet[]
+  minesGames      MinesGame[]
   jackpotBets     JackpotBet[]
   caseOpenings    CaseOpening[]
   auditLogs       AuditLog[]
@@ -413,6 +414,46 @@ model RouletteBet {
 
   @@index([roundId])
   @@index([userId])
+}
+
+// =========================================================
+// GAMES: MINES (single-player, provably fair)
+// =========================================================
+
+enum MinesGameStatus {
+  ACTIVE
+  CASHED_OUT
+  BUSTED
+  CANCELLED
+}
+
+/// Партия Mines на сетке 5×5 (TOTAL_TILES = 25).
+/// minePositions хранит индексы клеток с минами (отсортированный массив).
+/// revealedTiles — список открытых безопасных клеток в порядке открытия.
+/// Для активной игры minePositions и serverSeed клиенту НЕ отдаются (анти-чит).
+model MinesGame {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id])
+  status          MinesGameStatus @default(ACTIVE)
+  betMinor        BigInt
+  mineCount       Int             // 1..24
+  // provably fair
+  serverSeed      String          // раскрывается клиенту после завершения
+  serverSeedHash  String          // публикуется сразу
+  clientSeed      String
+  nonce           Int             @default(0)
+  minePositions   Int[]           // длина = mineCount
+  revealedTiles   Int[]           // длина 0..(25 - mineCount)
+  // выплата
+  multiplierBps   Int             @default(10000) // 10000 = ×1.0000
+  payoutMinor     BigInt          @default(0)
+  // время
+  startedAt       DateTime        @default(now())
+  completedAt    DateTime?
+
+  @@index([userId, status])
+  @@index([userId, startedAt])
 }
 
 // =========================================================

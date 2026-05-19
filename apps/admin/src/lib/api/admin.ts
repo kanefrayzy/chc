@@ -30,6 +30,50 @@ export interface AdminRouletteStats {
   recentRounds: AdminRouletteRoundRow[];
 }
 
+// ─── Mines ───────────────────────────────────────────────────────────────
+
+export interface AdminMinesGameRow {
+  id: string;
+  username: string;
+  status: string;
+  mineCount: number;
+  revealedCount: number;
+  betMinor: string;
+  payoutMinor: string;
+  ggrMinor: string;
+  multiplierBps: number;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+export interface AdminMinesByMineCountRow {
+  mineCount: number;
+  games: number;
+  wageredMinor: string;
+  paidOutMinor: string;
+  ggrMinor: string;
+  rtpPct: number;
+}
+
+export interface AdminMinesStats {
+  todayGgrMinor: string;
+  todayWageredMinor: string;
+  todayPaidOutMinor: string;
+  todayGgrPct: number;
+  allTimeGgrMinor: string;
+  allTimeWageredMinor: string;
+  allTimePaidOutMinor: string;
+  allTimeRtpPct: number;
+  gamesToday: number;
+  gamesTotal: number;
+  activeGames: number;
+  cashedOutTotal: number;
+  bustedTotal: number;
+  bustedPct: number;
+  byMineCount: AdminMinesByMineCountRow[];
+  recentGames: AdminMinesGameRow[];
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────────
 
 export interface DashboardStats {
@@ -454,6 +498,11 @@ export const adminApi = {
   roulette: {
     stats: (opts?: FetchOptions) =>
       apiFetch<AdminRouletteStats>('/admin/roulette/stats', { ...withCookie(opts) }),
+  },
+
+  mines: {
+    stats: (opts?: FetchOptions) =>
+      apiFetch<AdminMinesStats>('/admin/mines/stats', { ...withCookie(opts) }),
   },
 
   translations: {

@@ -66,6 +66,13 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     isPublic: true,
     description: 'Открытие кейсов (пока MVP-заглушка)',
   },
+  {
+    key: 'gameplay.mines_enabled',
+    type: 'boolean',
+    defaultValue: true,
+    isPublic: true,
+    description: 'Включает мини-игру Mines',
+  },
   // ─── Лимиты по деньгам ────────────────────────────────────────────────
   {
     key: 'deposit.min_amount_minor',
@@ -166,6 +173,42 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     defaultValue: '',
     isPublic: true,
     description: 'Иконка для чёрных секторов рулетки (URL PNG/WEBP). Если пусто — без иконки.',
+  },
+  // ─── Mines ────────────────────────────────────────────────────────────
+  {
+    key: 'mines.min_bet_minor',
+    type: 'string',
+    defaultValue: '100',
+    isPublic: true,
+    description: 'Минимальная ставка в Mines (qəpik). 100 = 1.00 AZN',
+  },
+  {
+    key: 'mines.max_bet_minor',
+    type: 'string',
+    defaultValue: '100000',
+    isPublic: true,
+    description: 'Максимальная ставка в Mines (qəpik). 100000 = 1000.00 AZN',
+  },
+  {
+    key: 'mines.house_edge_bps',
+    type: 'number',
+    defaultValue: 100,
+    isPublic: false,
+    description: 'House edge в Mines в bps (100 bps = 1%). 0..9999.',
+  },
+  {
+    key: 'mines.icon_url.gem',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'Иконка кристалла в Mines (URL PNG/WEBP). Если пусто — используется встроенный SVG.',
+  },
+  {
+    key: 'mines.icon_url.bomb',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'Иконка бомбы в Mines (URL PNG/WEBP). Если пусто — используется встроенный SVG.',
   },
   // ─── Геймплей: внешний URL казино ─────────────────────────────────────
   {

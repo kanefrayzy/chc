@@ -44,7 +44,14 @@ export interface RecentWinnerDto {
   username: string;
   avatarUrl?: string | null;
   amountMinor: string;
-  color: RouletteColor;
+  /** Цвет рулетки (если game === 'roulette'). */
+  color?: RouletteColor;
+  /** Источник выигрыша. */
+  game: 'roulette' | 'mines';
+  /** Множитель выплаты (для mines), в bps. */
+  multiplierBps?: number;
+  /** Кол-во мин (для mines). */
+  mineCount?: number;
   createdAt: string;
 }
 

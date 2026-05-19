@@ -2,6 +2,7 @@ import { apiFetch } from './client';
 
 export interface PublicSettings {
   'gameplay.roulette_enabled': boolean;
+  'gameplay.mines_enabled': boolean;
   'gameplay.referrals_enabled': boolean;
   'gameplay.chat_enabled': boolean;
   'gameplay.ranks_enabled': boolean;
@@ -18,12 +19,17 @@ export interface PublicSettings {
   'roulette.icon_url.green': string;
   'roulette.icon_url.red': string;
   'roulette.icon_url.black': string;
+  'mines.min_bet_minor': string;
+  'mines.max_bet_minor': string;
+  'mines.icon_url.gem': string;
+  'mines.icon_url.bomb': string;
   'brand.site_name': string;
   'brand.logo_url': string;
   'brand.support_email': string;
   'brand.tagline': string;
   'brand.hero_image_url': string;
   'landing.game_image_url.roulette': string;
+  'landing.game_image_url.mines': string;
   'landing.game_image_url.classic': string;
   'landing.game_image_url.cases': string;
   'brand.social_telegram': string;
@@ -33,6 +39,7 @@ export interface PublicSettings {
 
 const DEFAULTS: PublicSettings = {
   'gameplay.roulette_enabled': true,
+  'gameplay.mines_enabled': true,
   'gameplay.referrals_enabled': true,
   'gameplay.chat_enabled': true,
   'gameplay.ranks_enabled': true,
@@ -49,12 +56,17 @@ const DEFAULTS: PublicSettings = {
   'roulette.icon_url.green': '',
   'roulette.icon_url.red': '',
   'roulette.icon_url.black': '',
+  'mines.min_bet_minor': '100',
+  'mines.max_bet_minor': '100000',
+  'mines.icon_url.gem': '',
+  'mines.icon_url.bomb': '',
   'brand.site_name': 'CHCGREEN',
   'brand.logo_url': '',
   'brand.support_email': '',
   'brand.tagline': '',
   'brand.hero_image_url': '',
   'landing.game_image_url.roulette': '',
+  'landing.game_image_url.mines': '',
   'landing.game_image_url.classic': '',
   'landing.game_image_url.cases': '',
   'brand.social_telegram': '',

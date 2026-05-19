@@ -1,14 +1,14 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { getPublicSettings } from '@/lib/api/settings';
-import { RouletteIcon, DiceIcon, CaseIcon, ArrowRightIcon } from '@/components/icons';
+import { RouletteIcon, DiceIcon, CaseIcon, BoltIcon, ArrowRightIcon } from '@/components/icons';
 
 export interface GameTilesProps {
   locale: string;
 }
 
 interface Tile {
-  key: 'roulette' | 'classic' | 'cases';
+  key: 'roulette' | 'mines' | 'classic' | 'cases';
   href: string;
   enabled: boolean;
   comingSoon?: boolean;
@@ -34,6 +34,16 @@ export async function GameTiles({ locale }: GameTilesProps): Promise<JSX.Element
       gradient: 'from-brand/25 via-bg-card to-accent-purple/10',
       accent: 'text-brand',
       imageUrl: settings['landing.game_image_url.roulette'] || '',
+    },
+    {
+      key: 'mines',
+      href: '/mines',
+      enabled: settings['gameplay.mines_enabled'] ?? true,
+      badge: 'live',
+      icon: <BoltIcon className="h-12 w-12" />,
+      gradient: 'from-success/25 via-bg-card to-bg-card-hover',
+      accent: 'text-success',
+      imageUrl: settings['landing.game_image_url.mines'] || '',
     },
     {
       key: 'classic',

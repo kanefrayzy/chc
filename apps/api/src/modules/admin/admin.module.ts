@@ -17,6 +17,7 @@ import { AdminSettingsController } from './admin-settings.controller';
 import { AdminRanksController } from './admin-ranks.controller';
 import { AdminPaymentMethodsController } from './admin-payment-methods.controller';
 import { AdminRouletteController } from './admin-roulette.controller';
+import { AdminMinesController } from './admin-mines.controller';
 import { AdminTranslationsController } from './admin-translations.controller';
 import { AdminExchangeRatesController } from './admin-exchange-rates.controller';
 
@@ -33,6 +34,7 @@ import { AdminExchangeRatesController } from './admin-exchange-rates.controller'
     AdminRanksController,
     AdminPaymentMethodsController,
     AdminRouletteController,
+    AdminMinesController,
     AdminTranslationsController,
     AdminExchangeRatesController,
   ],

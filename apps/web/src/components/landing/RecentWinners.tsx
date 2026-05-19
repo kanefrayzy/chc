@@ -101,7 +101,28 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
                 <div className="truncate text-sm font-semibold text-text-primary">
                   {w.username}
                 </div>
-                <div className="text-[11px] text-text-muted">{w.color}</div>
+                <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                  {w.game === 'mines' ? (
+                    <>
+                      <span className="rounded bg-accent-purple/15 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-accent-purple">
+                        Mines
+                      </span>
+                      {typeof w.multiplierBps === 'number' ? (
+                        <span className="font-mono">×{(w.multiplierBps / 10000).toFixed(2)}</span>
+                      ) : null}
+                      {typeof w.mineCount === 'number' ? (
+                        <span>· {w.mineCount} 💣</span>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      <span className="rounded bg-brand/15 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-brand">
+                        Roulette
+                      </span>
+                      {w.color ? <span>{w.color}</span> : null}
+                    </>
+                  )}
+                </div>
               </div>
               <div className="shrink-0 font-mono text-sm font-bold tabular-nums text-brand">
                 {formatMinorAmount(w.amountMinor, {

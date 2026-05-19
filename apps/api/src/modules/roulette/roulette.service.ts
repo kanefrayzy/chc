@@ -118,7 +118,16 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
 
   async listRecentWinners(
     limit = 5,
-  ): Promise<{ username: string; avatarUrl: string | null; amountMinor: string; color: RouletteColor; createdAt: string }[]> {
+  ): Promise<{
+    username: string;
+    avatarUrl: string | null;
+    amountMinor: string;
+    color?: RouletteColor;
+    game: 'roulette' | 'mines';
+    multiplierBps?: number;
+    mineCount?: number;
+    createdAt: string;
+  }[]> {
     // Берём больше строк чтобы после агрегации осталось нужное количество
     const rows = await this.prisma.rouletteBet.findMany({
       where: { isWinner: true, payoutMinor: { gt: 0n } },
@@ -141,14 +150,46 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
       groups.get(key)!.amountMinor += b.payoutMinor ?? 0n;
     }
 
-    return [...groups.values()]
+    const rouletteItems = [...groups.values()].map((e) => ({
+      username: e.username,
+      avatarUrl: e.avatarUrl,
+      amountMinor: e.amountMinor,
+      color: e.color,
+      game: 'roulette' as const,
+      createdAt: e.createdAt,
+    }));
+
+    // Mines: успешные кэшауты с выплатой больше ставки.
+    const minesRows = await this.prisma.minesGame.findMany({
+      where: { status: 'CASHED_OUT', payoutMinor: { gt: 0n } },
+      orderBy: { completedAt: 'desc' },
+      take: Math.min(limit * 10, 100),
+      include: { user: { select: { username: true, avatarUrl: true } } },
+    });
+
+    const minesItems = minesRows
+      .filter((g) => g.payoutMinor > g.betMinor) // только реальные выигрыши
+      .map((g) => ({
+        username: g.user?.username ?? 'player',
+        avatarUrl: g.user?.avatarUrl ?? null,
+        amountMinor: g.payoutMinor - g.betMinor, // чистый выигрыш
+        game: 'mines' as const,
+        multiplierBps: g.multiplierBps,
+        mineCount: g.mineCount,
+        createdAt: g.completedAt ?? g.startedAt,
+      }));
+
+    return [...rouletteItems, ...minesItems]
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, limit)
       .map((e) => ({
         username: e.username,
         avatarUrl: e.avatarUrl,
         amountMinor: e.amountMinor.toString(),
-        color: e.color,
+        ...('color' in e ? { color: e.color } : {}),
+        game: e.game,
+        ...('multiplierBps' in e ? { multiplierBps: e.multiplierBps } : {}),
+        ...('mineCount' in e ? { mineCount: e.mineCount } : {}),
         createdAt: e.createdAt.toISOString(),
       }));
   }

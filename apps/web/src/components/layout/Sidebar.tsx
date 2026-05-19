@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import {
   HomeIcon,
   RouletteIcon,
+  BoltIcon,
   DiceIcon,
   CaseIcon,
   TrophyIcon,
@@ -45,6 +46,14 @@ async function buildSections(locale: string): Promise<SidebarSection[]> {
       label: tNav('roulette'),
       icon: <RouletteIcon className={ICON_CLS} />,
       badge: 'LIVE',
+    });
+  }
+  if (settings['gameplay.mines_enabled'] ?? true) {
+    games.push({
+      href: '/mines',
+      label: tNav('mines'),
+      icon: <BoltIcon className={ICON_CLS} />,
+      badge: 'NEW',
     });
   }
   games.push({

@@ -39,6 +39,11 @@
         "subtitle": "Qara ×2 · Qırmızı ×2 · Yaşıl ×14",
         "badge": "LIVE"
       },
+      "mines": {
+        "title": "Mines",
+        "subtitle": "Kristalları aç, qazancı artır — minalardan qaç!",
+        "badge": "NEW"
+      },
       "classic": {
         "title": "Klassik",
         "subtitle": "Klassik zər oyunu — tezliklə başlayır"
@@ -62,6 +67,7 @@
   "nav": {
     "home": "Əsas",
     "roulette": "Rulet",
+    "mines": "Mines",
     "classic": "Klassik",
     "jackpot": "Cekpot",
     "cases": "Keyslər",
@@ -420,6 +426,77 @@
     },
     "history": {
       "empty": "Raund tarixçəsi ilk raunddan sonra görünəcək."
+    }
+  },
+  "mines": {
+    "pageTitle": "Mines",
+    "description": "Kristal xışnlarını aç və əmsalı artır. Minaya düşsən — mərci itirərsən.",
+    "infoButton": "Məlumat",
+    "status": {
+      "label": "Status",
+      "ACTIVE": "Oyun gedir",
+      "CASHED_OUT": "Götürülüb",
+      "BUSTED": "Partlayış",
+      "CANCELLED": "Ləğv edilib",
+      "opened": "Açılmış {count}/{total}"
+    },
+    "controls": {
+      "amountLabel": "Mərc məbləği",
+      "mineCountLabel": "Mina sayı:",
+      "balance": "Balans",
+      "multiplier": "Əmsal",
+      "start": "Oyna",
+      "cashout": "Qazancı götür",
+      "openAtLeastOne": "Qazancı götürmək üçün ən azı bir xışn açın",
+      "loginRequired": "Oynamaq üçün daxil olun"
+    },
+    "info": {
+      "title": "Oyun haqqında məlumat",
+      "close": "Bağla",
+      "tabs": {
+        "rules": "Qaydalar",
+        "limits": "Maks. mərc limiti"
+      },
+      "rules": {
+        "r1": "Kristal olan xışnları açın — qazanc hər açılışla artır.",
+        "r2": "İstediyiniz an qazancı götürə bilərsiniz — son açılan xışnın əmsalı sabit qalır.",
+        "r3": "Mina olan xışna basdıqda mərc itirilir.",
+        "r4": "Sahədə necə çox mina varsa, hər açılışın əmsalı bir o qədər yüksəkdir."
+      },
+      "limits": {
+        "min": "Minimal mərc",
+        "max": "Maksimal mərc"
+      }
+    },
+    "history": {
+      "title": "Son oyunlar",
+      "minesShort": "mina",
+      "empty": "Halı-hazırda Mines oyunlarınız yoxdur."
+    },
+    "fair": {
+      "title": "Provably fair — oyunu yoxlayın",
+      "serverSeedHash": "server seed hash",
+      "serverSeed": "server seed",
+      "clientSeed": "client seed",
+      "nonce": "nonce"
+    },
+    "toast": {
+      "cashedOut": "Qələbə! +{amount} AZN",
+      "busted": "Partlayış! −{amount} AZN"
+    },
+    "errors": {
+      "loadFailed": "Oyun vəziyyətini yükləmək mümkün olmadı",
+      "invalidAmount": "Düzgün məbləğ daxil edin",
+      "outOfRange": "Məbləğ icazə verilmiş diapazondan kənardır",
+      "insufficient": "Balansda kifayət qədər vəsait yoxdur",
+      "disabled": "Oyun müvəqqəti olaraq əlyetməzdir",
+      "alreadyActive": "Sizin artiq aktiv oyununuz var",
+      "noActive": "Aktiv oyun yoxdur",
+      "tileRevealed": "Bu xışn artıq açılıb",
+      "noRevealed": "Əvvəlcə ən azı bir xışn açın",
+      "invalidMineCount": "Mina sayı düzgün deyil",
+      "invalidTile": "Xışn düzgün deyil",
+      "unknown": "Xəta baş verdi. Yenidən cəhd edin."
     }
   },
   "referrals": {
