@@ -94,9 +94,10 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
         ]);
         if (cancelled) return;
         setLimits(limitsRes);
-        setGame(stateRes.game);
+        // Показываем только активную игру; завершённые остаются в истории и не блокируют поле.
+        setGame(stateRes.game && stateRes.game.status === 'ACTIVE' ? stateRes.game : null);
         setHistory(histRes.items);
-        if (stateRes.game?.mineCount) setMineCount(stateRes.game.mineCount);
+        if (stateRes.game?.status === 'ACTIVE' && stateRes.game.mineCount) setMineCount(stateRes.game.mineCount);
       } catch (e) {
         if (!cancelled) toast.error(t('errors.loadFailed'));
         // eslint-disable-next-line no-console
@@ -403,18 +404,29 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-bg-card p-3 sm:p-5">
-          {/* Игровая статусная полоса */}
-          {game ? (
-            <div className="flex w-full max-w-[640px] items-center justify-between rounded-lg border border-border bg-bg-elevated px-3 py-2 text-xs">
-              <span className="text-text-muted">
-                {t('status.label')}:{' '}
-                <span className="font-semibold text-text-primary">{t(`status.${game.status}`)}</span>
-              </span>
-              <span className="font-mono text-text-muted">
-                {t('status.opened', { count: game.revealedTiles.length, total: limits.totalTiles - game.mineCount })}
-              </span>
-            </div>
-          ) : null}
+          {/* Игровая статусная полоса (всегда рендерится — иначе лейаут прыгает между раундами в авторежиме) */}
+          <div className="flex w-full max-w-[640px] items-center justify-between rounded-lg border border-border bg-bg-elevated px-3 py-2 text-xs">
+            {game ? (
+              <>
+                <span className="text-text-muted">
+                  {t('status.label')}:{' '}
+                  <span className="font-semibold text-text-primary">{t(`status.${game.status}`)}</span>
+                </span>
+                <span className="font-mono text-text-muted">
+                  {t('status.opened', { count: game.revealedTiles.length, total: limits.totalTiles - game.mineCount })}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-text-muted">
+                  {t('status.label')}: <span className="font-semibold text-text-secondary">—</span>
+                </span>
+                <span className="font-mono text-text-muted">
+                  {t('status.opened', { count: 0, total: Math.max(1, limits.totalTiles - mineCount) })}
+                </span>
+              </>
+            )}
+          </div>
 
           <MinesGrid
             game={game}
