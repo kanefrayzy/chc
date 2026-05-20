@@ -19,9 +19,15 @@ export interface MinesGridProps {
   gemIconUrl?: string;
   /** URL пользовательской иконки бомбы. Пусто — встроенный SVG. */
   bombIconUrl?: string;
+  /** Режим выбора клеток (для auto-режима до старта серии). */
+  selectionMode?: boolean;
+  /** Выбранные клетки (для подсветки). */
+  selectedTiles?: number[];
+  /** Переключить выбор клетки. */
+  onToggleSelect?: (tile: number) => void;
 }
 
-type TileVisualState = 'hidden' | 'revealed-gem' | 'final-gem' | 'revealed-mine' | 'busted-mine' | 'pending';
+type TileVisualState = 'hidden' | 'selected' | 'revealed-gem' | 'final-gem' | 'revealed-mine' | 'busted-mine' | 'pending';
 
 export function MinesGrid({
   game,
@@ -33,9 +39,13 @@ export function MinesGrid({
   bustedTile,
   gemIconUrl,
   bombIconUrl,
+  selectionMode = false,
+  selectedTiles,
+  onToggleSelect,
 }: MinesGridProps): JSX.Element {
   const revealedSet = useMemo(() => new Set(game?.revealedTiles ?? []), [game?.revealedTiles]);
   const mineSet = useMemo(() => new Set(game?.minePositions ?? []), [game?.minePositions]);
+  const selectedSet = useMemo(() => new Set(selectedTiles ?? []), [selectedTiles]);
   const isCompleted = game ? game.status !== 'ACTIVE' : false;
 
   const stateFor = (idx: number): TileVisualState => {
@@ -44,10 +54,16 @@ export function MinesGrid({
     if (isCompleted && mineSet.has(idx)) return 'revealed-mine';
     if (isCompleted) return 'final-gem';
     if (idx === pendingTile) return 'pending';
+    if (selectionMode && selectedSet.has(idx)) return 'selected';
     return 'hidden';
   };
 
   const handleClick = (idx: number): void => {
+    if (selectionMode) {
+      if (revealedSet.has(idx)) return;
+      onToggleSelect?.(idx);
+      return;
+    }
     if (disabled) return;
     if (revealedSet.has(idx)) return;
     onReveal(idx);
@@ -62,7 +78,7 @@ export function MinesGrid({
     >
       {Array.from({ length: totalTiles }, (_, idx) => {
         const s = stateFor(idx);
-        const interactive = !disabled && s === 'hidden';
+        const interactive = selectionMode ? !revealedSet.has(idx) : !disabled && s === 'hidden';
         return (
           <button
             key={idx}
@@ -71,10 +87,12 @@ export function MinesGrid({
             disabled={!interactive}
             onClick={() => handleClick(idx)}
             aria-label={`Tile ${idx + 1}`}
+            aria-pressed={s === 'selected' || undefined}
             className={cn(
               'group relative aspect-square select-none rounded-xl border transition-all duration-200',
               // визуальные состояния
               s === 'hidden' && 'border-border bg-[#1f2a3a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] hover:border-brand hover:bg-[#243245] active:scale-[0.97]',
+              s === 'selected' && 'border-brand bg-[#1f2a3a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25),0_0_18px_rgba(0,255,140,0.35)] ring-2 ring-brand/50 hover:bg-[#243245] active:scale-[0.97]',
               s === 'pending' && 'border-brand/60 bg-[#243245] animate-pulse',
               s === 'revealed-gem' && 'border-brand/40 bg-gradient-to-br from-[#0e2e23] to-[#0a3a2d] shadow-[0_0_22px_rgba(0,255,140,0.18)] scale-[1.02]',
               s === 'final-gem' && 'border-brand/20 bg-gradient-to-br from-[#0e2e23]/60 to-[#0a3a2d]/60 opacity-70',
@@ -90,6 +108,8 @@ export function MinesGrid({
                 <GemGlyph iconUrl={gemIconUrl} dim />
               ) : s === 'revealed-mine' || s === 'busted-mine' ? (
                 <BombGlyph emphasized={s === 'busted-mine'} iconUrl={bombIconUrl} />
+              ) : s === 'selected' ? (
+                <span className="h-2.5 w-2.5 rounded-full bg-brand shadow-[0_0_10px_rgba(0,255,140,0.7)]" />
               ) : null}
             </span>
           </button>

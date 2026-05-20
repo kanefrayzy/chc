@@ -8,8 +8,6 @@ import { parseAmountToMinor } from '@/features/deposits/components/AmountInput';
 export type MinesMode = 'manual' | 'auto';
 
 export interface MinesAutoConfig {
-  /** Сколько кристаллов открыть до автокешаута (1..safeTiles). */
-  targetGems: number;
   /** Кол-во раундов (0 = бесконечно). */
   betsCount: number;
   /** Стратегия после выигрыша. */
@@ -67,6 +65,10 @@ export interface MinesControlsProps {
   autoRoundsDone: number;
   onAutoStart: () => void;
   onAutoStop: () => void;
+  /** Сколько клеток выбрано для авто-комбинации. */
+  autoSelectedCount: number;
+  /** Сбросить выбор клеток. */
+  onAutoSelectionClear: () => void;
 }
 
 const MINE_OPTIONS: number[] = [1, 3, 5, 8, 10, 15, 20, 24];
@@ -98,6 +100,8 @@ export function MinesControls({
   autoRoundsDone,
   onAutoStart,
   onAutoStop,
+  autoSelectedCount,
+  onAutoSelectionClear,
 }: MinesControlsProps): JSX.Element {
   const t = useTranslations('mines');
   const balanceAzn = balanceMinor ? Number(balanceMinor) / 100 : 0;
@@ -134,7 +138,6 @@ export function MinesControls({
   // Контролы залочены в авто-режиме во время выполнения автосессии.
   const autoControlsDisabled = autoRunning || isGameActive || !isAuthed;
   const safeTiles = Math.max(1, totalTiles - mineCount);
-  const targetGemsMax = safeTiles;
 
   const setAutoField = <K extends keyof MinesAutoConfig>(k: K, v: MinesAutoConfig[K]): void => {
     onAutoConfigChange({ ...autoConfig, [k]: v });
@@ -283,24 +286,29 @@ export function MinesControls({
       ) : (
         // ───────────── Авто-режим ─────────────
         <div className="space-y-3">
-          {/* Кристаллы */}
+          {/* Выбранные клетки */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
-              {t('controls.gemsLabel')}
+            <label className="mb-1.5 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-text-muted">
+              <span>{t('controls.selectedTiles')}</span>
+              <span className="font-mono text-text-secondary">
+                {autoSelectedCount} / {safeTiles}
+              </span>
             </label>
-            <input
-              type="number"
-              min={1}
-              max={targetGemsMax}
-              step={1}
-              value={autoConfig.targetGems}
-              disabled={autoControlsDisabled}
-              onChange={(e) => {
-                const n = Math.max(1, Math.min(targetGemsMax, Number(e.target.value) || 1));
-                setAutoField('targetGems', n);
-              }}
-              className="w-full rounded-lg border border-border bg-bg-elevated px-3 py-2.5 text-sm font-mono text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:opacity-50"
-            />
+            <div className="flex items-center gap-2">
+              <div className="flex-1 rounded-lg border border-border bg-bg-elevated px-3 py-2.5 text-xs text-text-muted">
+                {autoSelectedCount === 0
+                  ? t('controls.selectTilesHint')
+                  : t('controls.selectedTilesSummary', { count: autoSelectedCount })}
+              </div>
+              <button
+                type="button"
+                disabled={autoControlsDisabled || autoSelectedCount === 0}
+                onClick={onAutoSelectionClear}
+                className="rounded-lg border border-border bg-bg-elevated px-3 py-2.5 text-xs font-semibold text-text-secondary transition hover:border-danger/60 hover:text-danger disabled:opacity-50"
+              >
+                {t('controls.clearSelection')}
+              </button>
+            </div>
           </div>
 
           {/* Количество ставок */}
@@ -353,7 +361,7 @@ export function MinesControls({
           ) : (
             <button
               type="button"
-              disabled={!isAuthed || isBusy || !validAmount || isGameActive}
+              disabled={!isAuthed || isBusy || !validAmount || isGameActive || autoSelectedCount === 0}
               onClick={onAutoStart}
               className={cn(
                 'flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-brand to-[#00b272] py-3.5 text-base font-bold uppercase tracking-wide text-[#06241a] shadow-[0_4px_0_rgba(0,0,0,0.25),0_0_30px_rgba(0,255,140,0.35)] transition hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none',

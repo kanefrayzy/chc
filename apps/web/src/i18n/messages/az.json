@@ -452,6 +452,10 @@
       "modeManual": "Manual",
       "modeAuto": "Avto",
       "gemsLabel": "Kristallar",
+      "selectedTiles": "Seçilmiş xışnlar",
+      "selectedTilesSummary": "Kombinasiyada xışn: {count}",
+      "selectTilesHint": "Sahədə xışnlara klikləyin — bu kombinasiya hər raundda təkrarlanacaq",
+      "clearSelection": "Təmizlə",
       "betsCountLabel": "Mərc sayı",
       "settings": "Tənzimləmələr",
       "onWin": "Qazanc zamanı",
@@ -501,6 +505,7 @@
     "errors": {
       "loadFailed": "Oyun vəziyyətini yükləmək mümkün olmadı",
       "invalidAmount": "Düzgün məbləğ daxil edin",
+      "noSelection": "Ǝvvəlcə sahədə xışnları seçin",
       "outOfRange": "Məbləğ icazə verilmiş diapazondan kənardır",
       "insufficient": "Balansda kifayət qədər vəsait yoxdur",
       "disabled": "Oyun müvəqqəti olaraq əlyetməzdir",

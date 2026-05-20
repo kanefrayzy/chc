@@ -52,7 +52,6 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
   // Авто-режим
   const [mode, setMode] = useState<MinesMode>('manual');
   const [autoConfig, setAutoConfig] = useState<MinesAutoConfig>({
-    targetGems: 1,
     betsCount: 0,
     onWin: 'reset',
     winPct: 0,
@@ -63,6 +62,7 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
   });
   const [autoRunning, setAutoRunning] = useState(false);
   const [autoRoundsDone, setAutoRoundsDone] = useState(0);
+  const [autoSelectedTiles, setAutoSelectedTiles] = useState<number[]>([]);
   const autoRunningRef = useRef(false);
 
   const prevStatusRef = useRef<string | null>(null);
@@ -209,9 +209,33 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
     autoRunningRef.current = false;
   }, []);
 
+  const handleAutoToggleSelect = useCallback((tile: number): void => {
+    setAutoSelectedTiles((prev) => {
+      if (prev.includes(tile)) return prev.filter((t) => t !== tile);
+      // Не даём выбрать больше, чем безопасных клеток.
+      const safeTotal = Math.max(1, limits.totalTiles - mineCount);
+      if (prev.length >= safeTotal) return prev;
+      return [...prev, tile];
+    });
+  }, [limits.totalTiles, mineCount]);
+
+  const handleAutoSelectionClear = useCallback((): void => {
+    setAutoSelectedTiles([]);
+  }, []);
+
+  // Если меняется количество мин — обрезаем выбор до допустимого размера.
+  useEffect(() => {
+    const safeTotal = Math.max(1, limits.totalTiles - mineCount);
+    setAutoSelectedTiles((prev) => (prev.length > safeTotal ? prev.slice(0, safeTotal) : prev));
+  }, [mineCount, limits.totalTiles]);
+
   const handleAutoStart = useCallback(async (): Promise<void> => {
     if (autoRunningRef.current) return;
     if (!isAuthed) return;
+    if (autoSelectedTiles.length === 0) {
+      toast.error(t('errors.noSelection'));
+      return;
+    }
     const baseBet = parseAmountToMinor(amount);
     if (baseBet === null) {
       toast.error(t('errors.invalidAmount'));
@@ -224,7 +248,8 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
     const minBetLocal = BigInt(limits.minBetMinor);
     const maxBetLocal = BigInt(limits.maxBetMinor);
     const safeTotal = Math.max(1, limits.totalTiles - mineCount);
-    const targetGems = Math.max(1, Math.min(autoConfig.targetGems, safeTotal));
+    // Берём «снимок» выбранных клеток — даже если пользователь что-то трогнёт во время цикла.
+    const tilesPlan = autoSelectedTiles.slice(0, safeTotal);
     const stopWinMinor = (() => {
       const v = parseAmountToMinor(autoConfig.stopWinAmount || '0');
       return v && v > 0n ? v : 0n;
@@ -258,24 +283,11 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
         setPendingTile(null);
         playClick();
 
-        // Открытие клеток в случайном порядке
-        const order = shuffledIndices(limits.totalTiles);
-        let idx = 0;
-        while (
-          autoRunningRef.current &&
-          g.status === 'ACTIVE' &&
-          g.revealedTiles.length < targetGems
-        ) {
-          let tile = -1;
-          while (idx < order.length) {
-            const candidate = order[idx++];
-            if (candidate === undefined) break;
-            if (!g.revealedTiles.includes(candidate)) {
-              tile = candidate;
-              break;
-            }
-          }
-          if (tile < 0) break;
+        // Открываем заранее выбранные клетки в их порядке
+        for (const tile of tilesPlan) {
+          if (!autoRunningRef.current) break;
+          if (g.status !== 'ACTIVE') break;
+          if (g.revealedTiles.includes(tile)) continue;
           setPendingTile(tile);
           try {
             g = await minesApi.reveal(tile);
@@ -289,7 +301,7 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
           await sleep(180);
         }
 
-        // Cashout если ещё активна и достигли цели
+        // Cashout если ещё активна и план отработан
         if (autoRunningRef.current && g.status === 'ACTIVE') {
           try {
             g = await minesApi.cashout();
@@ -346,6 +358,7 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
     limits.maxBetMinor,
     limits.totalTiles,
     autoConfig,
+    autoSelectedTiles,
     t,
     reloadBalance,
     refreshHistory,
@@ -410,6 +423,9 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
             bustedTile={bustedTile}
             gemIconUrl={gemIconUrl}
             bombIconUrl={bombIconUrl}
+            selectionMode={mode === 'auto' && !isGameActive && !autoRunning}
+            selectedTiles={autoSelectedTiles}
+            onToggleSelect={handleAutoToggleSelect}
           />
         </div>
 
@@ -441,6 +457,8 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
             autoRoundsDone={autoRoundsDone}
             onAutoStart={() => { void handleAutoStart(); }}
             onAutoStop={handleAutoStop}
+            autoSelectedCount={autoSelectedTiles.length}
+            onAutoSelectionClear={handleAutoSelectionClear}
           />
           <MinesHistory items={history} />
         </div>
@@ -511,13 +529,4 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function shuffledIndices(n: number): number[] {
-  const arr = Array.from({ length: n }, (_, i) => i);
-  for (let i = n - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const tmp = arr[i] as number;
-    arr[i] = arr[j] as number;
-    arr[j] = tmp;
-  }
-  return arr;
-}
+
