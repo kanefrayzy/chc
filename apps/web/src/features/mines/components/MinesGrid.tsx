@@ -61,7 +61,8 @@ export function MinesGrid({
   const handleClick = (idx: number): void => {
     if (selectionMode) {
       if (revealedSet.has(idx)) return;
-      onToggleSelect?.(idx);
+      if (!onToggleSelect) return;
+      onToggleSelect(idx);
       return;
     }
     if (disabled) return;
@@ -78,7 +79,9 @@ export function MinesGrid({
     >
       {Array.from({ length: totalTiles }, (_, idx) => {
         const s = stateFor(idx);
-        const interactive = selectionMode ? !revealedSet.has(idx) : !disabled && s === 'hidden';
+        const interactive = selectionMode
+          ? Boolean(onToggleSelect) && !revealedSet.has(idx)
+          : !disabled && s === 'hidden';
         return (
           <button
             key={idx}

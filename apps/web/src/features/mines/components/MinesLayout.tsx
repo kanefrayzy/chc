@@ -283,7 +283,7 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
         setPendingTile(null);
         playClick();
 
-        // Открываем заранее выбранные клетки в их порядке
+        // Открываем заранее выбранные клетки в их порядке (мгновенно, без задержек между раскрытиями)
         for (const tile of tilesPlan) {
           if (!autoRunningRef.current) break;
           if (g.status !== 'ACTIVE') break;
@@ -298,7 +298,6 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
           }
           setGame(g);
           if (g.status !== 'ACTIVE') break;
-          await sleep(180);
         }
 
         // Cashout если ещё активна и план отработан
@@ -343,12 +342,16 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
         setAmount((Number(curBet) / 100).toFixed(2));
 
         if (!autoRunningRef.current) break;
-        await sleep(450);
+        // Короткая пауза, чтобы игрок успел заметить исход, затем очищаем поле под следующий раунд
+        await sleep(550);
+        setGame(null);
+        setPendingTile(null);
       }
     } finally {
       autoRunningRef.current = false;
       setAutoRunning(false);
       setPendingTile(null);
+      setGame(null);
     }
   }, [
     isAuthed,
@@ -423,9 +426,9 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
             bustedTile={bustedTile}
             gemIconUrl={gemIconUrl}
             bombIconUrl={bombIconUrl}
-            selectionMode={mode === 'auto' && !isGameActive && !autoRunning}
+            selectionMode={mode === 'auto'}
             selectedTiles={autoSelectedTiles}
-            onToggleSelect={handleAutoToggleSelect}
+            onToggleSelect={mode === 'auto' && !isGameActive && !autoRunning ? handleAutoToggleSelect : undefined}
           />
         </div>
 
