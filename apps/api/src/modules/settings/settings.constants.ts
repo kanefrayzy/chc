@@ -210,6 +210,56 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     isPublic: true,
     description: 'Иконка бомбы в Mines (URL PNG/WEBP). Если пусто — используется встроенный SVG.',
   },
+  // ─── Classic (jackpot) ────────────────────────────────────────────────
+  {
+    key: 'classic.min_bet_minor',
+    type: 'string',
+    defaultValue: '100',
+    isPublic: true,
+    description: 'Минимальная ставка в «Классическом» (qəpik). 100 = 1.00 AZN',
+  },
+  {
+    key: 'classic.max_bet_minor',
+    type: 'string',
+    defaultValue: '10000000',
+    isPublic: true,
+    description: 'Максимальная ставка в «Классическом» (qəpik). 10000000 = 100 000 AZN',
+  },
+  {
+    key: 'classic.commission_bps',
+    type: 'number',
+    defaultValue: 700,
+    isPublic: false,
+    description: 'Комиссия казино с банка «Классического» в bps (700 bps = 7%). 0..9999.',
+  },
+  {
+    key: 'classic.round_duration_sec',
+    type: 'number',
+    defaultValue: 30,
+    isPublic: true,
+    description: 'Длительность приёма ставок после набора минимального числа игроков (сек).',
+  },
+  {
+    key: 'classic.rolling_duration_sec',
+    type: 'number',
+    defaultValue: 8,
+    isPublic: true,
+    description: 'Длительность анимации розыгрыша в «Классическом» (сек).',
+  },
+  {
+    key: 'classic.min_players_to_start',
+    type: 'number',
+    defaultValue: 2,
+    isPublic: true,
+    description: 'Минимум уникальных игроков для запуска обратного отсчёта раунда.',
+  },
+  {
+    key: 'classic.forced_winner_user_id',
+    type: 'string',
+    defaultValue: '',
+    isPublic: false,
+    description: 'Принудительно сделать победителем следующего раунда указанного пользователя (по id). После использования сбрасывается.',
+  },
   // ─── Геймплей: внешний URL казино ─────────────────────────────────────
   {
     key: 'gameplay.external_casino_url',

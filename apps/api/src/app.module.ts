@@ -16,6 +16,7 @@ import { TicketsModule } from './modules/tickets/tickets.module';
 import { CodePurchasesModule } from './modules/code-purchases/code-purchases.module';
 import { RouletteModule } from './modules/roulette/roulette.module';
 import { MinesModule } from './modules/mines/mines.module';
+import { ClassicModule } from './modules/classic/classic.module';
 import { ReferralsModule } from './modules/referrals/referrals.module';
 import { RanksModule } from './modules/ranks/ranks.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -42,6 +43,7 @@ import { RealtimeModule } from './modules/realtime/realtime.module';
     CodePurchasesModule,
     RouletteModule,
     MinesModule,
+    ClassicModule,
     ReferralsModule,
     RanksModule,
     SettingsModule,

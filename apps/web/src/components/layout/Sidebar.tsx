@@ -60,8 +60,7 @@ async function buildSections(locale: string): Promise<SidebarSection[]> {
     href: '/classic',
     label: tNav('classic'),
     icon: <DiceIcon className={ICON_CLS} />,
-    badge: tSidebar('soon'),
-    disabled: true,
+    badge: 'LIVE',
   });
   games.push({
     href: '/cases',

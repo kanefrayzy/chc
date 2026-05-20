@@ -572,5 +572,52 @@
   "bonuses": {
     "pageTitle": "Бонусы и акции",
     "subtitle": "Все актуальные предложения CHCGreen в одном месте"
+  },
+  "classic": {
+    "pageTitle": "Классический",
+    "subtitle": "Кладите деньги в общий банк — чем больше ваша ставка, тем выше шанс выиграть весь джекпот",
+    "bank": "Банк",
+    "commission": "Комиссия",
+    "rolling": "Розыгрыш",
+    "countdown": "До розыгрыша",
+    "waiting": "Ожидание",
+    "lastWinner": "Победитель",
+    "waitingPlayers": "Ждём игроков ({current}/{need})",
+    "participants": "Участники",
+    "participantsList": "Список игроков",
+    "noBets": "Ставок пока нет — будьте первым",
+    "chance": "Шанс",
+    "winnerIs": "Победитель",
+    "youWon": "Вы выиграли!",
+    "bet": {
+      "title": "Сделать ставку",
+      "amount": "Сумма",
+      "limits": "От {min} до {max} AZN",
+      "balance": "Баланс",
+      "placeBet": "Поставить",
+      "placing": "Ставка...",
+      "loginToBet": "Войдите, чтобы играть",
+      "yourStake": "Ваша ставка",
+      "yourChance": "Ваш шанс"
+    },
+    "history": {
+      "title": "История",
+      "empty": "Раундов пока нет",
+      "bank": "банк"
+    },
+    "fair": {
+      "title": "Provably Fair",
+      "serverSeedHash": "Server seed (hash)",
+      "serverSeed": "Server seed",
+      "publicSeed": "Public seed",
+      "winningTicket": "Победный тикет"
+    },
+    "errors": {
+      "bettingClosed": "Приём ставок закрыт",
+      "invalidAmount": "Некорректная сумма",
+      "amountRange": "Ставка должна быть от {min} до {max} AZN",
+      "insufficient": "Недостаточно средств",
+      "betFailed": "Ошибка: {reason}"
+    }
   }
 }

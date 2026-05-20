@@ -570,5 +570,52 @@
   "bonuses": {
     "pageTitle": "Bonuslar və aksiyalar",
     "subtitle": "CHCGreen-in bütün aktual təklifləri bir yerdə"
+  },
+  "classic": {
+    "pageTitle": "Klassik",
+    "subtitle": "Ümumi banka pul qoyun — mərciniz nə qədər böyükdürsə, bütün cekpotu qazanma şansınız bir o qədər yüksəkdir",
+    "bank": "Bank",
+    "commission": "Komissiya",
+    "rolling": "Çəkiliş",
+    "countdown": "Çəkilişə qədər",
+    "waiting": "Gözləmə",
+    "lastWinner": "Qalib",
+    "waitingPlayers": "Oyunçular gözlənilir ({current}/{need})",
+    "participants": "İştirakçılar",
+    "participantsList": "Oyunçular siyahısı",
+    "noBets": "Hələ mərc yoxdur — ilk olun",
+    "chance": "Şans",
+    "winnerIs": "Qalib",
+    "youWon": "Siz qazandınız!",
+    "bet": {
+      "title": "Mərc et",
+      "amount": "Məbləğ",
+      "limits": "{min} - {max} AZN",
+      "balance": "Balans",
+      "placeBet": "Mərc et",
+      "placing": "Mərc...",
+      "loginToBet": "Oynamaq üçün daxil olun",
+      "yourStake": "Sizin mərc",
+      "yourChance": "Sizin şans"
+    },
+    "history": {
+      "title": "Tarixçə",
+      "empty": "Hələ raund yoxdur",
+      "bank": "bank"
+    },
+    "fair": {
+      "title": "Provably Fair",
+      "serverSeedHash": "Server seed (hash)",
+      "serverSeed": "Server seed",
+      "publicSeed": "Public seed",
+      "winningTicket": "Qalib bilet"
+    },
+    "errors": {
+      "bettingClosed": "Mərc qəbulu bağlıdır",
+      "invalidAmount": "Yanlış məbləğ",
+      "amountRange": "Mərc {min} - {max} AZN arasında olmalıdır",
+      "insufficient": "Vəsait kifayət deyil",
+      "betFailed": "Xəta: {reason}"
+    }
   }
 }

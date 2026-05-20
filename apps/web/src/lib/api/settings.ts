@@ -23,6 +23,11 @@ export interface PublicSettings {
   'mines.max_bet_minor': string;
   'mines.icon_url.gem': string;
   'mines.icon_url.bomb': string;
+  'classic.min_bet_minor': string;
+  'classic.max_bet_minor': string;
+  'classic.round_duration_sec': number;
+  'classic.rolling_duration_sec': number;
+  'classic.min_players_to_start': number;
   'brand.site_name': string;
   'brand.logo_url': string;
   'brand.support_email': string;
@@ -60,6 +65,11 @@ const DEFAULTS: PublicSettings = {
   'mines.max_bet_minor': '100000',
   'mines.icon_url.gem': '',
   'mines.icon_url.bomb': '',
+  'classic.min_bet_minor': '100',
+  'classic.max_bet_minor': '10000000',
+  'classic.round_duration_sec': 30,
+  'classic.rolling_duration_sec': 8,
+  'classic.min_players_to_start': 2,
   'brand.site_name': 'CHCGREEN',
   'brand.logo_url': '',
   'brand.support_email': '',

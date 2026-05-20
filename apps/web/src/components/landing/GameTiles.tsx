@@ -48,9 +48,8 @@ export async function GameTiles({ locale }: GameTilesProps): Promise<JSX.Element
     {
       key: 'classic',
       href: '/classic',
-      enabled: false,
-      comingSoon: true,
-      badge: 'soon',
+      enabled: settings['gameplay.jackpot_enabled'] ?? false,
+      badge: 'live',
       icon: <DiceIcon className="h-12 w-12" />,
       gradient: 'from-info/20 via-bg-card to-bg-card-hover',
       accent: 'text-info',

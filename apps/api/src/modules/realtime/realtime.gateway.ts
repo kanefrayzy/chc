@@ -14,6 +14,7 @@ import { AUTH_COOKIE } from '../auth/auth.config';
 import { PrismaService } from '../../common/prisma/prisma.module';
 
 const ROULETTE_ROOM = 'roulette';
+const CLASSIC_ROOM = 'classic';
 
 interface AuthedSocket extends Socket {
   data: { user?: AccessTokenPayload };
@@ -56,9 +57,10 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   ) {}
 
   async handleConnection(client: AuthedSocket): Promise<void> {
-    // Все клиенты (включая гостей) попадают в общую комнату рулетки —
+    // Все клиенты (включая гостей) попадают в общие комнаты рулетки и классического —
     // round state доступен анонимно.
     await client.join(ROULETTE_ROOM);
+    await client.join(CLASSIC_ROOM);
 
     const token =
       parseCookie(client.handshake.headers.cookie, AUTH_COOKIE.access) ??
@@ -189,5 +191,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   emitRoulette(event: string, payload: unknown): void {
     this.server.to(ROULETTE_ROOM).emit(event, payload);
+  }
+
+  emitClassic(event: string, payload: unknown): void {
+    this.server.to(CLASSIC_ROOM).emit(event, payload);
   }
 }
