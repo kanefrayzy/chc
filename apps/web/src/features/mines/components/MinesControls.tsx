@@ -222,33 +222,31 @@ export function MinesControls({
         </div>
       </div>
 
-      {/* Кол-во мин (только в ручном режиме — в авто оно задаётся неявно через выбранную комбинацию) */}
-      {mode === 'manual' ? (
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
-            {t('controls.mineCountLabel')} <span className="text-brand">{mineCount}</span>
-          </label>
-          <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-8">
-            {mineOptions.map((m) => (
-              <button
-                key={m}
-                type="button"
-                disabled={isGameActive || isBusy || !isAuthed || autoRunning}
-                onClick={() => onMineCountChange(m)}
-                className={cn(
-                  'rounded-lg border py-2 text-sm font-semibold transition active:scale-95',
-                  mineCount === m
-                    ? 'border-brand bg-brand/10 text-brand'
-                    : 'border-border bg-bg-elevated text-text-secondary hover:border-brand/60 hover:text-brand',
-                  (isGameActive || isBusy || !isAuthed || autoRunning) && 'opacity-50',
-                )}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
+      {/* Кол-во мин (общее) */}
+      <div>
+        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
+          {t('controls.mineCountLabel')} <span className="text-brand">{mineCount}</span>
+        </label>
+        <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-8">
+          {mineOptions.map((m) => (
+            <button
+              key={m}
+              type="button"
+              disabled={isGameActive || isBusy || !isAuthed || autoRunning}
+              onClick={() => onMineCountChange(m)}
+              className={cn(
+                'rounded-lg border py-2 text-sm font-semibold transition active:scale-95',
+                mineCount === m
+                  ? 'border-brand bg-brand/10 text-brand'
+                  : 'border-border bg-bg-elevated text-text-secondary hover:border-brand/60 hover:text-brand',
+                (isGameActive || isBusy || !isAuthed || autoRunning) && 'opacity-50',
+              )}
+            >
+              {m}
+            </button>
+          ))}
         </div>
-      ) : null}
+      </div>
 
       {mode === 'manual' ? (
         // ───────────── Ручной режим ─────────────

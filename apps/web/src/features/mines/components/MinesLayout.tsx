@@ -465,7 +465,15 @@ export function MinesLayout({ isAuthed, balanceMinor: initialBalance, defaultLim
             onStart={handleStart}
             onCashout={handleCashout}
             mode={mode}
-            onModeChange={setMode}
+            onModeChange={(m) => {
+              setMode(m);
+              // При переходе из ручного в авто очищаем завершённую игру с поля,
+              // чтобы стало видно выбранные клетки и нечего не мешало.
+              if (m === 'auto' && game && game.status !== 'ACTIVE') {
+                setGame(null);
+                setPendingTile(null);
+              }
+            }}
             autoConfig={autoConfig}
             onAutoConfigChange={setAutoConfig}
             autoRunning={autoRunning}
