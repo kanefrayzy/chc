@@ -59,14 +59,16 @@ function formatSecs(ms: number): string {
   return `${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')}`;
 }
 
-const RIBBON_TILE_PX = 96;
+const RIBBON_TILE_PX = 92;
+const RIBBON_TILES_COUNT = 220;
+const WINNER_TILE_FRACTION = 0.88; // позиция тайла-победителя в ленте
 
 /**
- * Классический jackpot.
- *  - Сверху во время ROLLING: горизонтальная лента-барабан с указателем в центре.
- *  - Затем верхний ряд: панель ставки | банк | таймер.
- *  - Карточки игроков с цветными бордерами/фоном и процентами.
- *  - Снизу: история раундов и provably-fair.
+ * Классический jackpot — переработанный дизайн.
+ * Центр: большая круговая диаграмма шансов + банк в центре + кольцо-таймер.
+ * Слева: панель ставки. Справа: плотный список игроков.
+ * Сверху во время ROLLING/COMPLETED — длинная лента-барабан с указателем.
+ * Снизу: лента истории и provably-fair.
  */
 export function ClassicLayout({
   isAuthed,
@@ -126,7 +128,6 @@ export function ClassicLayout({
     },
   });
 
-  // Скрываем оверлей при появлении нового OPEN-раунда.
   useEffect(() => {
     if (!round) return;
     if (prevRoundIdRef.current !== round.id) {
@@ -139,7 +140,7 @@ export function ClassicLayout({
     return undefined;
   }, [round]);
 
-  // Анимация ленты.
+  // Анимация ленты — драматичный easeOutQuint, длинный путь.
   useEffect(() => {
     if (!round || round.status !== 'ROLLING') {
       setSpinProgress(0);
@@ -158,7 +159,7 @@ export function ClassicLayout({
     return () => cancelAnimationFrame(raf);
   }, [round?.status, round?.id, limits.rollingDurationSec]);
 
-  // Звук тика.
+  // Тик последних 10 секунд.
   useEffect(() => {
     if (!round || round.status !== 'OPEN' || !round.countdownStartedAt) return;
     const endsAt = new Date(round.endsAt).getTime();
@@ -187,7 +188,6 @@ export function ClassicLayout({
 
   const participants = round?.participants ?? [];
   const bankMinor = round?.bankMinor ?? '0';
-  const bankBig = BigInt(bankMinor);
   const commissionPct = (round?.commissionBps ?? 700) / 100;
   const status = round?.status ?? 'OPEN';
   const isOpen = status === 'OPEN';
@@ -204,11 +204,14 @@ export function ClassicLayout({
 
   const [, setNow] = useState(Date.now());
   useEffect(() => {
-    const iv = setInterval(() => setNow(Date.now()), 250);
+    const iv = setInterval(() => setNow(Date.now()), 200);
     return () => clearInterval(iv);
   }, []);
   const countdownMs =
     round && countdownActive ? new Date(round.endsAt).getTime() - Date.now() : 0;
+  const countdownFrac = countdownActive
+    ? Math.max(0, Math.min(1, countdownMs / (limits.roundDurationSec * 1000)))
+    : 0;
 
   const handleBet = useCallback(async (): Promise<void> => {
     if (!isAuthed) {
@@ -252,23 +255,20 @@ export function ClassicLayout({
     } finally {
       setSubmitting(false);
     }
-  }, [
-    isAuthed, isOpen, betInput, balance, limits, openAuth, openDeposit, reloadBalance, t,
-  ]);
+  }, [isAuthed, isOpen, betInput, balance, limits, openAuth, openDeposit, reloadBalance, t]);
 
-  // Лента-барабан: распределяем тайлы по долям банка.
+  // Лента-барабан.
   const ribbonTiles = useMemo(() => {
     if (participants.length === 0) return [] as ClassicParticipantDto[];
-    const totalTiles = 80;
     const totalBps = participants.reduce((s, p) => s + p.chanceBps, 0) || 10000;
     const tiles: ClassicParticipantDto[] = [];
     const acc = participants.map((p) => ({ p, acc: 0 }));
-    for (let i = 0; i < totalTiles; i++) {
+    for (let i = 0; i < RIBBON_TILES_COUNT; i++) {
       let best = acc[0]!;
       let bestDebt = -Infinity;
       for (const a of acc) {
         const target = a.p.chanceBps / totalBps;
-        const current = (i === 0 ? 0 : a.acc / i);
+        const current = i === 0 ? 0 : a.acc / i;
         const debt = target - current;
         if (debt > bestDebt) {
           best = a;
@@ -278,7 +278,6 @@ export function ClassicLayout({
       best.acc++;
       tiles.push(best.p);
     }
-    // Псевдослучайная перетасовка для визуального разнообразия (детерминированная по сидам тайлов).
     const seed = participants.map((p) => p.userId).join('');
     const rng = mulberry32(hashString(seed));
     for (let i = tiles.length - 1; i > 0; i--) {
@@ -288,27 +287,96 @@ export function ClassicLayout({
     return tiles;
   }, [participants]);
 
-  // Индекс тайла-победителя — ближе к концу.
   const winnerTileIndex = useMemo(() => {
-    if (!round?.winnerId || ribbonTiles.length === 0) return 40;
-    const candidates: number[] = [];
+    if (!round?.winnerId || ribbonTiles.length === 0) {
+      return Math.floor(RIBBON_TILES_COUNT * WINNER_TILE_FRACTION);
+    }
+    const targetIdx = Math.floor(RIBBON_TILES_COUNT * WINNER_TILE_FRACTION);
+    // Найти ближайший к targetIdx тайл победителя.
+    let best = targetIdx;
+    let bestDist = Infinity;
     ribbonTiles.forEach((p, i) => {
-      if (p.userId === round.winnerId) candidates.push(i);
+      if (p.userId !== round.winnerId) return;
+      const d = Math.abs(i - targetIdx);
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
     });
-    if (candidates.length === 0) return 40;
-    return candidates[Math.floor(candidates.length * 0.8)] ?? candidates[candidates.length - 1]!;
+    return best;
   }, [ribbonTiles, round?.winnerId]);
 
+  const statusBadge = isRolling
+    ? { label: t('rolling'), tone: 'warning' as const }
+    : isCompleted
+      ? { label: t('lastWinner'), tone: 'success' as const }
+      : countdownActive
+        ? { label: t('countdown'), tone: 'brand' as const }
+        : { label: t('waiting'), tone: 'muted' as const };
+
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 sm:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary sm:text-3xl">{t('pageTitle')}</h1>
-          <p className="mt-1 text-sm text-text-secondary">{t('subtitle')}</p>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-3 sm:p-5">
+      {/* Хедер */}
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="absolute inset-0 animate-pulse rounded-full bg-brand/40 blur-xl" />
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-brand to-success text-bg shadow-[0_0_24px_rgba(0,255,136,0.5)]">
+              <CrownIcon />
+            </div>
+          </div>
+          <div>
+            <h1 className="text-xl font-extrabold uppercase tracking-wider text-text-primary sm:text-2xl">
+              {t('pageTitle')}
+            </h1>
+            <div className="flex items-center gap-2 text-[11px] text-text-muted">
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-bold uppercase tracking-wider',
+                  statusBadge.tone === 'warning' && 'bg-warning/15 text-warning',
+                  statusBadge.tone === 'success' && 'bg-success/15 text-success',
+                  statusBadge.tone === 'brand' && 'bg-brand/15 text-brand',
+                  statusBadge.tone === 'muted' && 'bg-bg-elevated text-text-secondary',
+                )}
+              >
+                <span
+                  className={cn(
+                    'h-1.5 w-1.5 rounded-full',
+                    statusBadge.tone === 'warning' && 'animate-pulse bg-warning',
+                    statusBadge.tone === 'success' && 'bg-success',
+                    statusBadge.tone === 'brand' && 'animate-pulse bg-brand',
+                    statusBadge.tone === 'muted' && 'bg-text-muted',
+                  )}
+                />
+                {statusBadge.label}
+              </span>
+              <span>•</span>
+              <span>
+                {t('commission')}:{' '}
+                <span className="font-mono text-text-secondary">{commissionPct.toFixed(2)}%</span>
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="text-xs text-text-muted">
-          {t('commission')}:{' '}
-          <span className="font-mono text-text-secondary">{commissionPct.toFixed(2)}%</span>
+        <div className="hidden gap-4 text-right sm:flex">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+              {t('participants')}
+            </div>
+            <div className="font-mono text-lg font-extrabold text-text-primary">
+              {uniqueCount}
+            </div>
+          </div>
+          {isAuthed && (
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                {t('bet.balance')}
+              </div>
+              <div className="font-mono text-lg font-extrabold text-brand">
+                {formatAzn(balance ?? '0')}
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
@@ -322,214 +390,249 @@ export function ClassicLayout({
         />
       )}
 
-      {/* Ставка | банк | таймер */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-        <section className="rounded-2xl border-2 border-brand/40 bg-bg-card p-4 shadow-card">
-          <h2 className="text-center text-xs font-bold uppercase tracking-wider text-text-secondary">
-            {t('bet.title')}
-          </h2>
-          <div className="mt-3 flex items-center gap-2">
+      {/* Главный блок: ставка | арена | игроки */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[300px_1fr_320px]">
+        {/* Панель ставки */}
+        <section className="relative overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-bg-card to-bg-card/40 p-4 shadow-card">
+          <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-brand/10 blur-2xl" />
+          <div className="relative">
+            <h2 className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-brand">
+              {t('bet.title')}
+            </h2>
+
+            <div className="mt-4">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                {t('bet.amount')}
+              </label>
+              <div className="relative mt-1">
+                <input
+                  type="number"
+                  className="h-12 w-full rounded-xl border-2 border-border bg-bg pr-14 pl-3 text-center font-mono text-xl font-extrabold text-text-primary focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:opacity-50"
+                  value={betInput}
+                  min={Number(limits.minBetMinor) / 100}
+                  max={Number(limits.maxBetMinor) / 100}
+                  step={0.01}
+                  onChange={(e) => setBetInput(e.target.value)}
+                  disabled={!isOpen || submitting}
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-text-muted">
+                  AZN
+                </span>
+              </div>
+              <div className="mt-1 text-center text-[10px] text-text-muted">
+                {t('bet.limits', {
+                  min: formatAzn(limits.minBetMinor),
+                  max: formatAzn(limits.maxBetMinor),
+                })}
+              </div>
+            </div>
+
+            <div className="mt-2 grid grid-cols-4 gap-1">
+              {[
+                { label: '+1', add: 1 },
+                { label: '+5', add: 5 },
+                { label: '+10', add: 10 },
+                { label: 'MAX', max: true },
+              ].map((b) => (
+                <button
+                  key={b.label}
+                  type="button"
+                  onClick={() => {
+                    if (b.max) {
+                      setBetInput((Number(limits.maxBetMinor) / 100).toFixed(2));
+                    } else {
+                      const cur = Number(betInput) || 0;
+                      setBetInput((cur + (b.add ?? 0)).toFixed(2));
+                    }
+                  }}
+                  disabled={!isOpen || submitting}
+                  className="h-8 rounded-lg border border-border bg-bg-elevated text-[11px] font-bold text-text-secondary transition-colors hover:border-brand hover:text-brand disabled:opacity-40"
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+
             <button
               type="button"
-              onClick={() => setBetInput((Number(limits.maxBetMinor) / 100).toFixed(2))}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
-              title={t('bet.maxBet')}
-              disabled={!isOpen || submitting}
-            >
-              <BoltIcon />
-            </button>
-            <input
-              type="number"
-              className="h-11 w-full rounded-lg border border-border bg-bg-elevated px-3 text-center font-mono text-base font-semibold text-text-primary focus:border-brand focus:outline-none disabled:opacity-50"
-              value={betInput}
-              min={Number(limits.minBetMinor) / 100}
-              max={Number(limits.maxBetMinor) / 100}
-              step={0.01}
-              onChange={(e) => setBetInput(e.target.value)}
-              disabled={!isOpen || submitting}
-            />
-            <button
-              type="button"
-              onClick={() => void handleBet()}
-              disabled={!isOpen || submitting}
+              onClick={() => void (isAuthed ? handleBet() : openAuth('login'))}
+              disabled={isAuthed && (!isOpen || submitting)}
               className={cn(
-                'h-11 shrink-0 rounded-lg px-5 text-sm font-extrabold uppercase tracking-wider transition-all',
-                isOpen && !submitting
-                  ? 'bg-brand text-bg shadow-[0_0_16px_rgba(0,255,136,0.25)] hover:brightness-110 active:scale-[0.97]'
-                  : 'cursor-not-allowed bg-bg-elevated text-text-muted',
+                'mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-extrabold uppercase tracking-[0.18em] transition-all',
+                !isAuthed
+                  ? 'bg-accent text-white shadow-[0_0_16px_rgba(0,153,255,0.4)] hover:brightness-110 active:scale-[0.98]'
+                  : isOpen && !submitting
+                    ? 'bg-gradient-to-r from-brand to-success text-bg shadow-[0_0_22px_rgba(0,255,136,0.45)] hover:brightness-110 active:scale-[0.98]'
+                    : 'cursor-not-allowed bg-bg-elevated text-text-muted',
               )}
             >
-              {submitting ? '...' : t('bet.placeBetShort')}
+              {!isAuthed ? (
+                t('bet.loginToBet')
+              ) : submitting ? (
+                <Spinner />
+              ) : (
+                <>
+                  <BoltIcon />
+                  {t('bet.placeBet')}
+                </>
+              )}
             </button>
-          </div>
 
-          <div className="mt-2 text-center text-[11px] text-text-muted">
-            {t('bet.limits', {
-              min: formatAzn(limits.minBetMinor),
-              max: formatAzn(limits.maxBetMinor),
-            })}
-          </div>
-
-          {!isAuthed ? (
-            <button
-              type="button"
-              onClick={() => openAuth('login')}
-              className="mt-3 w-full rounded-lg bg-accent px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-opacity hover:opacity-90"
-            >
-              {t('bet.loginToBet')}
-            </button>
-          ) : myParticipant ? (
-            <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg border border-brand/30 bg-brand/5 p-2 text-[11px]">
-              <div>
-                <div className="text-text-muted">{t('bet.yourStake')}</div>
-                <div className="font-mono font-bold text-brand">{formatAzn(myStake)} AZN</div>
+            {myParticipant && (
+              <div className="mt-3 rounded-xl border border-brand/30 bg-brand/5 p-2.5">
+                <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-text-muted">
+                  <span>{t('bet.yourStake')}</span>
+                  <span>{t('bet.yourChance')}</span>
+                </div>
+                <div className="mt-0.5 flex items-center justify-between font-mono text-sm font-extrabold text-brand">
+                  <span>{formatAzn(myStake)}</span>
+                  <span>{formatChance(myChanceBps)}%</span>
+                </div>
               </div>
-              <div className="text-right">
-                <div className="text-text-muted">{t('bet.yourChance')}</div>
-                <div className="font-mono font-bold text-brand">{formatChance(myChanceBps)}%</div>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-3 text-center text-[11px] text-text-muted">
-              {t('bet.balance')}:{' '}
-              <span className="font-mono text-text-secondary">{formatAzn(balance ?? '0')} AZN</span>
-            </div>
-          )}
-        </section>
-
-        <section className="flex flex-col items-center justify-center rounded-2xl border border-border bg-bg-card p-4 shadow-card">
-          <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-            {t('bank')}
-          </div>
-          <div className="mt-1 font-mono text-3xl font-extrabold tracking-tight text-brand sm:text-4xl">
-            {formatAzn(bankMinor)}
-          </div>
-          <div className="text-xs font-semibold text-text-muted">AZN</div>
-        </section>
-
-        <section className="relative overflow-hidden rounded-2xl border border-border bg-bg-card p-4 shadow-card">
-          <div className="text-center text-xs font-semibold uppercase tracking-wider text-text-muted">
-            {isRolling
-              ? t('rolling')
-              : isCompleted
-                ? t('lastWinner')
-                : countdownActive
-                  ? t('countdown')
-                  : t('waiting')}
-          </div>
-          <div className="mt-1 text-center font-mono text-3xl font-extrabold sm:text-4xl">
-            {isRolling ? (
-              <span className="text-warning">...</span>
-            ) : isCompleted ? (
-              <span className="text-success">+{formatAzn(round?.payoutMinor ?? '0')}</span>
-            ) : countdownActive ? (
-              <span className={countdownMs < 5000 ? 'text-danger' : 'text-text-primary'}>
-                {formatSecs(countdownMs)}
-              </span>
-            ) : (
-              <span className="text-sm font-medium text-text-secondary">
-                {t('waitingPlayers', { current: uniqueCount, need: minPlayers })}
-              </span>
             )}
           </div>
-          {countdownActive && (
-            <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-bg-elevated">
-              <div
-                className={cn(
-                  'h-full transition-[width] duration-200',
-                  countdownMs < 5000 ? 'bg-danger' : 'bg-brand',
-                )}
-                style={{
-                  width: `${Math.max(0, Math.min(100, (countdownMs / (limits.roundDurationSec * 1000)) * 100))}%`,
-                }}
-              />
+        </section>
+
+        {/* Арена: донат + банк */}
+        <section className="relative flex items-center justify-center overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-bg-card via-bg-card to-bg shadow-card">
+          {/* фон */}
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,136,0.08),transparent_60%)]" />
+          <div className="relative flex flex-col items-center py-6">
+            <ChanceDonut
+              participants={participants}
+              countdownFrac={countdownFrac}
+              countdownActive={countdownActive}
+              isRolling={isRolling}
+              isCompleted={isCompleted}
+              bankMinor={bankMinor}
+              currentUserId={currentUserId}
+              winnerId={round?.winnerId ?? null}
+              countdownLabel={
+                isRolling
+                  ? '...'
+                  : isCompleted
+                    ? `+${formatAzn(round?.payoutMinor ?? '0')}`
+                    : countdownActive
+                      ? formatSecs(countdownMs)
+                      : null
+              }
+              waitingText={
+                !isRolling && !isCompleted && !countdownActive
+                  ? t('waitingPlayers', { current: uniqueCount, need: minPlayers })
+                  : null
+              }
+              dangerCountdown={countdownActive && countdownMs < 5000}
+            />
+            <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.3em] text-text-muted">
+              {t('bank')}
             </div>
+            <div className="font-mono text-4xl font-black tracking-tight text-text-primary sm:text-5xl">
+              <span className="bg-gradient-to-b from-brand to-success bg-clip-text text-transparent">
+                {formatAzn(bankMinor)}
+              </span>
+              <span className="ml-2 text-xl text-text-secondary">AZN</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Игроки — плотный список */}
+        <section className="flex flex-col overflow-hidden rounded-2xl border border-border bg-bg-card shadow-card">
+          <header className="flex items-center justify-between border-b border-border px-3 py-2">
+            <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-text-secondary">
+              {t('participants')}
+            </h2>
+            <span className="rounded-full bg-bg-elevated px-2 py-0.5 font-mono text-[11px] font-bold text-text-primary">
+              {uniqueCount}
+            </span>
+          </header>
+          {participants.length === 0 ? (
+            <div className="flex flex-1 items-center justify-center px-3 py-10 text-center text-xs text-text-muted">
+              {t('noBets')}
+            </div>
+          ) : (
+            <ul className="flex max-h-[500px] flex-col divide-y divide-border/60 overflow-y-auto">
+              {[...participants]
+                .sort((a, b) => b.chanceBps - a.chanceBps)
+                .map((p) => (
+                  <PlayerRow
+                    key={p.userId}
+                    p={p}
+                    isMe={p.userId === currentUserId}
+                    isWinner={(isRolling || isCompleted) && p.userId === round?.winnerId}
+                    youLabel={t('you')}
+                  />
+                ))}
+            </ul>
           )}
         </section>
       </div>
 
-      {/* Карточки игроков */}
-      <section>
-        {participants.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-bg-card/50 p-10 text-center text-sm text-text-muted">
-            {t('noBets')}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {participants.map((p) => (
-              <PlayerCard
-                key={p.userId}
-                p={p}
-                isMe={p.userId === currentUserId}
-                isWinner={(isRolling || isCompleted) && p.userId === round?.winnerId}
-                youLabel={t('you')}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
       {/* История + provably-fair */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_3fr]">
-        <section className="rounded-2xl border border-border bg-bg-card shadow-card">
-          <header className="border-b border-border px-4 py-2.5">
-            <h2 className="text-sm font-semibold text-text-primary">{t('history.title')}</h2>
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_3fr]">
+        <section className="overflow-hidden rounded-2xl border border-border bg-bg-card shadow-card">
+          <header className="border-b border-border px-3 py-2">
+            <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-text-secondary">
+              {t('history.title')}
+            </h2>
           </header>
           {history.length === 0 ? (
             <div className="px-4 py-8 text-center text-xs text-text-muted">{t('history.empty')}</div>
           ) : (
-            <ul className="max-h-[300px] divide-y divide-border overflow-y-auto">
+            <div className="flex gap-2 overflow-x-auto p-2">
               {history.map((h) => {
                 const winnerColor =
                   h.participants.find((p) => p.userId === h.winnerId)?.color ?? '#888';
                 return (
-                  <li key={h.id} className="flex items-center gap-3 px-4 py-2 text-xs">
+                  <div
+                    key={h.id}
+                    className="flex w-[112px] shrink-0 flex-col items-center gap-1 rounded-xl border bg-bg-elevated/40 p-2"
+                    style={{ borderColor: `${winnerColor}55` }}
+                  >
                     <div
-                      className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-bg-elevated"
+                      className="h-10 w-10 overflow-hidden rounded-full"
                       style={{ outline: '2px solid', outlineColor: winnerColor }}
                     >
                       {h.winnerAvatarUrl ? (
                         <Image
                           src={h.winnerAvatarUrl}
                           alt=""
-                          width={28}
-                          height={28}
+                          width={40}
+                          height={40}
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-text-secondary">
+                        <div className="flex h-full w-full items-center justify-center bg-bg text-xs font-bold text-text-secondary">
                           {(h.winnerUsername ?? '?').slice(0, 1).toUpperCase()}
                         </div>
                       )}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-text-secondary">{h.winnerUsername ?? '—'}</div>
-                      <div className="text-text-muted">
-                        {new Date(h.completedAt ?? h.startedAt).toLocaleTimeString('ru-RU', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </div>
+                    <div className="w-full truncate text-center text-[10px] text-text-secondary">
+                      {h.winnerUsername ?? '—'}
                     </div>
-                    <div className="text-right">
-                      <div className="font-mono font-semibold text-success">
-                        +{formatAzn(h.payoutMinor)}
-                      </div>
-                      <div className="font-mono text-text-muted">
-                        {t('history.bank')}: {formatAzn(h.bankMinor)}
-                      </div>
+                    <div className="font-mono text-xs font-extrabold text-success">
+                      +{formatAzn(h.payoutMinor)}
                     </div>
-                  </li>
+                    <div className="font-mono text-[9px] text-text-muted">
+                      {new Date(h.completedAt ?? h.startedAt).toLocaleTimeString('ru-RU', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  </div>
                 );
               })}
-            </ul>
+            </div>
           )}
         </section>
 
         {round && (
-          <section className="rounded-2xl border border-border bg-bg-card p-4 shadow-card">
-            <h2 className="mb-2 text-sm font-semibold text-text-primary">{t('fair.title')}</h2>
-            <dl className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-2">
+          <section className="overflow-hidden rounded-2xl border border-border bg-bg-card shadow-card">
+            <header className="border-b border-border px-3 py-2">
+              <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-text-secondary">
+                {t('fair.title')}
+              </h2>
+            </header>
+            <dl className="grid grid-cols-1 gap-2 p-3 text-[11px] sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <dt className="text-text-muted">{t('fair.serverSeedHash')}</dt>
                 <dd className="mt-0.5 break-all font-mono text-text-secondary">
@@ -545,9 +648,7 @@ export function ClassicLayout({
               {round.winningTicket !== null && (
                 <div>
                   <dt className="text-text-muted">{t('fair.winningTicket')}</dt>
-                  <dd className="mt-0.5 font-mono text-text-secondary">
-                    #{round.winningTicket} / {bankBig.toString()}
-                  </dd>
+                  <dd className="mt-0.5 font-mono text-text-secondary">#{round.winningTicket}</dd>
                 </div>
               )}
               {round.serverSeed && (
@@ -568,6 +669,167 @@ export function ClassicLayout({
   );
 }
 
+// ── Донат шансов ────────────────────────────────────────────────────────
+function ChanceDonut({
+  participants,
+  countdownFrac,
+  countdownActive,
+  isRolling,
+  isCompleted,
+  bankMinor: _bankMinor,
+  currentUserId,
+  winnerId,
+  countdownLabel,
+  waitingText,
+  dangerCountdown,
+}: {
+  participants: ClassicParticipantDto[];
+  countdownFrac: number;
+  countdownActive: boolean;
+  isRolling: boolean;
+  isCompleted: boolean;
+  bankMinor: string;
+  currentUserId: string | null;
+  winnerId: string | null;
+  countdownLabel: string | null;
+  waitingText: string | null;
+  dangerCountdown: boolean;
+}): JSX.Element {
+  const R_OUTER = 96; // радиус кольца-таймера
+  const R_INNER = 78; // радиус кольца долей
+  const C_OUTER = 2 * Math.PI * R_OUTER;
+  const C_INNER = 2 * Math.PI * R_INNER;
+
+  const totalBps = participants.reduce((s, p) => s + p.chanceBps, 0) || 0;
+  void _bankMinor;
+
+  let acc = 0;
+  return (
+    <div className="relative">
+      <svg
+        viewBox="-110 -110 220 220"
+        className="h-[220px] w-[220px] sm:h-[260px] sm:w-[260px]"
+        style={{ filter: 'drop-shadow(0 0 24px rgba(0,255,136,0.15))' }}
+      >
+        {/* Внешнее кольцо: фон таймера */}
+        <circle
+          r={R_OUTER}
+          cx={0}
+          cy={0}
+          fill="none"
+          stroke="rgba(255,255,255,0.06)"
+          strokeWidth={5}
+        />
+        {/* Внешнее кольцо: прогресс таймера */}
+        {countdownActive && (
+          <circle
+            r={R_OUTER}
+            cx={0}
+            cy={0}
+            fill="none"
+            stroke={dangerCountdown ? 'var(--color-danger, #ff4d4f)' : 'var(--color-brand, #00ff88)'}
+            strokeWidth={5}
+            strokeLinecap="round"
+            strokeDasharray={`${C_OUTER * countdownFrac} ${C_OUTER}`}
+            transform="rotate(-90)"
+            style={{ transition: 'stroke-dasharray 0.2s linear' }}
+          />
+        )}
+        {isRolling && (
+          <circle
+            r={R_OUTER}
+            cx={0}
+            cy={0}
+            fill="none"
+            stroke="var(--color-warning, #ffbf00)"
+            strokeWidth={5}
+            strokeLinecap="round"
+            strokeDasharray={`${C_OUTER * 0.25} ${C_OUTER}`}
+            transform="rotate(-90)"
+            className="origin-center [animation:spin_1.6s_linear_infinite]"
+          />
+        )}
+
+        {/* Внутреннее кольцо: фон */}
+        <circle
+          r={R_INNER}
+          cx={0}
+          cy={0}
+          fill="none"
+          stroke="rgba(255,255,255,0.04)"
+          strokeWidth={18}
+        />
+
+        {/* Сегменты шансов */}
+        {participants.length === 0 ? (
+          <circle
+            r={R_INNER}
+            cx={0}
+            cy={0}
+            fill="none"
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth={18}
+            strokeDasharray="4 6"
+          />
+        ) : (
+          participants.map((p) => {
+            const frac = totalBps > 0 ? p.chanceBps / totalBps : 0;
+            const dashLen = Math.max(frac * C_INNER - 2, 0); // тонкий зазор
+            const offset = -acc * C_INNER;
+            acc += frac;
+            const isHi =
+              (currentUserId && p.userId === currentUserId) ||
+              (winnerId && p.userId === winnerId);
+            return (
+              <circle
+                key={p.userId}
+                r={R_INNER}
+                cx={0}
+                cy={0}
+                fill="none"
+                stroke={p.color}
+                strokeWidth={isHi ? 22 : 18}
+                strokeDasharray={`${dashLen} ${C_INNER}`}
+                strokeDashoffset={offset}
+                transform="rotate(-90)"
+                style={{
+                  transition: 'stroke-dasharray 0.4s ease, stroke-width 0.2s ease',
+                  filter: isHi ? `drop-shadow(0 0 8px ${p.color})` : undefined,
+                }}
+              />
+            );
+          })
+        )}
+
+        {/* Центр — тёмный диск для контраста */}
+        <circle r={R_INNER - 12} cx={0} cy={0} fill="rgba(0,0,0,0.35)" />
+      </svg>
+
+      {/* Центральная подпись (таймер / результат / ожидание) */}
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+        {countdownLabel ? (
+          <div
+            className={cn(
+              'font-mono text-3xl font-black tracking-tight sm:text-4xl',
+              isRolling && 'text-warning',
+              isCompleted && 'text-success',
+              !isRolling && !isCompleted && dangerCountdown && 'text-danger',
+              !isRolling && !isCompleted && !dangerCountdown && 'text-text-primary',
+            )}
+          >
+            {countdownLabel}
+          </div>
+        ) : waitingText ? (
+          <div className="max-w-[140px] text-[11px] font-semibold uppercase leading-tight tracking-wider text-text-secondary">
+            {waitingText}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+// ── Лента-барабан ────────────────────────────────────────────────────────
 function RollingRibbon({
   tiles,
   winnerIndex,
@@ -579,25 +841,29 @@ function RollingRibbon({
   progress: number;
   label: string;
 }): JSX.Element {
-  // easeOut cubic
-  const eased = 1 - Math.pow(1 - progress, 3);
+  // easeOutQuint — длинный драматичный старт + плавная остановка
+  const eased = 1 - Math.pow(1 - progress, 5);
   const offsetTiles = eased * winnerIndex;
   const translatePx = -offsetTiles * RIBBON_TILE_PX;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border-2 border-warning/60 bg-bg-card p-3 shadow-[0_0_24px_rgba(255,191,0,0.18)]">
-      <div className="mb-2 text-center text-xs font-extrabold uppercase tracking-[0.2em] text-warning">
+    <div className="relative overflow-hidden rounded-2xl border-2 border-warning/50 bg-gradient-to-b from-bg-card to-bg p-3 shadow-[0_0_32px_rgba(255,191,0,0.18)]">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-warning/60 to-transparent" />
+      <div className="mb-2 flex items-center justify-center gap-2 text-center text-[11px] font-black uppercase tracking-[0.3em] text-warning">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warning shadow-[0_0_8px_rgba(255,191,0,0.9)]" />
         {label}
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warning shadow-[0_0_8px_rgba(255,191,0,0.9)]" />
       </div>
-      <div className="relative h-24 overflow-hidden rounded-lg bg-bg-elevated ring-1 ring-border">
+      <div className="relative h-28 overflow-hidden rounded-xl bg-bg-elevated/80 ring-1 ring-border">
+        {/* Указатель: вертикальная линия + стрелки */}
         <div className="pointer-events-none absolute inset-y-0 left-1/2 z-20 -translate-x-1/2">
-          <div className="h-full w-[3px] bg-warning shadow-[0_0_8px_rgba(255,191,0,0.9)]" />
+          <div className="h-full w-[3px] bg-warning shadow-[0_0_12px_rgba(255,191,0,0.95)]" />
         </div>
         <div className="pointer-events-none absolute left-1/2 top-0 z-20 -translate-x-1/2">
-          <div className="h-0 w-0 border-x-[8px] border-t-[10px] border-x-transparent border-t-warning" />
+          <div className="h-0 w-0 border-x-[10px] border-t-[12px] border-x-transparent border-t-warning drop-shadow-[0_0_6px_rgba(255,191,0,0.8)]" />
         </div>
         <div className="pointer-events-none absolute bottom-0 left-1/2 z-20 -translate-x-1/2">
-          <div className="h-0 w-0 border-x-[8px] border-b-[10px] border-x-transparent border-b-warning" />
+          <div className="h-0 w-0 border-x-[10px] border-b-[12px] border-x-transparent border-b-warning drop-shadow-[0_0_6px_rgba(255,191,0,0.8)]" />
         </div>
 
         <div
@@ -611,8 +877,9 @@ function RollingRibbon({
           ))}
         </div>
 
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-bg-elevated to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-bg-elevated to-transparent" />
+        {/* Затемнения по краям */}
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-bg-elevated via-bg-elevated/70 to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-bg-elevated via-bg-elevated/70 to-transparent" />
       </div>
     </div>
   );
@@ -621,71 +888,19 @@ function RollingRibbon({
 function RibbonTile({ p }: { p: ClassicParticipantDto }): JSX.Element {
   return (
     <div
-      className="flex h-full shrink-0 items-center justify-center"
+      className="flex h-full shrink-0 flex-col items-center justify-center gap-1 py-1"
       style={{ width: RIBBON_TILE_PX }}
     >
       <div
-        className="h-[80%] w-[80%] overflow-hidden rounded-md"
-        style={{ boxShadow: `0 0 0 2px ${p.color}` }}
+        className="h-[60px] w-[60px] overflow-hidden rounded-lg"
+        style={{ boxShadow: `0 0 0 2px ${p.color}, 0 0 12px ${p.color}55` }}
       >
         {p.avatarUrl ? (
           <Image
             src={p.avatarUrl}
             alt={p.username}
-            width={80}
-            height={80}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div
-            className="flex h-full w-full items-center justify-center text-xl font-bold text-white"
-            style={{ backgroundColor: p.color }}
-          >
-            {p.username.slice(0, 1).toUpperCase()}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function PlayerCard({
-  p,
-  isMe,
-  isWinner,
-  youLabel,
-}: {
-  p: ClassicParticipantDto;
-  isMe: boolean;
-  isWinner: boolean;
-  youLabel: string;
-}): JSX.Element {
-  return (
-    <div
-      className={cn(
-        'relative flex flex-col items-center overflow-hidden rounded-xl border-2 p-3 transition-all',
-        isWinner && 'ring-2 ring-success ring-offset-2 ring-offset-bg',
-      )}
-      style={{
-        backgroundColor: `${p.color}22`,
-        borderColor: p.color,
-      }}
-    >
-      {isMe && (
-        <div className="absolute right-1.5 top-1.5 rounded bg-bg/80 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-text-primary">
-          {youLabel}
-        </div>
-      )}
-      <div
-        className="h-16 w-16 overflow-hidden rounded-full"
-        style={{ outline: '3px solid', outlineColor: p.color }}
-      >
-        {p.avatarUrl ? (
-          <Image
-            src={p.avatarUrl}
-            alt={p.username}
-            width={64}
-            height={64}
+            width={60}
+            height={60}
             className="h-full w-full object-cover"
           />
         ) : (
@@ -697,22 +912,99 @@ function PlayerCard({
           </div>
         )}
       </div>
-      <div className="mt-2 font-mono text-sm font-extrabold text-text-primary">
-        {formatAzn(p.totalMinor)} AZN
-      </div>
       <div
-        className="mt-1 rounded px-2 py-0.5 font-mono text-[11px] font-bold text-bg"
+        className="rounded px-1.5 font-mono text-[10px] font-extrabold text-bg"
         style={{ backgroundColor: p.color }}
       >
         {formatChance(p.chanceBps)}%
-      </div>
-      <div className="mt-1 w-full truncate text-center text-xs text-text-secondary">
-        {p.username}
       </div>
     </div>
   );
 }
 
+// ── Строка игрока ──────────────────────────────────────────────────────
+function PlayerRow({
+  p,
+  isMe,
+  isWinner,
+  youLabel,
+}: {
+  p: ClassicParticipantDto;
+  isMe: boolean;
+  isWinner: boolean;
+  youLabel: string;
+}): JSX.Element {
+  const chancePct = p.chanceBps / 100;
+  return (
+    <li
+      className={cn(
+        'relative flex items-center gap-2 px-2.5 py-2 transition-colors',
+        isMe && 'bg-brand/5',
+        isWinner && 'bg-success/10',
+      )}
+    >
+      {/* цветной вертикальный бар слева */}
+      <span
+        className="absolute inset-y-1 left-0 w-1 rounded-r"
+        style={{ backgroundColor: p.color }}
+      />
+      <div
+        className="h-9 w-9 shrink-0 overflow-hidden rounded-full"
+        style={{
+          outline: '2px solid',
+          outlineColor: p.color,
+          boxShadow: isWinner ? `0 0 12px ${p.color}` : undefined,
+        }}
+      >
+        {p.avatarUrl ? (
+          <Image
+            src={p.avatarUrl}
+            alt={p.username}
+            width={36}
+            height={36}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div
+            className="flex h-full w-full items-center justify-center text-sm font-bold text-white"
+            style={{ backgroundColor: p.color }}
+          >
+            {p.username.slice(0, 1).toUpperCase()}
+          </div>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-xs font-semibold text-text-primary">{p.username}</span>
+          {isMe && (
+            <span className="rounded bg-brand/20 px-1 text-[8px] font-extrabold uppercase tracking-wider text-brand">
+              {youLabel}
+            </span>
+          )}
+        </div>
+        <div className="mt-0.5 flex items-center gap-1.5">
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-bg-elevated">
+            <div
+              className="h-full rounded-full transition-[width] duration-300"
+              style={{ width: `${chancePct}%`, backgroundColor: p.color }}
+            />
+          </div>
+          <span className="font-mono text-[10px] font-bold text-text-secondary">
+            {chancePct.toFixed(2)}%
+          </span>
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="font-mono text-xs font-extrabold text-text-primary">
+          {formatAzn(p.totalMinor)}
+        </div>
+        <div className="text-[9px] uppercase text-text-muted">AZN</div>
+      </div>
+    </li>
+  );
+}
+
+// ── Оверлей победителя ─────────────────────────────────────────────────
 function WinnerOverlay({
   result,
   t,
@@ -724,56 +1016,88 @@ function WinnerOverlay({
 }): JSX.Element {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-bg/85 p-4 backdrop-blur-md"
       onClick={onClose}
     >
       <div
         className={cn(
-          'flex flex-col items-center gap-3 rounded-2xl px-10 py-8 ring-2',
-          result.isMe ? 'bg-success/15 ring-success' : 'bg-bg-card ring-border',
+          'relative flex flex-col items-center gap-3 overflow-hidden rounded-3xl px-12 py-10 ring-2',
+          result.isMe
+            ? 'bg-gradient-to-br from-success/30 to-brand/10 ring-success shadow-[0_0_48px_rgba(0,255,136,0.4)]'
+            : 'bg-bg-card ring-border',
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="h-24 w-24 overflow-hidden rounded-full ring-4 ring-white/20">
-          {result.winnerAvatarUrl ? (
-            <Image
-              src={result.winnerAvatarUrl}
-              alt=""
-              width={96}
-              height={96}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-bg-elevated text-3xl font-bold text-text-secondary">
-              {(result.winnerUsername ?? '?').slice(0, 1).toUpperCase()}
-            </div>
-          )}
+        {result.isMe && (
+          <>
+            <div className="pointer-events-none absolute -left-12 -top-12 h-40 w-40 animate-pulse rounded-full bg-success/30 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-12 -right-12 h-40 w-40 animate-pulse rounded-full bg-brand/30 blur-3xl" />
+          </>
+        )}
+        <div className="relative">
+          <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-brand to-success opacity-60 blur-md" />
+          <div className="relative h-28 w-28 overflow-hidden rounded-full ring-4 ring-white/20">
+            {result.winnerAvatarUrl ? (
+              <Image
+                src={result.winnerAvatarUrl}
+                alt=""
+                width={112}
+                height={112}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-bg-elevated text-3xl font-bold text-text-secondary">
+                {(result.winnerUsername ?? '?').slice(0, 1).toUpperCase()}
+              </div>
+            )}
+          </div>
         </div>
-        <div className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
+        <div className="text-[11px] font-extrabold uppercase tracking-[0.3em] text-text-secondary">
           {result.isMe ? t('youWon') : t('winnerIs')}
         </div>
-        <div className="text-2xl font-extrabold text-text-primary">
+        <div className="text-2xl font-black text-text-primary">
           {result.winnerUsername ?? '—'}
         </div>
-        <div className="font-mono text-3xl font-extrabold text-success">
-          +{formatAzn(result.payoutMinor)} AZN
+        <div className="font-mono text-4xl font-black">
+          <span className="bg-gradient-to-r from-brand to-success bg-clip-text text-transparent">
+            +{formatAzn(result.payoutMinor)}
+          </span>
+          <span className="ml-2 text-xl text-text-secondary">AZN</span>
         </div>
       </div>
     </div>
   );
 }
 
+// ── Иконки ──────────────────────────────────────────────────────────────
 function BoltIcon(): JSX.Element {
   return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-    >
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" />
+    </svg>
+  );
+}
+
+function CrownIcon(): JSX.Element {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M2 7l4 6 6-8 6 8 4-6v12H2V7zm2 14h16v-2H4v2z" />
+    </svg>
+  );
+}
+
+function Spinner(): JSX.Element {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
+      <path
+        d="M21 12a9 9 0 0 0-9-9"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+        className="origin-center [animation:spin_0.8s_linear_infinite]"
+        style={{ transformOrigin: '12px 12px' }}
+      />
     </svg>
   );
 }
@@ -792,7 +1116,7 @@ function mulberry32(seed: number): () => number {
   let a = seed;
   return (): number => {
     a |= 0;
-    a = (a + 0x6D2B79F5) | 0;
+    a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
