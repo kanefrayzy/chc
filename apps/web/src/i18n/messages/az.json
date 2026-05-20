@@ -586,6 +586,8 @@
     "noBets": "Hələ mərc yoxdur — ilk olun",
     "chance": "Şans",
     "winnerIs": "Qalib",
+    "rollingTitle": "Qalib seçilir...",
+    "you": "Siz",
     "youWon": "Siz qazandınız!",
     "bet": {
       "title": "Mərc et",
@@ -593,7 +595,9 @@
       "limits": "{min} - {max} AZN",
       "balance": "Balans",
       "placeBet": "Mərc et",
+      "placeBetShort": "Mərc",
       "placing": "Mərc...",
+      "maxBet": "Maksimum mərc",
       "loginToBet": "Oynamaq üçün daxil olun",
       "yourStake": "Sizin mərc",
       "yourChance": "Sizin şans"

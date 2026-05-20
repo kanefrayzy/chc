@@ -588,6 +588,8 @@
     "noBets": "Ставок пока нет — будьте первым",
     "chance": "Шанс",
     "winnerIs": "Победитель",
+    "rollingTitle": "Выбор победителя...",
+    "you": "Вы",
     "youWon": "Вы выиграли!",
     "bet": {
       "title": "Сделать ставку",
@@ -595,7 +597,9 @@
       "limits": "От {min} до {max} AZN",
       "balance": "Баланс",
       "placeBet": "Поставить",
+      "placeBetShort": "Ставка",
       "placing": "Ставка...",
+      "maxBet": "Поставить максимум",
       "loginToBet": "Войдите, чтобы играть",
       "yourStake": "Ваша ставка",
       "yourChance": "Ваш шанс"
