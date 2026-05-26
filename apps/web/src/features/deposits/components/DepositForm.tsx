@@ -34,6 +34,7 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
   // H2H активный депозит — блокирует форму; WestWallet — не блокирует (статичный адрес)
   const [activeDeposit, setActiveDeposit] = useState<DepositDto | null | undefined>(undefined);
   const [walletDeposit, setWalletDeposit] = useState<DepositDto | null>(null);
+  const [walletCreating, setWalletCreating] = useState(false);
 
   // Слушаем WS: когда депозит завершён — закрываем карточку и уведомляем родителя
   useEffect(() => {
@@ -67,18 +68,11 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
             (d.status === 'PENDING' || d.status === 'PROCESSING') &&
             (d.expiresAt === null || new Date(d.expiresAt) > new Date()),
         );
-        // WestWallet — показываем отдельно, не блокируем
-        const wallet = res.items.find(
-          (d) =>
-            d.provider === 'WESTWALLET' &&
-            (d.status === 'PENDING' || d.status === 'PROCESSING'),
-        );
         setActiveDeposit(blocking ?? null);
-        setWalletDeposit(wallet ?? null);
+        // WestWallet адрес не восстанавливаем автоматически — он появится только при выборе метода
       })
       .catch(() => {
         setActiveDeposit(null);
-        setWalletDeposit(null);
       });
   }, []);
 
@@ -115,6 +109,25 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
     checkActiveDeposit();
   }, [router, checkActiveDeposit]);
 
+  // При выборе WestWallet-метода — автоматически создаём/получаем адрес
+  const handleMethodSelect = useCallback((m: PublicPaymentMethod): void => {
+    setSelectedId(m.id);
+    setErrorMessage(null);
+    if (m.provider !== 'WESTWALLET') {
+      setWalletDeposit(null);
+      return;
+    }
+    setWalletDeposit(null);
+    setWalletCreating(true);
+    depositsApi
+      .create({ paymentMethodId: m.id, amountMinor: '0' })
+      .then((created) => setWalletDeposit(created))
+      .catch((err) => {
+        setErrorMessage(err instanceof ApiException ? err.message : 'Ошибка создания адреса кошелька');
+      })
+      .finally(() => setWalletCreating(false));
+  }, []);
+
   const selected = methods.find((m) => m.id === selectedId) ?? null;
   const isStaticWallet = selected?.provider === 'WESTWALLET';
   const minMinor =
@@ -134,22 +147,19 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
       return;
     }
 
-    // WestWallet: сумма не требуется — зачисление по факту IPN
-    let minor: bigint;
-    if (isStaticWallet) {
-      minor = 1n;
-    } else {
-      const parsed = parseAmountToMinor(amount);
-      if (parsed === null) {
-        setErrorMessage(t('errors.invalidAmount'));
-        return;
-      }
-      if (parsed < minMinor || parsed > maxMinor) {
-        setErrorMessage(t('errors.outOfRange'));
-        return;
-      }
-      minor = parsed;
+    // WestWallet: обрабатывается автоматически при выборе метода
+    if (isStaticWallet) return;
+
+    const parsed = parseAmountToMinor(amount);
+    if (parsed === null) {
+      setErrorMessage(t('errors.invalidAmount'));
+      return;
     }
+    if (parsed < minMinor || parsed > maxMinor) {
+      setErrorMessage(t('errors.outOfRange'));
+      return;
+    }
+    const minor = parsed;
 
     startTransition(async () => {
       try {
@@ -157,11 +167,7 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
           paymentMethodId: selected.id,
           amountMinor: minor.toString(),
         });
-        if (isStaticWallet) {
-          setWalletDeposit(created);
-        } else {
-          setActiveDeposit(created);
-        }
+        setActiveDeposit(created);
         router.refresh();
         setAmount('');
         if (onSuccess) onSuccess();
@@ -199,12 +205,6 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
 
   return (
     <div>
-      {/* WestWallet: показываем адрес кошелька над формой, не блокируя её */}
-      {walletDeposit && (
-        <div className="mb-4">
-          <PendingDepositCard deposit={walletDeposit} locale={locale} />
-        </div>
-      )}
       <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <div className="mb-2 text-sm font-medium text-text-secondary">
@@ -224,8 +224,8 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
                     <button
                       type="button"
                       key={m.id}
-                      onClick={() => setSelectedId(m.id)}
-                      disabled={isPending}
+                      onClick={() => handleMethodSelect(m)}
+                      disabled={isPending || walletCreating}
                       className={[
                         'flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition',
                         active
@@ -277,17 +277,28 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
             />
           )}
 
+          {/* WestWallet: показываем адрес/QR сразу после выбора метода */}
           {isStaticWallet && (
-            <p className="text-sm text-text-secondary">
-              Переведите любую сумму USDT на указанный адрес — зачисление произойдёт автоматически.
-            </p>
+            <div className="mt-1">
+              {walletCreating && (
+                <div className="flex items-center gap-2 text-sm text-text-secondary">
+                  <Spinner />
+                  Получаем адрес кошелька…
+                </div>
+              )}
+              {!walletCreating && walletDeposit && (
+                <PendingDepositCard deposit={walletDeposit} locale={locale} />
+              )}
+            </div>
           )}
 
           {errorMessage ? <Alert variant="danger">{errorMessage}</Alert> : null}
 
-        <Button type="submit" variant="primary" disabled={isPending || !selected}>
-          {isPending ? t('submitting') : t('submit')}
-        </Button>
+        {!isStaticWallet && (
+          <Button type="submit" variant="primary" disabled={isPending || !selected}>
+            {isPending ? t('submitting') : t('submit')}
+          </Button>
+        )}
       </form>
     </div>
   );
