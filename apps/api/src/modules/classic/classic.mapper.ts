@@ -46,21 +46,22 @@ export interface PublicClassicRoundDto {
 }
 
 /**
- * Подбирает hex-цвет для игрока на основе его userId (детерминированно).
- * Используется для маркера ставки на полосе.
+ * Палитра цветов участников. Цвета назначаются по индексу в раунде (уникальны в пределах раунда).
+ * Для >24 участников используется HSL с золотым углом.
  */
 const PARTICIPANT_COLORS = [
   '#22d3ee', '#a855f7', '#f97316', '#ec4899', '#84cc16',
   '#0ea5e9', '#facc15', '#10b981', '#f43f5e', '#6366f1',
+  '#14b8a6', '#d946ef', '#eab308', '#3b82f6', '#ef4444',
+  '#22c55e', '#8b5cf6', '#fb923c', '#06b6d4', '#e11d48',
+  '#65a30d', '#c026d3', '#0891b2', '#dc2626',
 ];
 
-export function colorForUserId(userId: string): string {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    hash = (hash * 31 + userId.charCodeAt(i)) | 0;
-  }
-  const idx = Math.abs(hash) % PARTICIPANT_COLORS.length;
-  return PARTICIPANT_COLORS[idx] as string;
+function colorForIndex(i: number): string {
+  if (i < PARTICIPANT_COLORS.length) return PARTICIPANT_COLORS[i] as string;
+  // золотой угол для равномерного распределения
+  const h = (i * 137.508) % 360;
+  return `hsl(${h.toFixed(1)}, 70%, 55%)`;
 }
 
 export function toPublicClassicBet(
@@ -118,6 +119,13 @@ export function toPublicClassicRound(
     }
   }
 
+  // Стабильный порядок для назначения цветов — по ticketsFrom (порядок вхождения в раунд).
+  const orderedUserIds = [...byUser.entries()]
+    .sort((a, b) => a[1].minFrom - b[1].minFrom)
+    .map(([uid]) => uid);
+  const colorByUser = new Map<string, string>();
+  orderedUserIds.forEach((uid, i) => colorByUser.set(uid, colorForIndex(i)));
+
   const participants: PublicClassicParticipant[] = [...byUser.entries()]
     .map(([userId, info]) => {
       const chanceBps = bank > 0n
@@ -132,7 +140,7 @@ export function toPublicClassicRound(
         chanceBps,
         ticketsFrom: info.minFrom,
         ticketsTo: info.maxTo,
-        color: colorForUserId(userId),
+        color: colorByUser.get(userId) ?? colorForIndex(0),
       };
     })
     .sort((a, b) => Number(BigInt(b.totalMinor) - BigInt(a.totalMinor)));

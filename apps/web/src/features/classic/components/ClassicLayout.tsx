@@ -59,9 +59,9 @@ function formatSecs(ms: number): string {
   return `${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')}`;
 }
 
-const RIBBON_TILE_PX = 92;
+const RIBBON_TILE_PX = 120;
 const RIBBON_TILES_COUNT = 220;
-const WINNER_TILE_FRACTION = 0.88; // позиция тайла-победителя в ленте
+const WINNER_TILE_FRACTION = 0.88;
 
 /**
  * Классический jackpot — переработанный дизайн.
@@ -319,11 +319,8 @@ export function ClassicLayout({
       {/* Хедер */}
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="absolute inset-0 animate-pulse rounded-full bg-brand/40 blur-xl" />
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-brand to-success text-bg shadow-[0_0_24px_rgba(0,255,136,0.5)]">
-              <CrownIcon />
-            </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand text-bg">
+            <CrownIcon />
           </div>
           <div>
             <h1 className="text-xl font-extrabold uppercase tracking-wider text-text-primary sm:text-2xl">
@@ -393,10 +390,9 @@ export function ClassicLayout({
       {/* Главный блок: ставка | арена | игроки */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[300px_1fr_320px]">
         {/* Панель ставки */}
-        <section className="relative overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-bg-card to-bg-card/40 p-4 shadow-card">
-          <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-brand/10 blur-2xl" />
-          <div className="relative">
-            <h2 className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-brand">
+        <section className="rounded-2xl border border-border bg-bg-card p-4 shadow-card">
+          <div>
+            <h2 className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-text-secondary">
               {t('bet.title')}
             </h2>
 
@@ -458,11 +454,11 @@ export function ClassicLayout({
               onClick={() => void (isAuthed ? handleBet() : openAuth('login'))}
               disabled={isAuthed && (!isOpen || submitting)}
               className={cn(
-                'mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-extrabold uppercase tracking-[0.18em] transition-all',
+                'mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-extrabold uppercase tracking-[0.18em] transition-colors',
                 !isAuthed
-                  ? 'bg-accent text-white shadow-[0_0_16px_rgba(0,153,255,0.4)] hover:brightness-110 active:scale-[0.98]'
+                  ? 'bg-accent text-white hover:brightness-110 active:scale-[0.98]'
                   : isOpen && !submitting
-                    ? 'bg-gradient-to-r from-brand to-success text-bg shadow-[0_0_22px_rgba(0,255,136,0.45)] hover:brightness-110 active:scale-[0.98]'
+                    ? 'bg-brand text-black hover:brightness-110 active:scale-[0.98]'
                     : 'cursor-not-allowed bg-bg-elevated text-text-muted',
               )}
             >
@@ -494,9 +490,7 @@ export function ClassicLayout({
         </section>
 
         {/* Арена: донат + банк */}
-        <section className="relative flex items-center justify-center overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-bg-card via-bg-card to-bg shadow-card">
-          {/* фон */}
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,136,0.08),transparent_60%)]" />
+        <section className="relative flex items-center justify-center overflow-hidden rounded-2xl border border-border bg-bg-card shadow-card">
           <div className="relative flex flex-col items-center py-6">
             <ChanceDonut
               participants={participants}
@@ -526,10 +520,8 @@ export function ClassicLayout({
             <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.3em] text-text-muted">
               {t('bank')}
             </div>
-            <div className="font-mono text-4xl font-black tracking-tight text-text-primary sm:text-5xl">
-              <span className="bg-gradient-to-b from-brand to-success bg-clip-text text-transparent">
-                {formatAzn(bankMinor)}
-              </span>
+            <div className="font-mono text-4xl font-black tracking-tight text-brand sm:text-5xl">
+              {formatAzn(bankMinor)}
               <span className="ml-2 text-xl text-text-secondary">AZN</span>
             </div>
           </div>
@@ -709,7 +701,6 @@ function ChanceDonut({
       <svg
         viewBox="-110 -110 220 220"
         className="h-[220px] w-[220px] sm:h-[260px] sm:w-[260px]"
-        style={{ filter: 'drop-shadow(0 0 24px rgba(0,255,136,0.15))' }}
       >
         {/* Внешнее кольцо: фон таймера */}
         <circle
@@ -733,20 +724,6 @@ function ChanceDonut({
             strokeDasharray={`${C_OUTER * countdownFrac} ${C_OUTER}`}
             transform="rotate(-90)"
             style={{ transition: 'stroke-dasharray 0.2s linear' }}
-          />
-        )}
-        {isRolling && (
-          <circle
-            r={R_OUTER}
-            cx={0}
-            cy={0}
-            fill="none"
-            stroke="var(--color-warning, #ffbf00)"
-            strokeWidth={5}
-            strokeLinecap="round"
-            strokeDasharray={`${C_OUTER * 0.25} ${C_OUTER}`}
-            transform="rotate(-90)"
-            className="origin-center [animation:spin_1.6s_linear_infinite]"
           />
         )}
 
@@ -774,7 +751,7 @@ function ChanceDonut({
         ) : (
           participants.map((p) => {
             const frac = totalBps > 0 ? p.chanceBps / totalBps : 0;
-            const dashLen = Math.max(frac * C_INNER - 2, 0); // тонкий зазор
+            const dashLen = Math.max(frac * C_INNER - 2, 0);
             const offset = -acc * C_INNER;
             acc += frac;
             const isHi =
@@ -794,7 +771,6 @@ function ChanceDonut({
                 transform="rotate(-90)"
                 style={{
                   transition: 'stroke-dasharray 0.4s ease, stroke-width 0.2s ease',
-                  filter: isHi ? `drop-shadow(0 0 8px ${p.color})` : undefined,
                 }}
               />
             );
@@ -847,23 +823,22 @@ function RollingRibbon({
   const translatePx = -offsetTiles * RIBBON_TILE_PX;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border-2 border-warning/50 bg-gradient-to-b from-bg-card to-bg p-3 shadow-[0_0_32px_rgba(255,191,0,0.18)]">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-warning/60 to-transparent" />
+    <div className="relative overflow-hidden rounded-2xl border border-warning/40 bg-bg-card p-3">
       <div className="mb-2 flex items-center justify-center gap-2 text-center text-[11px] font-black uppercase tracking-[0.3em] text-warning">
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warning shadow-[0_0_8px_rgba(255,191,0,0.9)]" />
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warning" />
         {label}
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warning shadow-[0_0_8px_rgba(255,191,0,0.9)]" />
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warning" />
       </div>
-      <div className="relative h-28 overflow-hidden rounded-xl bg-bg-elevated/80 ring-1 ring-border">
-        {/* Указатель: вертикальная линия + стрелки */}
+      <div className="relative h-36 overflow-hidden rounded-xl bg-bg ring-1 ring-border">
+        {/* Указатель */}
         <div className="pointer-events-none absolute inset-y-0 left-1/2 z-20 -translate-x-1/2">
-          <div className="h-full w-[3px] bg-warning shadow-[0_0_12px_rgba(255,191,0,0.95)]" />
+          <div className="h-full w-[3px] bg-warning" />
         </div>
         <div className="pointer-events-none absolute left-1/2 top-0 z-20 -translate-x-1/2">
-          <div className="h-0 w-0 border-x-[10px] border-t-[12px] border-x-transparent border-t-warning drop-shadow-[0_0_6px_rgba(255,191,0,0.8)]" />
+          <div className="h-0 w-0 border-x-[10px] border-t-[12px] border-x-transparent border-t-warning" />
         </div>
         <div className="pointer-events-none absolute bottom-0 left-1/2 z-20 -translate-x-1/2">
-          <div className="h-0 w-0 border-x-[10px] border-b-[12px] border-x-transparent border-b-warning drop-shadow-[0_0_6px_rgba(255,191,0,0.8)]" />
+          <div className="h-0 w-0 border-x-[10px] border-b-[12px] border-x-transparent border-b-warning" />
         </div>
 
         <div
@@ -878,8 +853,8 @@ function RollingRibbon({
         </div>
 
         {/* Затемнения по краям */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-bg-elevated via-bg-elevated/70 to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-bg-elevated via-bg-elevated/70 to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-bg to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-bg to-transparent" />
       </div>
     </div>
   );
@@ -888,36 +863,34 @@ function RollingRibbon({
 function RibbonTile({ p }: { p: ClassicParticipantDto }): JSX.Element {
   return (
     <div
-      className="flex h-full shrink-0 flex-col items-center justify-center gap-1 py-1"
-      style={{ width: RIBBON_TILE_PX }}
+      className="relative h-full shrink-0 overflow-hidden"
+      style={{ width: RIBBON_TILE_PX, backgroundColor: p.color }}
     >
+      {p.avatarUrl ? (
+        <Image
+          src={p.avatarUrl}
+          alt={p.username}
+          width={RIBBON_TILE_PX}
+          height={144}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-3xl font-black text-white">
+          {p.username.slice(0, 1).toUpperCase()}
+        </div>
+      )}
+      {/* нижняя полоска с процентом */}
       <div
-        className="h-[60px] w-[60px] overflow-hidden rounded-lg"
-        style={{ boxShadow: `0 0 0 2px ${p.color}, 0 0 12px ${p.color}55` }}
-      >
-        {p.avatarUrl ? (
-          <Image
-            src={p.avatarUrl}
-            alt={p.username}
-            width={60}
-            height={60}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div
-            className="flex h-full w-full items-center justify-center text-lg font-bold text-white"
-            style={{ backgroundColor: p.color }}
-          >
-            {p.username.slice(0, 1).toUpperCase()}
-          </div>
-        )}
-      </div>
-      <div
-        className="rounded px-1.5 font-mono text-[10px] font-extrabold text-bg"
-        style={{ backgroundColor: p.color }}
+        className="absolute inset-x-0 bottom-0 px-1 py-0.5 text-center font-mono text-[11px] font-black text-white"
+        style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
       >
         {formatChance(p.chanceBps)}%
       </div>
+      {/* верхняя полоска цветом для яркости в ленте */}
+      <div
+        className="absolute inset-x-0 top-0 h-1"
+        style={{ backgroundColor: p.color }}
+      />
     </div>
   );
 }
@@ -1022,20 +995,11 @@ function WinnerOverlay({
       <div
         className={cn(
           'relative flex flex-col items-center gap-3 overflow-hidden rounded-3xl px-12 py-10 ring-2',
-          result.isMe
-            ? 'bg-gradient-to-br from-success/30 to-brand/10 ring-success shadow-[0_0_48px_rgba(0,255,136,0.4)]'
-            : 'bg-bg-card ring-border',
+          result.isMe ? 'bg-bg-card ring-success' : 'bg-bg-card ring-border',
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        {result.isMe && (
-          <>
-            <div className="pointer-events-none absolute -left-12 -top-12 h-40 w-40 animate-pulse rounded-full bg-success/30 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-12 -right-12 h-40 w-40 animate-pulse rounded-full bg-brand/30 blur-3xl" />
-          </>
-        )}
         <div className="relative">
-          <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-brand to-success opacity-60 blur-md" />
           <div className="relative h-28 w-28 overflow-hidden rounded-full ring-4 ring-white/20">
             {result.winnerAvatarUrl ? (
               <Image
@@ -1058,10 +1022,8 @@ function WinnerOverlay({
         <div className="text-2xl font-black text-text-primary">
           {result.winnerUsername ?? '—'}
         </div>
-        <div className="font-mono text-4xl font-black">
-          <span className="bg-gradient-to-r from-brand to-success bg-clip-text text-transparent">
-            +{formatAzn(result.payoutMinor)}
-          </span>
+        <div className="font-mono text-4xl font-black text-success">
+          +{formatAzn(result.payoutMinor)}
           <span className="ml-2 text-xl text-text-secondary">AZN</span>
         </div>
       </div>
