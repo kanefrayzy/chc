@@ -12,10 +12,8 @@ export const usernameSchema = z
 
 export const passwordSchema = z
   .string()
-  .min(8)
-  .max(128)
-  .regex(/[A-Z]/, 'Must contain an uppercase letter')
-  .regex(/[0-9]/, 'Must contain a digit');
+  .min(5)
+  .max(128);
 
 export const phoneSchema = z
   .string()

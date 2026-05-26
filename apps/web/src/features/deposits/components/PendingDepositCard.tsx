@@ -107,15 +107,24 @@ export function PendingDepositCard({ deposit, locale, onExpire }: PendingDeposit
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border-subtle">
         <div className="flex items-center gap-2.5">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-text-muted leading-none mb-0.5">
-              {t('expectedAmount')}
-            </p>
-            <p className="text-xl font-bold leading-none text-text-primary">
-              {formatMinorAmount(deposit.amountMinor, { showPositiveSign: false, locale: locale as 'ru' | 'az' })}
-            </p>
-            {deposit.originalAmount && (
-              <p className="text-xs text-text-muted mt-0.5">
-                ≈ {deposit.originalAmount} {deposit.originalCurrency}
+            {!isWestWallet && (
+              <>
+                <p className="text-[10px] uppercase tracking-wider text-text-muted leading-none mb-0.5">
+                  {t('expectedAmount')}
+                </p>
+                <p className="text-xl font-bold leading-none text-text-primary">
+                  {formatMinorAmount(deposit.amountMinor, { showPositiveSign: false, locale: locale as 'ru' | 'az' })}
+                </p>
+                {deposit.originalAmount && (
+                  <p className="text-xs text-text-muted mt-0.5">
+                    ≈ {deposit.originalAmount} {deposit.originalCurrency}
+                  </p>
+                )}
+              </>
+            )}
+            {isWestWallet && (
+              <p className="text-sm font-semibold text-text-primary">
+                USDT — любая сумма
               </p>
             )}
           </div>
@@ -184,11 +193,7 @@ export function PendingDepositCard({ deposit, locale, onExpire }: PendingDeposit
 
           {/* Сумма и подсказки */}
           <div className="rounded-xl bg-bg-base px-3 py-2.5 space-y-1 text-xs text-text-muted">
-            <p>
-              <span className="text-text-secondary font-medium">{t('transferAmount')}:</span>{' '}
-              <span className="text-text-primary font-semibold">{displayAmount}</span>
-            </p>
-            <p>{t('transferHint')}</p>
+            <p className="text-text-secondary">Переводите любую сумму USDT — зачисление произойдёт автоматически.</p>
             <p>{t('autoCredit')}</p>
           </div>
         </div>
