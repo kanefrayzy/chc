@@ -47,7 +47,9 @@ export class WithdrawalsService {
     const method = this.providerToMethod(pm.provider);
 
     const globalMin = await this.getMinMinor();
-    const minMinor = pm.minAmountMinor > 0n ? pm.minAmountMinor : globalMin;
+    // Глобальный минимум из настроек — это «пол»: способ вывода не может опустить
+    // минимальную сумму ниже значения из настроек (withdrawal.min_amount_minor).
+    const minMinor = pm.minAmountMinor > globalMin ? pm.minAmountMinor : globalMin;
     const maxMinor = pm.maxAmountMinor > 0n ? pm.maxAmountMinor : this.maxMinorFallback;
     if (amountMinor < minMinor || amountMinor > maxMinor) {
       throw new BadRequestException(

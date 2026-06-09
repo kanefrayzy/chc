@@ -21,7 +21,10 @@ export class TicketsService {
       data: {
         userId: params.userId,
         type: params.type,
-        status: 'WAITING_MODERATOR',
+        // Пустой тикет (без первого сообщения) не должен попадать в очередь
+        // модератора как «непрочитанный» (красный). Ждём ответа только когда
+        // пользователь реально написал.
+        status: params.initialMessage ? 'WAITING_MODERATOR' : 'OPEN',
         subject: params.subject ?? null,
         metadata: (params.metadata ?? undefined) as never,
         messages: params.initialMessage
@@ -105,7 +108,12 @@ export class TicketsService {
     return latest.reverse();
   }
 
-  async postUserMessage(params: { userId: string; ticketId: string; body: string }): Promise<Message> {
+  async postUserMessage(params: {
+    userId: string;
+    ticketId: string;
+    body: string;
+    kind?: 'TEXT' | 'FILE';
+  }): Promise<Message> {
     const ticket = await this.getForUser({ userId: params.userId, ticketId: params.ticketId });
     if (ticket.status === 'CLOSED') {
       throw new BadRequestException('TICKET_CLOSED');
@@ -119,7 +127,7 @@ export class TicketsService {
         data: {
           ticketId: ticket.id,
           authorId: params.userId,
-          kind: 'TEXT',
+          kind: params.kind ?? 'TEXT',
           body: params.body,
         },
       }),

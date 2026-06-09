@@ -348,7 +348,11 @@
       "placeholder": "Mesaj yazın…",
       "send": "Göndər",
       "sending": "Göndərilir…",
-      "closed": "Çat bağlıdır"
+      "closed": "Çat bağlıdır",
+      "attachImage": "Şəkil əlavə et",
+      "imageOnly": "Yalnız şəkil göndərmək olar",
+      "imageTooLarge": "Fayl çox böyükdür (maks. 5 MB)",
+      "uploadFailed": "Şəkli yükləmək mümkün olmadı"
     },
     "type": {
       "CODE_PURCHASE": "Kod alışı",
@@ -546,6 +550,14 @@
         "FROM_LOSS": "Uduzulandan",
         "FROM_WIN": "Udulandan"
       }
+    },
+    "list": {
+      "title": "Sizin referallar",
+      "empty": "Hələ heç kəsi dəvət etməmisiniz.",
+      "loadMore": "Daha çox göstər",
+      "joined": "Qeydiyyat",
+      "wagered": "Mərc",
+      "earned": "Ondan qazanılıb"
     }
   },
   "ranks": {

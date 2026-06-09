@@ -12,9 +12,10 @@ import {
   type PublicPaymentMethod,
   type PaymentProviderId,
 } from '@/lib/api/payment-methods';
+import { getPublicSettings } from '@/lib/api/settings';
 import { ApiException } from '@/lib/api/client';
 
-const FALLBACK_MIN = 500n;
+const FALLBACK_MIN = 5_000n;
 const FALLBACK_MAX = 1_000_000n;
 
 function defaultDestinationForProvider(p: PaymentProviderId): CreateWithdrawalDestination {
@@ -50,7 +51,27 @@ export function WithdrawForm({ balanceMinor, onSuccess }: WithdrawFormProps): JS
   });
   const [amount, setAmount] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [settingsMinMinor, setSettingsMinMinor] = useState<bigint>(FALLBACK_MIN);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    let cancelled = false;
+    getPublicSettings()
+      .then((s) => {
+        if (cancelled) return;
+        try {
+          setSettingsMinMinor(BigInt(s['withdrawal.min_amount_minor']));
+        } catch {
+          /* оставляем дефолт */
+        }
+      })
+      .catch(() => {
+        /* оставляем дефолт */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,10 +100,12 @@ export function WithdrawForm({ balanceMinor, onSuccess }: WithdrawFormProps): JS
   }, [t]);
 
   const selected = methods.find((m) => m.id === selectedId) ?? null;
-  const minMinor =
+  // Минимум способа вывода не может быть ниже глобального минимума из настроек.
+  const methodMin =
     selected && BigInt(selected.minAmountMinor) > 0n
       ? BigInt(selected.minAmountMinor)
-      : FALLBACK_MIN;
+      : settingsMinMinor;
+  const minMinor = methodMin > settingsMinMinor ? methodMin : settingsMinMinor;
   const maxMinor =
     selected && BigInt(selected.maxAmountMinor) > 0n
       ? BigInt(selected.maxAmountMinor)

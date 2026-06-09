@@ -37,3 +37,29 @@ export interface ReferralSummaryDto {
   totalEarningsMinor: string;
   rates: { fromLossBps: number; fromWinBps: number };
 }
+
+export interface ReferralUser {
+  id: string;
+  username: string;
+  createdAt: Date;
+  totalWageredMinor: bigint;
+  earnedFromMinor: bigint;
+}
+
+export interface PublicReferralDto {
+  id: string;
+  username: string;
+  createdAt: string;
+  totalWageredMinor: string;
+  earnedFromMinor: string;
+}
+
+export function toPublicReferral(r: ReferralUser): PublicReferralDto {
+  return {
+    id: r.id,
+    username: r.username,
+    createdAt: r.createdAt.toISOString(),
+    totalWageredMinor: minorToJson(r.totalWageredMinor),
+    earnedFromMinor: minorToJson(r.earnedFromMinor),
+  };
+}

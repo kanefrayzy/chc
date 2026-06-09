@@ -92,6 +92,32 @@ export interface DashboardStats {
   completedWithdrawalsAmountMinor: string;
 }
 
+export interface TimeseriesPoint {
+  date: string;
+  registrations: number;
+  depositsCount: number;
+  depositsAmountMinor: string;
+  withdrawalsCount: number;
+  withdrawalsAmountMinor: string;
+  ggrMinor: string;
+}
+
+export interface TimeseriesTotals {
+  registrations: number;
+  depositsCount: number;
+  depositsAmountMinor: string;
+  withdrawalsCount: number;
+  withdrawalsAmountMinor: string;
+  ggrMinor: string;
+  netMinor: string;
+}
+
+export interface DashboardTimeseries {
+  days: number;
+  points: TimeseriesPoint[];
+  totals: TimeseriesTotals;
+}
+
 // ─── Users ───────────────────────────────────────────────────────────────
 
 export interface AdminUserRow {
@@ -281,6 +307,9 @@ function withCookie(opts?: FetchOptions): { headers?: Record<string, string> } {
 export const adminApi = {
   dashboard: (opts?: FetchOptions) =>
     apiFetch<DashboardStats>('/admin/dashboard', { ...withCookie(opts) }),
+
+  dashboardTimeseries: (days: number, opts?: FetchOptions) =>
+    apiFetch<DashboardTimeseries>(`/admin/dashboard/timeseries?days=${days}`, { ...withCookie(opts) }),
 
   users: {
     list: (params: { search?: string; limit?: number; cursor?: string }, opts?: FetchOptions) => {

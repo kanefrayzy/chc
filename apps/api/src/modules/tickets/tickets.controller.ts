@@ -1,3 +1,6 @@
+import * as path from 'node:path';
+import * as fs from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import {
   Controller,
   Get,
@@ -8,7 +11,12 @@ import {
   UseGuards,
   DefaultValuePipe,
   ParseIntPipe,
+  BadRequestException,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import sharp from 'sharp';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AccessTokenPayload } from '../auth/auth.service';
@@ -91,6 +99,42 @@ export class TicketsController {
       userId: user.sub,
       ticketId: id,
       body: body.body,
+    });
+    return toPublicMessage(msg, user.sub);
+  }
+
+  @Post(':id/upload-image')
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.mimetype)) {
+        return cb(new BadRequestException('Разрешены только PNG, JPG, WEBP, GIF'), false);
+      }
+      cb(null, true);
+    },
+  }))
+  async uploadImage(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<PublicMessageDto> {
+    if (!file) throw new BadRequestException('Файл не загружен');
+
+    const uploadDir = path.join('/app', 'uploads', 'ticket-images');
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    const filename = `${randomUUID()}.webp`;
+    const filepath = path.join(uploadDir, filename);
+    await sharp(file.buffer).webp({ quality: 85 }).toFile(filepath);
+
+    const apiBase = process.env.API_PUBLIC_URL ?? 'http://localhost:4000';
+    const imageUrl = `${apiBase}/uploads/ticket-images/${filename}`;
+
+    const msg = await this.tickets.postUserMessage({
+      userId: user.sub,
+      ticketId: id,
+      body: imageUrl,
+      kind: 'FILE',
     });
     return toPublicMessage(msg, user.sub);
   }

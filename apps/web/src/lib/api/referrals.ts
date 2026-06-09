@@ -27,6 +27,19 @@ export interface ReferralEarningsPageDto {
   nextCursor: string | null;
 }
 
+export interface ReferralUserDto {
+  id: string;
+  username: string;
+  createdAt: string;
+  totalWageredMinor: string;
+  earnedFromMinor: string;
+}
+
+export interface ReferralsPageDto {
+  items: ReferralUserDto[];
+  nextCursor: string | null;
+}
+
 export const referralsApi = {
   me: (cookieHeader?: string) =>
     apiFetch<ReferralSummaryDto>('/referrals/me', {
@@ -39,6 +52,16 @@ export const referralsApi = {
     if (args.cursor) params.set('cursor', args.cursor);
     const qs = params.toString();
     return apiFetch<ReferralEarningsPageDto>(`/referrals/earnings${qs ? `?${qs}` : ''}`, {
+      ...(args.cookieHeader ? { headers: { Cookie: args.cookieHeader } } : {}),
+      credentials: 'include',
+    });
+  },
+  list: (args: { limit?: number; cursor?: string; cookieHeader?: string } = {}) => {
+    const params = new URLSearchParams();
+    if (args.limit) params.set('limit', String(args.limit));
+    if (args.cursor) params.set('cursor', args.cursor);
+    const qs = params.toString();
+    return apiFetch<ReferralsPageDto>(`/referrals/list${qs ? `?${qs}` : ''}`, {
       ...(args.cookieHeader ? { headers: { Cookie: args.cookieHeader } } : {}),
       credentials: 'include',
     });

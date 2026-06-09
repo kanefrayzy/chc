@@ -134,6 +134,15 @@ export function ChatThread({ ticket, viewerId, locale }: ChatThreadProps): JSX.E
     }
   }, [ticket.id]);
 
+  // ── Загрузить изображение ──────────────────────────────────────────────────
+  const handleUploadImage = useCallback(async (file: File): Promise<void> => {
+    setSendError(null);
+    const msg = await ticketsApi.uploadImage(ticket.id, file);
+    // Регистрируем ДО setMessages — WS-эхо приходит почти одновременно
+    sentIdsRef.current.add(msg.id);
+    setMessages((prev) => prev.some((x) => x.id === msg.id) ? prev : [...prev, msg]);
+  }, [ticket.id]);
+
   // ── WS-события ────────────────────────────────────────────────────────────
   useTicketSocket(ticket.id, {
     onMessage: (m) => {
@@ -230,6 +239,7 @@ export function ChatThread({ ticket, viewerId, locale }: ChatThreadProps): JSX.E
       )}
       <MessageComposer
         onSend={handleSend}
+        onUploadImage={handleUploadImage}
         disabled={status === 'CLOSED'}
         onTypingChange={handleTypingChange}
       />

@@ -91,9 +91,9 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
   {
     key: 'withdrawal.min_amount_minor',
     type: 'string',
-    defaultValue: '1000',
+    defaultValue: '5000',
     isPublic: true,
-    description: 'Минимальный вывод в qəpik (например, 1000 = 10.00 AZN)',
+    description: 'Минимальный вывод в qəpik (например, 5000 = 50.00 AZN)',
   },
   {
     key: 'withdrawal.manual_threshold_minor',

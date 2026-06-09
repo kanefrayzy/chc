@@ -29,6 +29,12 @@ const NAV: NavItem[] = [
     moderatorHidden: true,
   },
   {
+    href: '/statistics',
+    label: 'Статистика',
+    icon: <Icon d="M3 3v18h18M7 16l4-5 3 3 5-7" />,
+    superAdminOnly: true,
+  },
+  {
     href: '/code-purchases',
     label: 'Покупки кода',
     icon: <Icon d="M15 5H9a2 2 0 00-2 2v12a2 2 0 002 2h6a2 2 0 002-2V7a2 2 0 00-2-2zM9 9h6M9 13h6M9 17h4" />,

@@ -55,7 +55,7 @@ const DEFAULTS: PublicSettings = {
   'deposit.min_amount_minor': '500',
   'deposit.max_amount_minor': '100000000',
   'deposit.bonus_bps': 0,
-  'withdrawal.min_amount_minor': '1000',
+  'withdrawal.min_amount_minor': '5000',
   'roulette.min_bet_minor': '100',
   'roulette.max_bet_minor': '100000',
   'roulette.icon_url.green': '',

@@ -150,4 +150,42 @@ export class ReferralsService {
     }
     return { items, nextCursor };
   }
+
+  /**
+   * Список приглашённых пользователей (рефералов) с суммой,
+   * заработанной пригласившим именно с этого реферала.
+   */
+  async listReferrals(params: { userId: string; limit: number; cursor?: string }) {
+    const { userId, limit, cursor } = params;
+    const users = await this.prisma.user.findMany({
+      where: { referredById: userId },
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      select: { id: true, username: true, createdAt: true, totalWageredMinor: true },
+    });
+    let nextCursor: string | null = null;
+    if (users.length > limit) {
+      const next = users.pop();
+      nextCursor = next?.id ?? null;
+    }
+
+    const grouped = await this.prisma.referralEarning.groupBy({
+      by: ['referredId'],
+      where: { referrerId: userId, referredId: { in: users.map((u) => u.id) } },
+      _sum: { earningMinor: true },
+    });
+    const earnedMap = new Map<string, bigint>(
+      grouped.map((g) => [g.referredId, g._sum.earningMinor ?? 0n]),
+    );
+
+    const items = users.map((u) => ({
+      id: u.id,
+      username: u.username,
+      createdAt: u.createdAt,
+      totalWageredMinor: u.totalWageredMinor,
+      earnedFromMinor: earnedMap.get(u.id) ?? 0n,
+    }));
+    return { items, nextCursor };
+  }
 }

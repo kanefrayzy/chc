@@ -1,4 +1,4 @@
-import { apiFetch } from './client';
+import { apiFetch, getApiBaseUrl, ApiException } from './client';
 
 export type TicketType = 'CODE_PURCHASE' | 'WITHDRAWAL' | 'SUPPORT';
 export type TicketStatus = 'OPEN' | 'WAITING_USER' | 'WAITING_MODERATOR' | 'CLOSED';
@@ -57,6 +57,21 @@ export const ticketsApi = {
       body: { body },
       credentials: 'include',
     }),
+  uploadImage: async (id: string, file: File): Promise<MessageDto> => {
+    const url = `${getApiBaseUrl()}/tickets/${id}/upload-image`;
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(url, {
+      method: 'POST',
+      body: form,
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    const text = await res.text();
+    const data = text ? (JSON.parse(text) as unknown) : null;
+    if (!res.ok) throw new ApiException(res.status, data as null);
+    return data as MessageDto;
+  },
   create: (args: { subject: string; type?: string }) =>
     apiFetch<TicketDto>('/tickets', {
       method: 'POST',

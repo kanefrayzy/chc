@@ -6,6 +6,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { ReferralCodeCard } from '@/features/referrals/components/ReferralCodeCard';
 import { ReferralStats } from '@/features/referrals/components/ReferralStats';
 import { EarningsSection } from '@/features/referrals/components/EarningsSection';
+import { ReferralsSection } from '@/features/referrals/components/ReferralsSection';
 import { getServerUser } from '@/lib/api/server';
 import { referralsApi } from '@/lib/api/referrals';
 
@@ -30,9 +31,10 @@ export default async function ReferralsPage({ params }: ReferralsPageProps): Pro
     .map((c) => `${c.name}=${c.value}`)
     .join('; ');
 
-  const [summary, earnings] = await Promise.all([
+  const [summary, earnings, referrals] = await Promise.all([
     referralsApi.me(cookieHeader),
     referralsApi.earnings({ cookieHeader, limit: 20 }),
+    referralsApi.list({ cookieHeader, limit: 20 }),
   ]);
 
   const h = headers();
@@ -50,6 +52,11 @@ export default async function ReferralsPage({ params }: ReferralsPageProps): Pro
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
           <ReferralCodeCard code={summary.referralCode} shareUrl={shareUrl} />
+          <ReferralsSection
+            locale={params.locale}
+            initialItems={referrals.items}
+            initialCursor={referrals.nextCursor}
+          />
           <EarningsSection
             locale={params.locale}
             initialItems={earnings.items}
