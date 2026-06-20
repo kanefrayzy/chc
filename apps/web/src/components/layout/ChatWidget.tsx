@@ -19,7 +19,10 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
   const [messages, setMessages] = useState<MessageDto[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isOpenRef = useRef(false);
 
   // Закрываем виджет нажатием Escape
@@ -86,6 +89,37 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
       setInput(body); // вернуть если ошибка
     } finally {
       setSending(false);
+    }
+  };
+
+  const handlePickImage = (): void => {
+    setUploadError(null);
+    fileInputRef.current?.click();
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // сброс — чтобы повторно выбрать тот же файл
+    if (!file || !activeId) return;
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Только изображения');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('Файл слишком большой (макс. 5 МБ)');
+      return;
+    }
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const msg = await ticketsApi.uploadImage(activeId, file);
+      // WS принесёт эхо; добавляем сразу с дедупликацией по id
+      setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    } catch {
+      setUploadError('Не удалось загрузить изображение');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -199,7 +233,17 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
                               : 'bg-bg-elevated text-text-primary border border-border rounded-bl-sm',
                           )}
                         >
-                          {m.body}
+                          {m.kind === 'FILE' ? (
+                            <a href={m.body} target="_blank" rel="noopener noreferrer">
+                              <img
+                                src={m.body}
+                                alt="Изображение"
+                                className="max-w-[200px] max-h-[200px] rounded-lg cursor-pointer object-contain"
+                              />
+                            </a>
+                          ) : (
+                            <span className="whitespace-pre-wrap break-words">{m.body}</span>
+                          )}
                         </div>
                       </div>
                     );
@@ -210,23 +254,52 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
 
               {/* Ввод */}
               {(activeId || tickets.length > 0) && (
-                <div className="flex items-center gap-2 px-3 py-2 border-t border-border">
-                  <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
-                    placeholder="Написать…"
-                    className="flex-1 rounded-lg border border-border bg-bg-elevated px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand focus:outline-none"
-                  />
-                  <button
-                    onClick={() => void handleSend()}
-                    disabled={sending || !input.trim()}
-                    aria-label="Отправить"
-                    className="h-8 w-8 rounded-lg bg-brand text-black flex items-center justify-center disabled:opacity-40 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
-                  >
-                    <SendIcon className="h-4 w-4" />
-                  </button>
+                <div className="border-t border-border">
+                  {uploadError && (
+                    <div className="px-3 pt-2 text-xs text-danger">{uploadError}</div>
+                  )}
+                  <div className="flex items-center gap-2 px-3 py-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      className="hidden"
+                      onChange={(e) => void handleImageChange(e)}
+                    />
+                    <button
+                      onClick={handlePickImage}
+                      disabled={uploading || !activeId}
+                      aria-label="Прикрепить изображение"
+                      title="Прикрепить изображение"
+                      className="h-8 w-8 shrink-0 rounded-lg border border-border bg-bg-elevated text-text-muted flex items-center justify-center transition-colors hover:text-text-primary disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+                    >
+                      {uploading ? (
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                          <circle cx="8.5" cy="8.5" r="1.5" />
+                          <path d="M21 15l-5-5L5 21" />
+                        </svg>
+                      )}
+                    </button>
+                    <input
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
+                      placeholder="Написать…"
+                      className="flex-1 rounded-lg border border-border bg-bg-elevated px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand focus:outline-none"
+                    />
+                    <button
+                      onClick={() => void handleSend()}
+                      disabled={sending || !input.trim()}
+                      aria-label="Отправить"
+                      className="h-8 w-8 shrink-0 rounded-lg bg-brand text-black flex items-center justify-center disabled:opacity-40 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+                    >
+                      <SendIcon className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               )}
             </>
