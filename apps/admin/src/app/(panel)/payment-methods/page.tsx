@@ -18,7 +18,7 @@ export default async function PaymentMethodsPage() {
     <>
       <PageHeader
         title="Платёжные методы"
-        subtitle="Создавайте обработчики на базе агрегаторов Limpay (BETRA H2H) или Westwallet"
+        subtitle="Создавайте обработчики на базе агрегаторов Betatransfer или Westwallet"
       />
       <PaymentMethodsPanel initialItems={res.items} />
     </>

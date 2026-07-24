@@ -1,12 +1,12 @@
 /**
  * Платёжные провайдеры.
  *
- * `betra_h2h` — фактический ключ интеграции, в UI всегда отображается как «Limpay».
- * См. docs/decisions.md ADR-0004.
+ * `betatransfer` — фиатный шлюз (https://docs.betatransfer.io), см. ADR-0007.
+ * `westwallet` — криптовалютный шлюз.
  */
 
 export const PAYMENT_PROVIDER = {
-  BETRA_H2H: 'betra_h2h',
+  BETATRANSFER: 'betatransfer',
   WESTWALLET: 'westwallet',
 } as const;
 
@@ -14,7 +14,7 @@ export type PaymentProviderKey = (typeof PAYMENT_PROVIDER)[keyof typeof PAYMENT_
 
 /** Отображаемое имя провайдера для пользователя. */
 export const paymentProviderDisplayName: Record<PaymentProviderKey, string> = {
-  [PAYMENT_PROVIDER.BETRA_H2H]: 'Limpay',
+  [PAYMENT_PROVIDER.BETATRANSFER]: 'Betatransfer',
   [PAYMENT_PROVIDER.WESTWALLET]: 'Crypto',
 };
 

@@ -248,18 +248,24 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
     if (params.receivedAmount && params.receivedCurrency) {
       // USDTTRC → USDT → USD
       const currency = params.receivedCurrency.toUpperCase().replace(/TRC\d*$/i, '');
-      const settingsKey = (currency === 'USDT' || currency === 'USD')
-        ? 'exchange_rate.usd'
-        : `exchange_rate.${currency.toLowerCase()}`;
-      const rate = await this.settings.get<number>(settingsKey).catch(() => null);
-      if (rate && rate > 0) {
+      let aznMajor: number | null = null;
+      if (currency === 'AZN') {
+        // Внутренняя валюта — конвертация не нужна (частичная оплата Betatransfer)
+        aznMajor = parseFloat(params.receivedAmount);
+      } else {
+        const settingsKey = (currency === 'USDT' || currency === 'USD')
+          ? 'exchange_rate.usd'
+          : `exchange_rate.${currency.toLowerCase()}`;
+        const rate = await this.settings.get<number>(settingsKey).catch(() => null);
         // rate = валюта / AZN  →  AZN = received / rate
-        const aznMajor = parseFloat(params.receivedAmount) / rate;
+        if (rate && rate > 0) aznMajor = parseFloat(params.receivedAmount) / rate;
+      }
+      if (aznMajor !== null && Number.isFinite(aznMajor)) {
         const computed = BigInt(Math.round(aznMajor * 100));
         if (computed > 0n) {
           actualAmountMinor = computed;
           this.logger.log(
-            `WestWallet IPN: received=${params.receivedAmount} ${currency}, rate=${rate}, AZN=${aznMajor.toFixed(2)}, minor=${computed}`,
+            `Webhook received amount: ${params.receivedAmount} ${currency} → AZN=${aznMajor.toFixed(2)}, minor=${computed}`,
           );
         }
       }

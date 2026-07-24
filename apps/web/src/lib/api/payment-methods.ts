@@ -1,6 +1,6 @@
 import { apiFetch } from './client';
 
-export type PaymentProviderId = 'BETRA_H2H' | 'WESTWALLET';
+export type PaymentProviderId = 'BETATRANSFER' | 'WESTWALLET';
 export type PaymentMethodKind = 'DEPOSIT' | 'WITHDRAWAL' | 'BOTH';
 
 export interface PublicPaymentMethod {

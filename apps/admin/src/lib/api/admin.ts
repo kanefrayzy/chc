@@ -174,7 +174,7 @@ export interface AdminWithdrawalRow {
   id: string;
   userId: string;
   username: string | null;
-  method: 'AUTO_BETRA_H2H' | 'AUTO_WESTWALLET' | 'MANUAL_MODERATOR';
+  method: 'AUTO_BETATRANSFER' | 'AUTO_WESTWALLET' | 'MANUAL_MODERATOR';
   status: WithdrawalStatus;
   amountMinor: string;
   destination: { kind: 'card' | 'crypto' | 'manual'; display: string; network?: string };
@@ -261,7 +261,7 @@ export interface AdminSettingRow {
 
 // ─── Payment methods ─────────────────────────────────────────────────────
 
-export type PaymentProviderKind = 'BETRA_H2H' | 'WESTWALLET';
+export type PaymentProviderKind = 'BETATRANSFER' | 'WESTWALLET';
 export type PaymentMethodKind = 'DEPOSIT' | 'WITHDRAWAL' | 'BOTH';
 
 export interface AdminPaymentMethodRow {

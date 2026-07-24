@@ -26,7 +26,7 @@ const RU_ITEMS: QA[] = [
   },
   {
     q: 'Какие платёжные методы доступны?',
-    a: 'Картой AZN через Limpay и криптой USDT (TRC20) через WestWallet. Список методов администратор может расширять — иконки и валюты видны прямо на карточках.',
+    a: 'Картой AZN через Betatransfer и криптой USDT (TRC20) через WestWallet. Список методов администратор может расширять — иконки и валюты видны прямо на карточках.',
   },
   {
     q: 'Сколько идёт вывод средств?',
@@ -57,7 +57,7 @@ const AZ_ITEMS: QA[] = [
   },
   {
     q: 'Hansı ödəniş üsulları mövcuddur?',
-    a: 'AZN kart üzərindən Limpay və USDT TRC20 üzərindən WestWallet. Admin yeni üsullar əlavə edə bilər — ikon və valyuta kartda görünür.',
+    a: 'AZN kart üzərindən Betatransfer və USDT TRC20 üzərindən WestWallet. Admin yeni üsullar əlavə edə bilər — ikon və valyuta kartda görünür.',
   },
   {
     q: 'Çıxarış nə qədər çəkir?',

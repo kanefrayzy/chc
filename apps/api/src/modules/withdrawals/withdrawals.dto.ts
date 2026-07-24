@@ -3,7 +3,7 @@ import { createZodDto } from 'nestjs-zod';
 
 /**
  * Destinations:
- *  - AUTO_BETRA_H2H → { cardNumber: "**** **** **** 1234", cardHolder? }
+ *  - AUTO_BETATRANSFER → { cardNumber: "**** **** **** 1234", cardHolder? }
  *  - AUTO_WESTWALLET → { walletAddress: TRC20 string, network: "TRC20" }
  *  - MANUAL_MODERATOR → произвольное описание (поле details)
  */

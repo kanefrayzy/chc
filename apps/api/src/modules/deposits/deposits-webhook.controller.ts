@@ -13,7 +13,7 @@ import { DepositsService } from './deposits.service';
 import { PaymentProviderRegistry } from '../payments/payments.module';
 
 const ALLOWED: Record<string, PaymentProviderEnum> = {
-  'betra-h2h': 'BETRA_H2H',
+  betatransfer: 'BETATRANSFER',
   westwallet: 'WESTWALLET',
 };
 
@@ -48,6 +48,12 @@ export class DepositsWebhookController {
 
     const provider = this.providers.get(providerId);
     const parsed = provider.verifyAndParseWebhook(headers, rawBody);
+
+    // Промежуточный статус (pending/checkPayment/…): подпись валидна, но депозит не трогаем.
+    if (parsed.status === 'PENDING') {
+      this.logger.log(`Webhook [${providerSlug}] intermediate status for ${parsed.externalId} — ignored`);
+      return { ok: true, alreadyProcessed: false };
+    }
 
     return this.deposits.applyWebhook({
       provider: providerId,

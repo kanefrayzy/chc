@@ -1,16 +1,15 @@
 import { z } from 'zod';
 import { createZodDto } from 'nestjs-zod';
 
-export const PaymentProviderEnumSchema = z.enum(['BETRA_H2H', 'WESTWALLET']);
+export const PaymentProviderEnumSchema = z.enum(['BETATRANSFER', 'WESTWALLET']);
 export const PaymentMethodKindSchema = z.enum(['DEPOSIT', 'WITHDRAWAL', 'BOTH']);
 
 /**
  * Провайдер-специфичный конфиг метода.
  *
- * BETRA_H2H:
- *  - aggregators: массив приоритетов агрегаторов Betra (jupiter/gtxpay/...).
- *  - betraCurrency: код валюты Betra (AZN/RUB/KZT/UZS/TJS/KGS/USDT) — не путать
- *    с пользовательской `currency` (отображаемой). Обычно совпадает.
+ * BETATRANSFER:
+ *  - paymentSystem: код платёжной системы Betatransfer (выдаёт менеджер;
+ *    если не указан — Betatransfer выбирает систему сам на платёжной странице).
  *
  * WESTWALLET:
  *  - ticker: тикер WestWallet (BTC, USDTTRC, ETH, ...).
@@ -18,8 +17,7 @@ export const PaymentMethodKindSchema = z.enum(['DEPOSIT', 'WITHDRAWAL', 'BOTH'])
  */
 export const PaymentMethodConfigSchema = z
   .object({
-    aggregators: z.array(z.string()).optional(),
-    betraCurrency: z.string().optional(),
+    paymentSystem: z.string().optional(),
     ticker: z.string().optional(),
     dest_tag_required: z.boolean().optional(),
   })

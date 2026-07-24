@@ -148,7 +148,7 @@ model Transaction {
 // =========================================================
 
 enum PaymentProvider {
-  BETRA_H2H // отображается в UI как "Limpay" (см. ADR-0004)
+  BETATRANSFER // https://docs.betatransfer.io (см. ADR-0007)
   WESTWALLET
 }
 
@@ -161,7 +161,7 @@ enum PaymentMethodKind {
 // Конфигурируемый платёжный метод. Создаётся в админке.
 // Один логический метод (например «Карта AZN», «USDT TRC-20», «BTC»)
 // маппится на конкретный агрегатор (`provider`) и хранит провайдер-специфичный
-// `config` (для BETRA_H2H: { aggregators: [...] }; для WESTWALLET: { ticker, dest_tag? }).
+// `config` (для BETATRANSFER: { paymentSystem? }; для WESTWALLET: { ticker, dest_tag? }).
 model PaymentMethod {
   id                String            @id @default(cuid())
   name              String            // отображаемое название («Карта AZN», «USDT TRC-20»)
@@ -236,7 +236,7 @@ enum WithdrawalStatus {
 }
 
 enum WithdrawalMethod {
-  AUTO_BETRA_H2H
+  AUTO_BETATRANSFER
   AUTO_WESTWALLET
   MANUAL_MODERATOR
 }

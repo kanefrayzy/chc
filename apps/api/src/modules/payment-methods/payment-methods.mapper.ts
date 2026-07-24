@@ -5,7 +5,7 @@ import type { PaymentMethodConfig } from './payment-methods.dto';
 export interface PublicPaymentMethodDto {
   id: string;
   name: string;
-  provider: 'BETRA_H2H' | 'WESTWALLET';
+  provider: 'BETATRANSFER' | 'WESTWALLET';
   kind: 'DEPOSIT' | 'WITHDRAWAL' | 'BOTH';
   currency: string;
   iconUrl: string | null;

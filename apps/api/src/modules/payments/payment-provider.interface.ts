@@ -8,7 +8,7 @@ export interface CreateDepositRequest {
   locale?: 'ru' | 'az';
   /**
    * Провайдер-специфичный конфиг из админ-настроек метода.
-   * BETRA_H2H: `{ aggregators?, betraCurrency? }`.
+   * BETATRANSFER: `{ paymentSystem? }`.
    * WESTWALLET: `{ ticker?, dest_tag_required? }`.
    */
   config?: Record<string, unknown>;
@@ -46,8 +46,12 @@ export interface CreateDepositResult {
 export interface ParsedWebhook {
   /** Идентификатор депозита у провайдера */
   externalId: string;
-  /** Финальный статус, к которому переводим Deposit */
-  status: 'COMPLETED' | 'FAILED' | 'EXPIRED';
+  /**
+   * Статус, к которому переводим Deposit.
+   * PENDING — промежуточный вебхук (например, Betatransfer при fullCallback=1):
+   * подпись проверена, но депозит не трогаем.
+   */
+  status: 'COMPLETED' | 'FAILED' | 'EXPIRED' | 'PENDING';
   /** Полезная нагрузка для записи в Deposit.rawWebhookPayload */
   rawPayload: unknown;
   /**

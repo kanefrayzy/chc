@@ -236,7 +236,7 @@
     "form": {
       "title": "Yeni doldurma",
       "selectProvider": "Ödəniş üsulu",
-      "providerLimpay": "Kart / bank (Limpay)",
+      "providerLimpay": "Kart / bank (Betatransfer)",
       "providerWest": "Kriptovalyuta USDT",
       "amountLabel": "Məbləğ, AZN",
       "submit": "Doldur",

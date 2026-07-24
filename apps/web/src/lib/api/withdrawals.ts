@@ -1,6 +1,6 @@
 import { apiFetch } from './client';
 
-export type WithdrawalMethod = 'AUTO_BETRA_H2H' | 'AUTO_WESTWALLET' | 'MANUAL_MODERATOR';
+export type WithdrawalMethod = 'AUTO_BETATRANSFER' | 'AUTO_WESTWALLET' | 'MANUAL_MODERATOR';
 
 export type WithdrawalStatus =
   | 'PENDING'

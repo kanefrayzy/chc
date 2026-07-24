@@ -38,7 +38,7 @@ const statusLabel: Record<WithdrawalStatus, string> = {
 };
 
 const methodLabel: Record<AdminWithdrawalRow['method'], string> = {
-  AUTO_BETRA_H2H: 'Карта (Betra)',
+  AUTO_BETATRANSFER: 'Карта (Betatransfer)',
   AUTO_WESTWALLET: 'Крипто (Westwallet)',
   MANUAL_MODERATOR: 'Вручную',
 };

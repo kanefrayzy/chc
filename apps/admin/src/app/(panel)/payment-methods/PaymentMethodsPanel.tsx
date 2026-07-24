@@ -48,7 +48,7 @@ interface MethodFormData {
 function emptyForm(): MethodFormData {
   return {
     name: '',
-    provider: 'BETRA_H2H',
+    provider: 'BETATRANSFER',
     kind: 'BOTH',
     currency: 'AZN',
     description: '',
@@ -149,7 +149,7 @@ function MethodForm({ data, onChange, error, loading, onSubmit, onCancel, submit
             value={data.provider}
             onChange={(e) => onChange({ ...data, provider: e.target.value as PaymentProviderKind })}
           >
-            <option value="BETRA_H2H">Limpay (BETRA H2H)</option>
+            <option value="BETATRANSFER">Betatransfer</option>
             <option value="WESTWALLET">Westwallet</option>
           </select>
         </div>
@@ -240,12 +240,12 @@ function MethodForm({ data, onChange, error, loading, onSubmit, onCancel, submit
         <textarea
           rows={5}
           className="w-full font-mono border border-border rounded-md px-3 py-1.5 text-xs bg-surface text-ink-900"
-          placeholder='{"aggregators":["card_az"], "betraCurrency":"AZN"}'
+          placeholder='{"paymentSystem":"card_az"}'
           value={data.configJson}
           onChange={(e) => onChange({ ...data, configJson: e.target.value })}
         />
         <p className="text-xs text-ink-500 mt-1">
-          BETRA: <code>aggregators</code>, <code>betraCurrency</code>. WESTWALLET: <code>ticker</code>, <code>dest_tag_required</code>.
+          BETATRANSFER: <code>paymentSystem</code>. WESTWALLET: <code>ticker</code>, <code>dest_tag_required</code>.
         </p>
       </div>
 
@@ -435,7 +435,7 @@ export function PaymentMethodsPanel({ initialItems }: { initialItems: AdminPayme
                 </td>
                 <td className="px-4 py-3 text-ink-900 font-medium">{m.name}</td>
                 <td className="px-4 py-3 text-xs text-ink-600">
-                  {m.provider === 'BETRA_H2H' ? 'Limpay' : 'Westwallet'}
+                  {m.provider === 'BETATRANSFER' ? 'Betatransfer' : 'Westwallet'}
                 </td>
                 <td className="px-4 py-3 text-xs text-ink-600">{m.kind}</td>
                 <td className="px-4 py-3 text-xs text-ink-700 font-mono">{m.currency}</td>

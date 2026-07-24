@@ -32,7 +32,7 @@ export class WithdrawalsService {
 
   /** Маппинг провайдера PaymentMethod → внутренний enum WithdrawalMethod. */
   private providerToMethod(provider: PaymentProviderEnum): WithdrawalMethod {
-    return provider === 'BETRA_H2H' ? 'AUTO_BETRA_H2H' : 'AUTO_WESTWALLET';
+    return provider === 'BETATRANSFER' ? 'AUTO_BETATRANSFER' : 'AUTO_WESTWALLET';
   }
 
   async createWithdrawal(params: {

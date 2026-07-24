@@ -61,7 +61,7 @@ export function DepositForm({ locale, onSuccess }: DepositFormProps): JSX.Elemen
     depositsApi
       .list({ limit: 10 })
       .then((res) => {
-        // H2H (Betra) — блокирует форму (один активный счёт в раз время)
+        // Фиат (Betatransfer) — блокирует форму (один активный счёт в раз время)
         const blocking = res.items.find(
           (d) =>
             d.provider !== 'WESTWALLET' &&

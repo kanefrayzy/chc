@@ -236,7 +236,7 @@
     "form": {
       "title": "Новое пополнение",
       "selectProvider": "Способ оплаты",
-      "providerLimpay": "Карта / банк (Limpay)",
+      "providerLimpay": "Карта / банк (Betatransfer)",
       "providerWest": "Криптовалюта USDT",
       "amountLabel": "Сумма, AZN",
       "submit": "Пополнить",

@@ -18,7 +18,7 @@ const STATUS_VARIANT: Record<WithdrawalDto['status'], 'warning' | 'info' | 'succ
 };
 
 const METHOD_LABEL: Record<WithdrawalDto['method'], string> = {
-  AUTO_BETRA_H2H: 'Limpay',
+  AUTO_BETATRANSFER: 'Betatransfer',
   AUTO_WESTWALLET: 'USDT TRC20',
   MANUAL_MODERATOR: 'Manual',
 };
