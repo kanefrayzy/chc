@@ -4,8 +4,7 @@ import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { MobileBottomNav, type MobileBottomNavItem } from './MobileBottomNav';
 import { AuthModal } from './AuthModal';
-import { DepositModal } from './DepositModal';
-import { WithdrawModal } from './WithdrawModal';
+import { WalletModalHost } from './WalletModalHost';
 import { RanksModal } from './RanksModal';
 import { RedeemCodeModal } from './RedeemCodeModal';
 import { ChatWidget } from './ChatWidget';
@@ -93,8 +92,7 @@ export async function AppShell({ locale, children }: AppShellProps): Promise<JSX
         </div>
         <MobileBottomNav items={bottomItems} localePrefix={localePrefix} />
         <AuthModal />
-        <DepositModal locale={locale} />
-        <WithdrawModal locale={locale} balanceMinor={balanceMinor} />
+        <WalletModalHost locale={locale} initialBalanceMinor={balanceMinor} />
         <RanksModal locale={locale} isAuthed={Boolean(user)} />
         <RedeemCodeModal isAuthed={Boolean(user)} />
         <ChatWidget viewerId={user?.id ?? null} />

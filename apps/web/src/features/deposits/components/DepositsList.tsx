@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardBody, Spinner, Alert } from '@chcgreen/ui';
-import { PendingDepositCard } from './PendingDepositCard';
+import { RequisiteCard } from '@/features/wallet/components/RequisiteCard';
 import { depositsApi, type DepositDto } from '@/lib/api/deposits';
 
 export interface DepositsListProps {
@@ -60,7 +60,7 @@ export function DepositsList({ locale, pageSize = 10 }: DepositsListProps): JSX.
   return (
     <div className="space-y-3">
       {items.map((d) => (
-        <PendingDepositCard key={d.id} deposit={d} locale={locale} />
+        <RequisiteCard key={d.id} deposit={d} locale={locale} />
       ))}
       {nextCursor ? (
         <div className="flex justify-center">

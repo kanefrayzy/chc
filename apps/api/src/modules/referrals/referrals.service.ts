@@ -29,9 +29,117 @@ export class ReferralsService {
   }
 
   /**
+   * Единая точка начисления реферального бонуса по итогам игры (ADR-0008).
+   *
+   * `marginMinor` — чистая маржа казино по этой игре (ставка − выплата):
+   * положительная, если игрок проиграл, отрицательная, если выиграл.
+   *
+   * Бонус платится ТОЛЬКО с накопленной положительной маржи по конкретному игроку.
+   * Выигрыши игрока уходят в «долг» (`referralCarryMinor` < 0) и должны быть отыграны,
+   * прежде чем пригласивший снова начнёт получать выплаты. Это и есть антиминус:
+   * казино гарантированно оставляет себе (100 − ставка_бонуса)% своей маржи, поэтому
+   * реферальная программа не может увести дом в убыток ни при какой стратегии игры,
+   * включая сговор нескольких аккаунтов.
+   */
+  async settleGameMargin(params: {
+    referredId: string;
+    marginMinor: bigint;
+    referenceType?: string;
+    referenceId?: string;
+    tx?: Prisma.TransactionClient;
+  }): Promise<void> {
+    const { referredId, marginMinor, referenceType, referenceId } = params;
+    if (marginMinor === 0n) return;
+
+    try {
+      const enabled = await this.settings.get<boolean>('gameplay.referrals_enabled');
+      if (!enabled) return;
+    } catch {
+      // ключа нет — продолжаем
+    }
+
+    const rateBps = await this.getRateBps('FROM_LOSS');
+
+    const exec = async (client: Prisma.TransactionClient): Promise<void> => {
+      const referred = await client.user.findUnique({
+        where: { id: referredId },
+        select: { referredById: true, referralCarryMinor: true },
+      });
+      // Нет пригласившего — маржу не копим, считать нечего.
+      if (!referred?.referredById) return;
+      const referrerId = referred.referredById;
+
+      const carry = referred.referralCarryMinor + marginMinor;
+
+      // Казино всё ещё в минусе по игроку — переносим долг, ничего не платим.
+      if (carry <= 0n) {
+        await client.user.update({
+          where: { id: referredId },
+          data: { referralCarryMinor: carry },
+        });
+        return;
+      }
+
+      const earningMinor = calcEarningBps(carry, rateBps);
+      // Маржа отработана: остаток — доход казино, вперёд не переносится.
+      await client.user.update({
+        where: { id: referredId },
+        data: { referralCarryMinor: 0n },
+      });
+      if (earningMinor <= 0n) return;
+
+      const earning = await client.referralEarning.create({
+        data: {
+          referrerId,
+          referredId,
+          kind: 'FROM_LOSS',
+          sourceAmountMinor: carry,
+          earningMinor,
+          rateBps,
+          referenceType: referenceType ?? null,
+          referenceId: referenceId ?? null,
+        },
+      });
+
+      const updated = await client.user.update({
+        where: { id: referrerId },
+        data: { balanceMinor: { increment: earningMinor } },
+        select: { balanceMinor: true },
+      });
+
+      await client.transaction.create({
+        data: {
+          userId: referrerId,
+          type: 'REFERRAL_EARNING',
+          status: 'COMPLETED',
+          amountMinor: earningMinor,
+          balanceAfterMinor: updated.balanceMinor,
+          idempotencyKey: `referral:${earning.id}`,
+          referenceType: 'referral_earning',
+          referenceId: earning.id,
+          description: `Referral earning from ${referredId}`,
+        },
+      });
+
+      this.logger.log(
+        `Referral earning ${earning.id} → ${referrerId} +${earningMinor} (margin ${carry} from ${referredId})`,
+      );
+    };
+
+    if (params.tx) {
+      await exec(params.tx);
+    } else {
+      await this.prisma.$transaction((tx) => exec(tx));
+    }
+  }
+
+  /**
    * Начисляет реферальную выплату на баланс пригласившего.
    * Должен вызываться внутри уже открытой транзакции (передавайте `tx`),
    * либо без неё — тогда создаст свою.
+   *
+   * @deprecated Для игровых событий используйте `settleGameMargin` — она считает
+   * бонус от чистой маржи казино и не даёт увести дом в минус (ADR-0008).
    */
   async creditEarning(params: {
     referredId: string;

@@ -1,7 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.module';
+import { debitBalance } from '../../common/balance';
 import { AdminAuditService } from './admin-audit.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+
+/** Потолок одной корректировки баланса из тикета — 10 000 AZN. */
+const MAX_TICKET_ADJUST_MINOR = 1_000_000n;
 
 @Injectable()
 export class AdminTicketsService {
@@ -161,45 +171,75 @@ export class AdminTicketsService {
 
     const type = params.amountMinor >= 0n ? 'ADMIN_CREDIT' : 'ADMIN_DEBIT';
     const absAmount = params.amountMinor < 0n ? -params.amountMinor : params.amountMinor;
+
+    // Ограничение суммы одной корректировки: без него скомпрометированный аккаунт
+    // модератора мог начислить себе любой баланс через собственный тикет.
+    if (absAmount > MAX_TICKET_ADJUST_MINOR) {
+      throw new BadRequestException('ADJUST_AMOUNT_TOO_LARGE');
+    }
+
     const actor = await this.prisma.user.findUnique({
       where: { id: params.actorId },
-      select: { username: true },
+      select: { username: true, role: true },
     });
+    // Модератор не может корректировать баланс сам себе.
+    if (ticket.userId === params.actorId) {
+      throw new ForbiddenException('CANNOT_ADJUST_OWN_BALANCE');
+    }
 
-    const [updatedUser] = await this.prisma.$transaction([
-      this.prisma.user.update({
+    // Всё одной транзакцией: деньги и запись в леджере не должны расходиться.
+    const updatedUser = await this.prisma.$transaction(async (tx) => {
+      if (params.amountMinor < 0n) {
+        // Списание — через атомарную проверку средств (баланс не уйдёт в минус)
+        const balanceAfter = await debitBalance(tx, ticket.userId, absAmount);
+        await tx.transaction.create({
+          data: {
+            userId: ticket.userId,
+            type,
+            status: 'COMPLETED',
+            amountMinor: params.amountMinor,
+            balanceAfterMinor: balanceAfter,
+            idempotencyKey: `admin:balance:${ticket.id}:${randomUUID()}`,
+            referenceType: 'ticket',
+            referenceId: ticket.id,
+            description: params.reason,
+          },
+        });
+        return { balanceMinor: balanceAfter };
+      }
+
+      const user = await tx.user.update({
         where: { id: ticket.userId },
         data: { balanceMinor: { increment: params.amountMinor } },
-      }),
-    ]);
-
-    // Запись транзакции и системное сообщение в тикете
-    await this.prisma.$transaction([
-      this.prisma.transaction.create({
+        select: { balanceMinor: true },
+      });
+      await tx.transaction.create({
         data: {
           userId: ticket.userId,
           type,
           status: 'COMPLETED',
           amountMinor: params.amountMinor,
-          balanceAfterMinor: updatedUser.balanceMinor,
-          idempotencyKey: `admin:balance:${ticket.id}:${Date.now()}`,
+          balanceAfterMinor: user.balanceMinor,
+          idempotencyKey: `admin:balance:${ticket.id}:${randomUUID()}`,
           referenceType: 'ticket',
           referenceId: ticket.id,
           description: params.reason,
         },
-      }),
-      this.prisma.message.create({
-        data: {
-          ticketId: ticket.id,
-          authorId: null,
-          kind: 'ACTION',
-          body:
-            params.amountMinor >= 0n
-              ? `Администратор (${actor?.username ?? params.actorId}) начислил ${(Number(absAmount) / 100).toFixed(2)} AZN. Причина: ${params.reason}`
-              : `Администратор (${actor?.username ?? params.actorId}) списал ${(Number(absAmount) / 100).toFixed(2)} AZN. Причина: ${params.reason}`,
-        },
-      }),
-    ]);
+      });
+      return user;
+    });
+
+    await this.prisma.message.create({
+      data: {
+        ticketId: ticket.id,
+        authorId: null,
+        kind: 'ACTION',
+        body:
+          params.amountMinor >= 0n
+            ? `Администратор (${actor?.username ?? params.actorId}) начислил ${(Number(absAmount) / 100).toFixed(2)} AZN. Причина: ${params.reason}`
+            : `Администратор (${actor?.username ?? params.actorId}) списал ${(Number(absAmount) / 100).toFixed(2)} AZN. Причина: ${params.reason}`,
+      },
+    });
 
     await this.audit.log({
       actorId: params.actorId,

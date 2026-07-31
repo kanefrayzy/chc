@@ -20,6 +20,7 @@
     "@nestjs/platform-socket.io": "^10.4.6",
     "@nestjs/serve-static": "^4.0.2",
     "@nestjs/terminus": "^10.2.3",
+    "@nestjs/throttler": "^6",
     "@nestjs/websockets": "^10.4.6",
     "@prisma/client": "^5.22.0",
     "argon2": "^0.41.1",

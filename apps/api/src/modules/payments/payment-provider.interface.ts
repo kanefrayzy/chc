@@ -30,8 +30,10 @@ export interface CreateDepositResult {
   externalId: string;
   /** URL для редиректа пользователя (банковский ввод реквизитов и т.п.) */
   paymentUrl?: string;
-  /** Адрес кошелька (для криптовалютных провайдеров) */
+  /** Реквизит для перевода: номер карты / адрес кошелька */
   externalAddress?: string;
+  /** Доп. данные реквизита для показа пользователю: банк, владелец, тип. */
+  requisiteDetails?: { type?: string; bank?: string; owner?: string };
   /** Оригинальная сумма (для крипты — конвертация AZN→USDT) */
   originalAmount?: string;
   originalCurrency?: string;

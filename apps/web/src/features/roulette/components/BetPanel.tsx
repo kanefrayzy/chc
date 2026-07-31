@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { cn } from '@chcgreen/ui';
 import { CrownIcon, CheckCircleIcon } from '@/components/icons';
-import { parseAmountToMinor } from '@/features/deposits/components/AmountInput';
+import { parseAmountToMinor } from '@/features/wallet/components/AmountField';
 import { rouletteApi, type RouletteColor } from '@/lib/api/roulette';
 import { ApiException } from '@/lib/api/client';
 import { playClick } from '@/lib/sound';

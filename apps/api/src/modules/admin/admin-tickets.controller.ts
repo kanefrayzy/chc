@@ -148,7 +148,10 @@ export class AdminTicketsController {
 
     const filename = `${randomUUID()}.webp`;
     const filepath = path.join(uploadDir, filename);
-    await sharp(file.buffer).webp({ quality: 85 }).toFile(filepath);
+    await sharp(file.buffer, { limitInputPixels: 50_000_000 })
+      .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 85 })
+      .toFile(filepath);
 
     const apiBase = process.env.API_PUBLIC_URL ?? 'http://localhost:4000';
     const imageUrl = `${apiBase}/uploads/ticket-images/${filename}`;

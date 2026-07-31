@@ -47,6 +47,19 @@ export class AdminWithdrawalsService {
         throw new ConflictException('WITHDRAWAL_NOT_APPROVABLE');
       }
 
+      // Захватываем заявку условно: если пользователь параллельно отменил её
+      // (и получил возврат), count будет 0 — выплату не подтверждаем.
+      const claimed = await tx.withdrawal.updateMany({
+        where: { id: w.id, status: { in: ['PENDING', 'PROCESSING'] } },
+        data: {
+          status: 'COMPLETED',
+          completedAt: new Date(),
+          processedByModeratorId: params.actorId,
+          externalId: params.externalId ?? w.externalId,
+        },
+      });
+      if (claimed.count !== 1) throw new ConflictException('WITHDRAWAL_NOT_APPROVABLE');
+
       // Финализируем hold: была PENDING, теперь COMPLETED.
       const holdKey = `withdrawal:${w.id}:hold`;
       const hold = await tx.transaction.findUnique({ where: { idempotencyKey: holdKey } });
@@ -57,14 +70,8 @@ export class AdminWithdrawalsService {
         });
       }
 
-      const updated = await tx.withdrawal.update({
+      const updated = await tx.withdrawal.findUniqueOrThrow({
         where: { id: w.id },
-        data: {
-          status: 'COMPLETED',
-          completedAt: new Date(),
-          processedByModeratorId: params.actorId,
-          externalId: params.externalId ?? w.externalId,
-        },
         include: { user: { select: { username: true } } },
       });
 
@@ -100,6 +107,19 @@ export class AdminWithdrawalsService {
       if (w.status === 'REJECTED' || w.status === 'CANCELLED') return w;
       if (w.status === 'COMPLETED') throw new ConflictException('WITHDRAWAL_NOT_REJECTABLE');
 
+      // Условный переход статуса: не возвращаем деньги по заявке,
+      // которую параллельно одобрили или уже отменил пользователь.
+      const claimed = await tx.withdrawal.updateMany({
+        where: { id: w.id, status: { in: ['PENDING', 'PROCESSING'] } },
+        data: {
+          status: 'REJECTED',
+          reason: params.reason.slice(0, 500),
+          completedAt: new Date(),
+          processedByModeratorId: params.actorId,
+        },
+      });
+      if (claimed.count !== 1) throw new ConflictException('WITHDRAWAL_NOT_REJECTABLE');
+
       const refundKey = `withdrawal:${w.id}:refund`;
       const existing = await tx.transaction.findUnique({ where: { idempotencyKey: refundKey } });
       if (!existing) {
@@ -123,14 +143,8 @@ export class AdminWithdrawalsService {
         });
       }
 
-      const updated = await tx.withdrawal.update({
+      const updated = await tx.withdrawal.findUniqueOrThrow({
         where: { id: w.id },
-        data: {
-          status: 'REJECTED',
-          reason: params.reason.slice(0, 500),
-          completedAt: new Date(),
-          processedByModeratorId: params.actorId,
-        },
         include: { user: { select: { username: true } } },
       });
 

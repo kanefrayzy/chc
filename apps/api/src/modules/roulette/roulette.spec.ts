@@ -17,11 +17,19 @@ describe('roulette.constants', () => {
     it('slot 0 → GREEN', () => {
       expect(slotToColor(0)).toBe('GREEN');
     });
-    it('slots 1..7 → RED', () => {
-      for (let s = 1; s <= 7; s++) expect(slotToColor(s)).toBe('RED');
+    // Колесо чередует цвета: нечётные слоты — RED, чётные (кроме 0) — BLACK.
+    it('нечётные слоты → RED', () => {
+      for (let s = 1; s <= 13; s += 2) expect(slotToColor(s)).toBe('RED');
     });
-    it('slots 8..14 → BLACK', () => {
-      for (let s = 8; s <= 14; s++) expect(slotToColor(s)).toBe('BLACK');
+    it('чётные слоты (кроме 0) → BLACK', () => {
+      for (let s = 2; s <= 14; s += 2) expect(slotToColor(s)).toBe('BLACK');
+    });
+    // Экономика игры зависит именно от количества слотов каждого цвета:
+    // 7 RED / 7 BLACK / 1 GREEN даёт одинаковый дом-эдж 6.67% на любой ставке.
+    it('раскладка колеса: 7 RED, 7 BLACK, 1 GREEN', () => {
+      const counts = { RED: 0, BLACK: 0, GREEN: 0 };
+      for (let s = 0; s < 15; s++) counts[slotToColor(s)] += 1;
+      expect(counts).toEqual({ RED: 7, BLACK: 7, GREEN: 1 });
     });
     it('out-of-range throws', () => {
       expect(() => slotToColor(-1)).toThrow();

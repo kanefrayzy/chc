@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type { MinesGame, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
+import { debitBalance } from '../../common/balance';
 import { ReferralsService } from '../referrals/referrals.service';
 import { RanksService } from '../ranks/ranks.service';
 import { SettingsService } from '../settings/settings.service';
@@ -140,13 +141,6 @@ export class MinesService {
       });
       if (existing) throw new ConflictException('GAME_ALREADY_ACTIVE');
 
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { balanceMinor: true },
-      });
-      if (!user) throw new NotFoundException('USER_NOT_FOUND');
-      if (user.balanceMinor < amountMinor) throw new ConflictException('INSUFFICIENT_FUNDS');
-
       const created = await tx.minesGame.create({
         data: {
           userId,
@@ -164,14 +158,8 @@ export class MinesService {
         },
       });
 
-      const updatedUser = await tx.user.update({
-        where: { id: userId },
-        data: {
-          balanceMinor: { decrement: amountMinor },
-          totalWageredMinor: { increment: amountMinor },
-        },
-        select: { balanceMinor: true },
-      });
+      // Списание с проверкой средств внутри UPDATE — защита от параллельных запусков
+      const balanceAfter = await debitBalance(tx, userId, amountMinor, { wager: true });
 
       await tx.transaction.create({
         data: {
@@ -179,7 +167,7 @@ export class MinesService {
           type: 'BET_PLACE',
           status: 'COMPLETED',
           amountMinor: -amountMinor,
-          balanceAfterMinor: updatedUser.balanceMinor,
+          balanceAfterMinor: balanceAfter,
           idempotencyKey: `mines:${created.id}:place`,
           referenceType: 'mines_game',
           referenceId: created.id,
@@ -245,10 +233,10 @@ export class MinesService {
             completedAt: new Date(),
           },
         });
-        await this.referrals.creditEarning({
+        // Проигрыш: маржа казино = вся ставка
+        await this.referrals.settleGameMargin({
           referredId: userId,
-          kind: 'FROM_LOSS',
-          sourceAmountMinor: game.betMinor,
+          marginMinor: game.betMinor,
           referenceType: 'mines_game',
           referenceId: game.id,
           tx,
@@ -357,19 +345,18 @@ export class MinesService {
     // Если payout == bet → ничего не начисляем.
     const netForCasino = game.betMinor - payoutMinor;
     if (netForCasino > 0n) {
-      await this.referrals.creditEarning({
+      await this.referrals.settleGameMargin({
         referredId: game.userId,
-        kind: 'FROM_LOSS',
-        sourceAmountMinor: netForCasino,
+        marginMinor: netForCasino,
         referenceType: 'mines_game',
         referenceId: game.id,
         tx,
       });
     } else if (netForCasino < 0n) {
-      await this.referrals.creditEarning({
+      // Игрок в плюсе — маржа отрицательная, уходит в долг реферального счёта
+      await this.referrals.settleGameMargin({
         referredId: game.userId,
-        kind: 'FROM_WIN',
-        sourceAmountMinor: -netForCasino,
+        marginMinor: netForCasino,
         referenceType: 'mines_game',
         referenceId: game.id,
         tx,

@@ -9,6 +9,7 @@ export interface PublicDepositDto {
   amountMinor: string;
   externalId: string | null;
   externalAddress: string | null;
+  requisiteDetails: { type?: string; bank?: string; owner?: string } | null;
   paymentUrl: string | null;
   originalAmount: string | null;
   originalCurrency: string | null;
@@ -26,6 +27,7 @@ export function toPublicDeposit(d: Deposit): PublicDepositDto {
     amountMinor: minorToJson(d.amountMinor),
     externalId: d.externalId,
     externalAddress: d.externalAddress,
+    requisiteDetails: (d.requisiteDetails ?? null) as PublicDepositDto['requisiteDetails'],
     paymentUrl: d.paymentUrl,
     originalAmount: d.originalAmount,
     originalCurrency: d.originalCurrency,

@@ -9,6 +9,7 @@ import {
   DefaultValuePipe,
   ParseIntPipe,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AccessTokenPayload } from '../auth/auth.service';
@@ -21,6 +22,7 @@ import { toPublicCodePurchase, type PublicCodePurchaseDto } from './code-purchas
 export class CodePurchasesController {
   constructor(private readonly purchases: CodePurchasesService) {}
 
+  @Throttle({ default: { ttl: 600_000, limit: 10 } })
   @Post()
   async create(
     @CurrentUser() user: AccessTokenPayload,

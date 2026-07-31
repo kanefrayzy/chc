@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@chcgreen/ui';
-import { parseAmountToMinor } from '@/features/deposits/components/AmountInput';
+import { parseAmountToMinor } from '@/features/wallet/components/AmountField';
 
 export type MinesMode = 'manual' | 'auto';
 

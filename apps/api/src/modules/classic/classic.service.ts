@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import type { JackpotBet, JackpotRound, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
+import { debitBalance } from '../../common/balance';
 import { ReferralsService } from '../referrals/referrals.service';
 import { RanksService } from '../ranks/ranks.service';
 import { SettingsService } from '../settings/settings.service';
@@ -196,13 +197,17 @@ export class ClassicService implements OnModuleInit, OnModuleDestroy {
         orderBy: { startedAt: 'desc' },
       });
       if (!round) throw new ConflictException('NO_OPEN_ROUND');
+      // Ставка после истечения отсчёта не может выиграть (её билеты выходят за банк,
+      // зафиксированный в момент розыгрыша) — не принимаем её вовсе.
+      if (round.endsAt && round.endsAt.getTime() <= Date.now()) {
+        throw new ConflictException('BETTING_CLOSED');
+      }
 
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { balanceMinor: true },
-      });
-      if (!user) throw new NotFoundException('USER_NOT_FOUND');
-      if (user.balanceMinor < amountMinor) throw new ConflictException('INSUFFICIENT_FUNDS');
+      // Блокируем строку раунда: выдача диапазонов билетов и рост банка должны быть
+      // строго последовательными, иначе диапазоны пересекутся, а часть денег потеряется.
+      await tx.$queryRaw`SELECT id FROM "JackpotRound" WHERE id = ${round.id} FOR UPDATE`;
+      const locked = await tx.jackpotRound.findUniqueOrThrow({ where: { id: round.id } });
+      if (locked.status !== 'OPEN') throw new ConflictException('BETTING_CLOSED');
 
       // Текущие участники и сумма
       const existingBets = await tx.jackpotBet.findMany({
@@ -212,7 +217,7 @@ export class ClassicService implements OnModuleInit, OnModuleDestroy {
       const uniqueUsersBefore = new Set(existingBets.map((b) => b.userId));
       const isNewParticipant = !uniqueUsersBefore.has(userId);
 
-      const currentBank = round.bankMinor;
+      const currentBank = locked.bankMinor; // значение под блокировкой строки
       const ticketsFromBig = currentBank; // [0, bank)
       const ticketsToBig = currentBank + amountMinor - 1n;
       // Если bank > 2^31, мы превысим Int. Игровой смысл сохраняется до ~21M AZN банка.
@@ -230,14 +235,8 @@ export class ClassicService implements OnModuleInit, OnModuleDestroy {
         },
       });
 
-      const updatedUser = await tx.user.update({
-        where: { id: userId },
-        data: {
-          balanceMinor: { decrement: amountMinor },
-          totalWageredMinor: { increment: amountMinor },
-        },
-        select: { balanceMinor: true },
-      });
+      // Списание с проверкой средств внутри UPDATE — защита от параллельных ставок
+      const balanceAfter = await debitBalance(tx, userId, amountMinor, { wager: true });
 
       await tx.transaction.create({
         data: {
@@ -245,7 +244,7 @@ export class ClassicService implements OnModuleInit, OnModuleDestroy {
           type: 'JACKPOT_BET',
           status: 'COMPLETED',
           amountMinor: -amountMinor,
-          balanceAfterMinor: updatedUser.balanceMinor,
+          balanceAfterMinor: balanceAfter,
           idempotencyKey: `classic:bet:${bet.id}:place`,
           referenceType: 'jackpot_bet',
           referenceId: bet.id,
@@ -253,14 +252,13 @@ export class ClassicService implements OnModuleInit, OnModuleDestroy {
         },
       });
 
-      // Обновляем банк раунда
-      const newBank = currentBank + amountMinor;
+      // Обновляем банк раунда (инкрементом — абсолютная запись теряла бы параллельные ставки)
       const uniqueUsersAfter = uniqueUsersBefore.size + (isNewParticipant ? 1 : 0);
 
       // Если достигли minPlayers и обратный отсчёт ещё не запущен — запустить.
       let updatedRound: JackpotRound = await tx.jackpotRound.update({
         where: { id: round.id },
-        data: { bankMinor: newBank },
+        data: { bankMinor: { increment: amountMinor } },
       });
 
       const shouldStartCountdown = !this.countdownStartedAt && uniqueUsersAfter >= minPlayers;
@@ -510,23 +508,22 @@ export class ClassicService implements OnModuleInit, OnModuleDestroy {
       }
       for (const [userId, total] of byUser.entries()) {
         if (userId === winnerId) continue;
-        await this.referrals.creditEarning({
+        // Проигравший: маржа казино по нему = весь его вклад
+        await this.referrals.settleGameMargin({
           referredId: userId,
-          kind: 'FROM_LOSS',
-          sourceAmountMinor: total,
+          marginMinor: total,
           referenceType: 'jackpot_round',
           referenceId: round.id,
           tx: tx as unknown as Prisma.TransactionClient,
         });
       }
-      // Реферал победителя — с его чистого выигрыша.
+      // Победитель: маржа казино отрицательная на величину его чистого выигрыша
       const winnerStake = byUser.get(winnerId) ?? 0n;
-      const netWin = payout - winnerStake;
-      if (netWin > 0n) {
-        await this.referrals.creditEarning({
+      const winnerMargin = winnerStake - payout;
+      if (winnerMargin !== 0n) {
+        await this.referrals.settleGameMargin({
           referredId: winnerId,
-          kind: 'FROM_WIN',
-          sourceAmountMinor: netWin,
+          marginMinor: winnerMargin,
           referenceType: 'jackpot_round',
           referenceId: round.id,
           tx: tx as unknown as Prisma.TransactionClient,

@@ -117,12 +117,16 @@ export class WestWalletProvider implements PaymentProvider {
   }
 
   /**
-   * WestWallet отправляет IPN как application/x-www-form-urlencoded.
-   * Безопасность — через IP-фильтрацию (5.188.51.47) на уровне nginx/firewall.
-   * Docs: "To prevent spoofing, check status additionally via POST /wallet/transaction"
+   * WestWallet отправляет IPN как application/x-www-form-urlencoded, но НЕ подписывает его.
+   * Поэтому телу вебхука не доверяем вообще: он служит только триггером, а статус и сумма
+   * берутся из подписанного запроса POST /wallet/transaction (рекомендация документации
+   * «To prevent spoofing, check status additionally»). Без этого любой мог бы начислить
+   * себе произвольный баланс, зная id депозита.
    */
-  verifyAndParseWebhook(_headers: Record<string, string>, rawBody: string): ParsedWebhook {
-    // Парсим form-urlencoded тело
+  async verifyAndParseWebhook(
+    _headers: Record<string, string>,
+    rawBody: string,
+  ): Promise<ParsedWebhook> {
     let params: URLSearchParams;
     try {
       params = new URLSearchParams(rawBody);
@@ -134,24 +138,82 @@ export class WestWalletProvider implements PaymentProvider {
     const label = params.get('label');
     if (!label) throw new BadRequestException('Missing label in WestWallet IPN');
 
-    const status = params.get('status');
-    const rawPayload = Object.fromEntries(params.entries());
+    const txId = params.get('id');
+    if (!txId) throw new BadRequestException('Missing transaction id in WestWallet IPN');
+
+    this.logger.log(`WestWallet IPN received: label=${label} tx=${txId} — verifying via API`);
+
+    // Fail closed: без ключей проверить подлинность невозможно.
+    if (!this.apiKey || !this.privateKey) {
+      this.logger.error('WestWallet keys not configured — rejecting unverifiable IPN');
+      throw new BadRequestException('WestWallet verification unavailable');
+    }
+
+    const verified = await this.fetchTransaction(txId);
+
+    // Транзакция должна относиться к тому же депозиту, что указан в IPN
+    if (verified.label && verified.label !== label) {
+      this.logger.warn(`WestWallet IPN label mismatch: ipn=${label} api=${verified.label}`);
+      throw new BadRequestException('WestWallet label mismatch');
+    }
 
     this.logger.log(
-      `WestWallet IPN: label=${label} status=${status} amount=${params.get('amount') ?? '?'} ` +
-        `currency=${params.get('currency') ?? '?'}`,
+      `WestWallet verified: label=${label} status=${verified.status} amount=${verified.amount ?? '?'} ` +
+        `currency=${verified.currency ?? '?'}`,
     );
-
-    // Фактически полученная сумма в USDT — DepositsService конвертирует в AZN
-    const receivedAmount = params.get('amount') ?? undefined;
-    const receivedCurrency = params.get('currency') ?? undefined;
 
     return {
       externalId: label, // label совпадает с Deposit.externalId (= depositId)
-      status: mapWestStatus(status),
-      rawPayload,
-      receivedAmount,
-      receivedCurrency,
+      status: mapWestStatus(verified.status ?? null),
+      rawPayload: { ipn: Object.fromEntries(params.entries()), verified },
+      receivedAmount: verified.amount ?? undefined,
+      receivedCurrency: verified.currency ?? undefined,
+    };
+  }
+
+  /** Авторитетные данные транзакции из API WestWallet (подписанный запрос). */
+  private async fetchTransaction(id: string): Promise<{
+    status?: string;
+    amount?: string;
+    currency?: string;
+    label?: string;
+  }> {
+    const body: Record<string, unknown> = { id };
+    const response = await fetch(`${this.baseUrl}/wallet/transaction`, {
+      method: 'POST',
+      headers: this.buildAuthHeaders(body),
+      body: JSON.stringify(body),
+    });
+
+    const text = await response.text();
+    if (!response.ok) {
+      this.logger.error(`WestWallet transaction lookup HTTP ${response.status}: ${text}`);
+      throw new BadRequestException('WestWallet verification failed');
+    }
+
+    let json: {
+      status?: string;
+      amount?: string | number;
+      currency?: string;
+      label?: string;
+      error?: string;
+    };
+    try {
+      json = JSON.parse(text) as typeof json;
+    } catch {
+      throw new BadRequestException('WestWallet verification returned non-JSON');
+    }
+
+    if (json.error && json.error !== 'ok') {
+      this.logger.error(`WestWallet transaction lookup error: ${json.error}`);
+      throw new BadRequestException('WestWallet verification error');
+    }
+
+    return {
+      ...(json.status !== undefined ? { status: json.status } : {}),
+      ...(json.amount !== undefined ? { amount: String(json.amount) } : {}),
+      ...(json.currency !== undefined ? { currency: json.currency } : {}),
+      ...(json.label !== undefined ? { label: json.label } : {}),
     };
   }
 }

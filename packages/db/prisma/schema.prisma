@@ -44,6 +44,10 @@ model User {
   referrals       User[]     @relation("UserReferrals")
   // wallet
   balanceMinor    BigInt     @default(0) // qəpik
+  // Накопленная маржа казино по этому игроку, ещё не отработанная реферальным
+  // бонусом. Отрицательное значение = казино в минусе по игроку и бонус его
+  // пригласившему не начисляется, пока минус не отыграется (см. ADR-0008).
+  referralCarryMinor BigInt  @default(0)
   // metrics
   totalWageredMinor BigInt   @default(0)
   rankId          String?
@@ -211,7 +215,9 @@ model Deposit {
   exchangeRate       String?    // курс на момент зачисления
   // внешние идентификаторы
   externalId    String?         @unique
-  externalAddress String?       // адрес кошелька для крипты
+  externalAddress String?       // реквизит для перевода: карта / адрес кошелька
+  // доп. данные реквизита от провайдера: { bank?, owner?, type? } — показываются пользователю
+  requisiteDetails Json?
   paymentUrl    String?
   // webhook-данные
   rawWebhookPayload Json?

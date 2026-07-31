@@ -9,6 +9,7 @@
 } from '@nestjs/common';
 import type { RouletteBet, RouletteColor, RouletteRound } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
+import { debitBalance } from '../../common/balance';
 import { ReferralsService } from '../referrals/referrals.service';
 import { RanksService } from '../ranks/ranks.service';
 import { SettingsService } from '../settings/settings.service';
@@ -222,13 +223,6 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
         throw new ConflictException('BETTING_CLOSED');
       }
 
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { balanceMinor: true },
-      });
-      if (!user) throw new NotFoundException('USER_NOT_FOUND');
-      if (user.balanceMinor < amountMinor) throw new ConflictException('INSUFFICIENT_FUNDS');
-
       // Правило комбинации ставок: максимум 2 цвета из пар RED+GREEN или BLACK+GREEN.
       // Нельзя ставить одновременно на RED и BLACK.
       const myBets = await tx.rouletteBet.findMany({
@@ -252,14 +246,8 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
         data: { roundId: round.id, userId, color, amountMinor },
       });
 
-      const updated = await tx.user.update({
-        where: { id: userId },
-        data: {
-          balanceMinor: { decrement: amountMinor },
-          totalWageredMinor: { increment: amountMinor },
-        },
-        select: { balanceMinor: true },
-      });
+      // Списание с проверкой средств внутри UPDATE — защита от параллельных ставок
+      const balanceAfter = await debitBalance(tx, userId, amountMinor, { wager: true });
 
       await tx.transaction.create({
         data: {
@@ -267,7 +255,7 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
           type: 'BET_PLACE',
           status: 'COMPLETED',
           amountMinor: -amountMinor,
-          balanceAfterMinor: updated.balanceMinor,
+          balanceAfterMinor: balanceAfter,
           idempotencyKey: `bet:${bet.id}:place`,
           referenceType: 'roulette_bet',
           referenceId: bet.id,
@@ -467,17 +455,17 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
           userGgr.set(bet.userId, prev + bet.amountMinor);
         }
       }
+      // Бонус платится с накопленной маржи: выигрыши игрока (ggr < 0) уходят
+      // в долг и должны быть отыграны — иначе ставки на GREEN давали бы
+      // реферальный доход больше, чем дом-эдж рулетки (ADR-0008).
       for (const [userId, ggr] of userGgr.entries()) {
-        if (ggr > 0n) {
-          await this.referrals.creditEarning({
-            referredId: userId,
-            kind: 'FROM_LOSS',
-            sourceAmountMinor: ggr,
-            referenceType: 'roulette_round',
-            referenceId: round.id,
-            tx,
-          });
-        }
+        await this.referrals.settleGameMargin({
+          referredId: userId,
+          marginMinor: ggr,
+          referenceType: 'roulette_round',
+          referenceId: round.id,
+          tx,
+        });
       }
 
       await tx.rouletteRound.update({

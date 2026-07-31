@@ -16,6 +16,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import sharp from 'sharp';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -34,6 +35,7 @@ import {
 export class TicketsController {
   constructor(private readonly tickets: TicketsService) {}
 
+  @Throttle({ default: { ttl: 600_000, limit: 10 } })
   @Post()
   async create(
     @CurrentUser() user: AccessTokenPayload,
@@ -125,7 +127,12 @@ export class TicketsController {
 
     const filename = `${randomUUID()}.webp`;
     const filepath = path.join(uploadDir, filename);
-    await sharp(file.buffer).webp({ quality: 85 }).toFile(filepath);
+    // limitInputPixels + resize: «архивная бомба» (маленький файл, гигантский растр)
+    // иначе положила бы процесс по памяти.
+    await sharp(file.buffer, { limitInputPixels: 50_000_000 })
+      .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 85 })
+      .toFile(filepath);
 
     const apiBase = process.env.API_PUBLIC_URL ?? 'http://localhost:4000';
     const imageUrl = `${apiBase}/uploads/ticket-images/${filename}`;

@@ -113,6 +113,15 @@ export class AuthService {
     if (dbToken.userId !== payload.sub) throw new UnauthorizedException('Token mismatch');
 
     const user = await this.users.findByIdOrThrow(payload.sub);
+    // Бан должен действовать сразу: без этой проверки заблокированный пользователь
+    // бесконечно продлевал бы доступ через refresh.
+    if (user.status !== 'ACTIVE') {
+      await this.prisma.refreshToken.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      throw new UnauthorizedException('Account is not active');
+    }
 
     // ротация: отзываем старый, выдаём новый
     await this.prisma.refreshToken.update({

@@ -13,6 +13,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { ZodValidationPipe } from 'nestjs-zod';
 import type { Request, Response } from 'express';
 import * as path from 'path';
@@ -41,6 +42,8 @@ export class AuthController {
     private readonly prisma: PrismaService,
   ) {}
 
+  // Регистрация — узкое горло против массового создания аккаунтов-ботов
+  @Throttle({ default: { ttl: 3_600_000, limit: 5 } })
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(
@@ -61,6 +64,8 @@ export class AuthController {
     return { user };
   }
 
+  // Логин — защита от перебора паролей
+  @Throttle({ default: { ttl: 300_000, limit: 10 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(

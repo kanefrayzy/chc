@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type { CodePurchase } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
+import { debitBalance } from '../../common/balance';
 import { SettingsService } from '../settings/settings.service';
 
 /**
@@ -148,20 +149,8 @@ export class CodePurchasesService {
         throw new ConflictException('CODE_PURCHASE_NOT_DEBITABLE');
       }
 
-      const user = await tx.user.findUnique({
-        where: { id: p.userId },
-        select: { balanceMinor: true },
-      });
-      if (!user) throw new NotFoundException('USER_NOT_FOUND');
-      if (user.balanceMinor < amountMinor) {
-        throw new ConflictException('INSUFFICIENT_FUNDS');
-      }
-
-      const updated = await tx.user.update({
-        where: { id: p.userId },
-        data: { balanceMinor: { decrement: amountMinor } },
-        select: { balanceMinor: true },
-      });
+      // Списание с проверкой средств внутри UPDATE (защита от гонки с игрой/выводом)
+      const balanceAfter = await debitBalance(tx, p.userId, amountMinor);
 
       await tx.transaction.create({
         data: {
@@ -169,7 +158,7 @@ export class CodePurchasesService {
           type: 'ADMIN_DEBIT',
           status: 'COMPLETED',
           amountMinor: -amountMinor,
-          balanceAfterMinor: updated.balanceMinor,
+          balanceAfterMinor: balanceAfter,
           idempotencyKey: `code:${p.id}:debit`,
           referenceType: 'code_purchase',
           referenceId: p.id,

@@ -153,10 +153,16 @@ export class BetatransferProvider implements PaymentProvider {
         `bank=${reqData['bank_name'] ?? '—'}`,
     );
 
+    const requisiteDetails: { type?: string; bank?: string; owner?: string } = {};
+    if (json.requisite?.type) requisiteDetails.type = json.requisite.type;
+    if (reqData['bank_name']) requisiteDetails.bank = reqData['bank_name'] as string;
+    if (reqData['card_owner']) requisiteDetails.owner = reqData['card_owner'] as string;
+
     return {
       // externalId = id заказа у Betatransfer: по нему верифицируем статус через GET /v2/p2r/{id}
       externalId: btId,
       externalAddress: externalAddress ?? undefined,
+      ...(Object.keys(requisiteDetails).length > 0 ? { requisiteDetails } : {}),
       paymentUrl: json.processing?.url,
       originalAmount: awaitingAmount,
       originalCurrency: awaitingCurrency,
@@ -274,6 +280,13 @@ export class BetatransferProvider implements PaymentProvider {
     const orderId = payload.orderId;
     const amount = payload.amount ?? '';
     const sign = payload.sign ?? '';
+
+    // Fail closed: с пустым секретом подпись вырождается в md5(amount+orderId),
+    // которую может вычислить кто угодно.
+    if (!this.secret) {
+      this.logger.error('BETATRANSFER_API_SECRET is not set — rejecting unverifiable webhook');
+      throw new BadRequestException('Webhook verification unavailable');
+    }
 
     const expected = createHash('md5').update(amount + orderId + this.secret).digest('hex');
     const expectedBuf = Buffer.from(expected);

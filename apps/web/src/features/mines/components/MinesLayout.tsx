@@ -13,7 +13,7 @@ import { walletApi } from '@/lib/api/wallet';
 import { useMinesSocket } from '@/lib/realtime/useMinesSocket';
 import { useUi } from '@/components/layout/ui-context';
 import { ApiException } from '@/lib/api/client';
-import { parseAmountToMinor } from '@/features/deposits/components/AmountInput';
+import { parseAmountToMinor } from '@/features/wallet/components/AmountField';
 import { playWin, playLose, playClick } from '@/lib/sound';
 
 export interface MinesLayoutProps {

@@ -12,6 +12,7 @@ export interface DepositDto {
   amountMinor: string;
   externalId: string | null;
   externalAddress: string | null;
+  requisiteDetails: { type?: string; bank?: string; owner?: string } | null;
   paymentUrl: string | null;
   originalAmount: string | null;
   originalCurrency: string | null;
@@ -35,6 +36,11 @@ export const depositsApi = {
     apiFetch<DepositDto>('/deposits', {
       method: 'POST',
       body: req,
+      credentials: 'include',
+    }),
+  cancel: (id: string) =>
+    apiFetch<DepositDto>(`/deposits/${id}/cancel`, {
+      method: 'POST',
       credentials: 'include',
     }),
   list: (args: { limit?: number; cursor?: string } = {}) => {

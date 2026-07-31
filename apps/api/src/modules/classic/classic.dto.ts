@@ -1,8 +1,15 @@
-import { IsString, Matches } from 'class-validator';
+import { z } from 'zod';
+import { createZodDto } from 'nestjs-zod';
 
-export class PlaceClassicBetDto {
-  /** Сумма ставки в qəpik (как строка для безопасной передачи BigInt). */
-  @IsString()
-  @Matches(/^[1-9]\d{0,18}$/, { message: 'amountMinor must be a positive integer string' })
-  amountMinor!: string;
-}
+/**
+ * Валидация через Zod: глобальный пайп приложения — ZodValidationPipe,
+ * декораторы class-validator он не исполняет (тело доходило бы до BigInt() сырым).
+ */
+export const placeClassicBetSchema = z.object({
+  /** Сумма ставки в qəpik (строкой — BigInt не переживает JSON). */
+  amountMinor: z
+    .string()
+    .regex(/^[1-9]\d{0,18}$/, 'amountMinor must be a positive integer string'),
+});
+
+export class PlaceClassicBetDto extends createZodDto(placeClassicBetSchema) {}

@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TerminusModule } from '@nestjs/terminus';
 import * as path from 'path';
 import { HealthController } from './health/health.controller';
@@ -26,6 +28,9 @@ import { RealtimeModule } from './modules/realtime/realtime.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, cache: true }),
+    // Базовый лимит на все запросы; на чувствительных ручках (логин, регистрация,
+    // ставки, заявки) он ужесточён декоратором @Throttle.
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }]),
     ServeStaticModule.forRoot({
       rootPath: path.join('/app', 'uploads'),
       serveRoot: '/uploads',
@@ -51,5 +56,6 @@ import { RealtimeModule } from './modules/realtime/realtime.module';
     AdminModule,
   ],
   controllers: [HealthController],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

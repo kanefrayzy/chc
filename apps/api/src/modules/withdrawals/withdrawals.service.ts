@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type { Prisma, Withdrawal, WithdrawalMethod, PaymentProvider as PaymentProviderEnum } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
+import { debitBalance } from '../../common/balance';
 import { PaymentMethodsService } from '../payment-methods/payment-methods.service';
 import { SettingsService } from '../settings/settings.service';
 
@@ -58,20 +59,9 @@ export class WithdrawalsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { balanceMinor: true },
-      });
-      if (!user) throw new NotFoundException('USER_NOT_FOUND');
-      if (user.balanceMinor < amountMinor) {
-        throw new ConflictException('INSUFFICIENT_FUNDS');
-      }
-
-      const updated = await tx.user.update({
-        where: { id: userId },
-        data: { balanceMinor: { decrement: amountMinor } },
-        select: { balanceMinor: true },
-      });
+      // Резерв средств с проверкой внутри UPDATE: параллельные заявки не смогут
+      // зарезервировать один и тот же баланс дважды.
+      const balanceAfter = await debitBalance(tx, userId, amountMinor);
 
       const withdrawal = await tx.withdrawal.create({
         data: {
@@ -90,7 +80,7 @@ export class WithdrawalsService {
           type: 'WITHDRAW',
           status: 'PENDING',
           amountMinor: -amountMinor,
-          balanceAfterMinor: updated.balanceMinor,
+          balanceAfterMinor: balanceAfter,
           idempotencyKey: `withdrawal:${withdrawal.id}:hold`,
           referenceType: 'withdrawal',
           referenceId: withdrawal.id,
@@ -145,6 +135,14 @@ export class WithdrawalsService {
         return tx.withdrawal.update({ where: { id: w.id }, data: { status: 'CANCELLED' } });
       }
 
+      // Переводим статус условно: если модератор параллельно одобрил заявку,
+      // count будет 0 и мы не вернём деньги по уже выплаченному выводу.
+      const claimed = await tx.withdrawal.updateMany({
+        where: { id: w.id, status: 'PENDING' },
+        data: { status: 'CANCELLED', completedAt: new Date() },
+      });
+      if (claimed.count !== 1) throw new ConflictException('WITHDRAWAL_NOT_CANCELLABLE');
+
       const updated = await tx.user.update({
         where: { id: userId },
         data: { balanceMinor: { increment: w.amountMinor } },
@@ -165,10 +163,7 @@ export class WithdrawalsService {
         },
       });
 
-      return tx.withdrawal.update({
-        where: { id: w.id },
-        data: { status: 'CANCELLED', completedAt: new Date() },
-      });
+      return tx.withdrawal.findUniqueOrThrow({ where: { id: w.id } });
     });
   }
 }

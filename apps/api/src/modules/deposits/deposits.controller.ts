@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Body,
+  Param,
   Query,
   UseGuards,
   DefaultValuePipe,
@@ -35,6 +36,16 @@ export class DepositsController {
       paymentMethodId: body.paymentMethodId,
       amountMinor: BigInt(body.amountMinor),
     });
+    return toPublicDeposit(deposit);
+  }
+
+  /** Закрыть свой активный счёт, чтобы создать новый с другой суммой. */
+  @Post(':id/cancel')
+  async cancel(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param('id') id: string,
+  ): Promise<PublicDepositDto> {
+    const deposit = await this.deposits.cancelByUser({ userId: user.sub, depositId: id });
     return toPublicDeposit(deposit);
   }
 

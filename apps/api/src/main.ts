@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from '@nestjs/common';
 import { ZodValidationPipe } from 'nestjs-zod';
 import helmet from 'helmet';
@@ -7,10 +8,14 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log'],
     rawBody: true,
   });
+
+  // Приложение всегда работает за nginx: без этого req.ip у всех запросов был бы
+  // адресом прокси, и лимиты частоты применялись бы ко всем пользователям сразу.
+  app.set('trust proxy', 1);
 
   app.use(helmet({
     // Позволяет загружать статику (/uploads/*) с других origin (Next.js app)
