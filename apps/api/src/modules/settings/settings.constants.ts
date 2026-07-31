@@ -313,6 +313,36 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     description: 'URL изображения hero-блока на главной (можно загрузить файлом).',
   },
   {
+    key: 'brand.social_telegram',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description:
+      'Ссылка на Telegram-группу (например https://t.me/yourgroup). Показывается в меню, в подвале и отдельным баннером на главной. Пусто — блок скрыт.',
+  },
+  {
+    key: 'brand.social_telegram_label',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description:
+      'Подпись под ссылкой на Telegram (например «Розыгрыши и бонусы каждый день»). Пусто — текст по умолчанию.',
+  },
+  {
+    key: 'brand.social_instagram',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'Ссылка на Instagram. Пусто — иконка скрыта.',
+  },
+  {
+    key: 'brand.social_discord',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'Ссылка на Discord. Пусто — иконка скрыта.',
+  },
+  {
     key: 'landing.game_image_url.roulette',
     type: 'string',
     defaultValue: '',

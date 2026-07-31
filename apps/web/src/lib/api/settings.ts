@@ -38,6 +38,7 @@ export interface PublicSettings {
   'landing.game_image_url.classic': string;
   'landing.game_image_url.cases': string;
   'brand.social_telegram': string;
+  'brand.social_telegram_label': string;
   'brand.social_instagram': string;
   'brand.social_discord': string;
 }
@@ -80,6 +81,7 @@ const DEFAULTS: PublicSettings = {
   'landing.game_image_url.classic': '',
   'landing.game_image_url.cases': '',
   'brand.social_telegram': '',
+  'brand.social_telegram_label': '',
   'brand.social_instagram': '',
   'brand.social_discord': '',
 };

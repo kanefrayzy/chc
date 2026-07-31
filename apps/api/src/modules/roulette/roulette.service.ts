@@ -15,6 +15,7 @@ import { RanksService } from '../ranks/ranks.service';
 import { SettingsService } from '../settings/settings.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import {
+  PAYOUT_MULTIPLIER,
   ROULETTE_TOTAL_SLOTS,
   calculatePayout,
   slotToColor,
@@ -124,7 +125,7 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
     avatarUrl: string | null;
     amountMinor: string;
     color?: RouletteColor;
-    game: 'roulette' | 'mines';
+    game: 'roulette' | 'mines' | 'classic';
     multiplierBps?: number;
     mineCount?: number;
     createdAt: string;
@@ -157,6 +158,8 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
       amountMinor: e.amountMinor,
       color: e.color,
       game: 'roulette' as const,
+      // ×2 на RED/BLACK, ×14 на GREEN — показываем множитель как и у других игр
+      multiplierBps: PAYOUT_MULTIPLIER[e.color] * 10_000,
       createdAt: e.createdAt,
     }));
 
@@ -180,7 +183,48 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
         createdAt: g.completedAt ?? g.startedAt,
       }));
 
-    return [...rouletteItems, ...minesItems]
+    // Classic (джекпот): победители раундов — чистый выигрыш сверх своей ставки.
+    const classicRows = await this.prisma.jackpotRound.findMany({
+      where: { status: 'COMPLETED', winnerId: { not: null } },
+      orderBy: { completedAt: 'desc' },
+      take: Math.min(limit * 5, 50),
+      include: { bets: { select: { userId: true, amountMinor: true } } },
+    });
+
+    const classicWinnerIds = [...new Set(classicRows.map((r) => r.winnerId).filter(Boolean))] as string[];
+    const classicUsers = classicWinnerIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: classicWinnerIds } },
+          select: { id: true, username: true, avatarUrl: true },
+        })
+      : [];
+    const classicUserMap = new Map(classicUsers.map((u) => [u.id, u]));
+
+    const classicItems = classicRows.flatMap((r) => {
+      const winnerId = r.winnerId;
+      if (!winnerId) return [];
+      // Выплата = банк минус комиссия (та же формула, что и при расчёте раунда)
+      const payout = (r.bankMinor * BigInt(10_000 - r.commissionRateBps)) / 10_000n;
+      const stake = r.bets
+        .filter((b) => b.userId === winnerId)
+        .reduce((sum, b) => sum + b.amountMinor, 0n);
+      const net = payout - stake;
+      if (net <= 0n) return [];
+      const u = classicUserMap.get(winnerId);
+      return [
+        {
+          username: u?.username ?? 'player',
+          avatarUrl: u?.avatarUrl ?? null,
+          amountMinor: net,
+          game: 'classic' as const,
+          // во сколько раз победитель увеличил свою ставку
+          multiplierBps: stake > 0n ? Number((payout * 10_000n) / stake) : 0,
+          createdAt: r.completedAt ?? r.startedAt,
+        },
+      ];
+    });
+
+    return [...rouletteItems, ...minesItems, ...classicItems]
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, limit)
       .map((e) => ({

@@ -47,7 +47,7 @@ export interface RecentWinnerDto {
   /** Цвет рулетки (если game === 'roulette'). */
   color?: RouletteColor;
   /** Источник выигрыша. */
-  game: 'roulette' | 'mines';
+  game: 'roulette' | 'mines' | 'classic';
   /** Множитель выплаты (для mines), в bps. */
   multiplierBps?: number;
   /** Кол-во мин (для mines). */
