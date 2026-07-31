@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import {
   type CreateDepositRequest,
@@ -8,20 +8,28 @@ import {
 } from './payment-provider.interface';
 
 /**
- * Шлюз Betatransfer.
- * Документация: https://docs.betatransfer.io/
- * Базовый URL: https://merchant.betatransfer.io
+ * Шлюз Betatransfer. Два флоу депозита:
  *
- * Авторизация: публичный ключ в query (?token=...), тело — form-urlencoded.
- * Подпись запроса: md5(конкатенация значений всех параметров в порядке отправки + secret).
- * Депозит: POST /api/payment → получаем url платёжной страницы (редирект-флоу).
- * Вебхук: form-urlencoded POST на urlResult, подпись = md5(amount + orderId + secret).
+ * 1. **V2 P2R** (paymentSystem начинается с "P2R") — реквизиты выдаются сразу в ответе:
+ *    POST https://api.betatransfer.io/v2/p2r/create (JSON), заголовки
+ *    ApiKey / Timestamp / Signature = HMAC-SHA256(timestamp + body, secret).
+ *    Ответ содержит requisite.data.card — показываем карту прямо на сайте.
+ *    Статус заказа проверяется подписанным GET /v2/p2r/{id}.
+ *
+ * 2. **V1 redirect** (остальные системы, напр. Card_AZN эквайринг):
+ *    POST https://merchant.betatransfer.io/api/payment?token=... (form-urlencoded),
+ *    подпись md5(конкатенация значений в порядке отправки + secret) → url платёжной страницы.
+ *
+ * Вебхук (urlResult/callback.url): V1 шлёт form-urlencoded с sign = md5(amount+orderId+secret);
+ * V2-заказы дополнительно верифицируются запросом GET /v2/p2r/{id} — колбэк служит триггером.
+ * Документация: https://docs.betatransfer.io/ + "API Documentation V2".
  */
 @Injectable()
 export class BetatransferProvider implements PaymentProvider {
   readonly id = 'BETATRANSFER' as const;
   private readonly logger = new Logger(BetatransferProvider.name);
   private readonly baseUrl: string;
+  private readonly v2BaseUrl: string;
   private readonly token: string;
   private readonly secret: string;
   private readonly callbackUrl: string;
@@ -29,24 +37,138 @@ export class BetatransferProvider implements PaymentProvider {
 
   constructor() {
     this.baseUrl = (process.env.BETATRANSFER_API_URL || 'https://merchant.betatransfer.io').replace(/\/$/, '');
+    this.v2BaseUrl = (process.env.BETATRANSFER_V2_API_URL || 'https://api.betatransfer.io/v2').replace(/\/$/, '');
     this.token = process.env.BETATRANSFER_API_KEY || '';
     this.secret = process.env.BETATRANSFER_API_SECRET || '';
     this.callbackUrl = process.env.BETATRANSFER_CALLBACK_URL || '';
     this.webPublicUrl = (process.env.WEB_PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
   }
 
-  /** md5(значения параметров в порядке следования + secret) — подпись API-запроса. */
-  private signRequest(params: Record<string, string>): string {
+  // ── подписи ──────────────────────────────────────────────────────────
+
+  /** V1: md5(значения параметров в порядке следования + secret). */
+  private signV1Request(params: Record<string, string>): string {
     const concatenated = Object.values(params).join('');
     return createHash('md5').update(concatenated + this.secret).digest('hex');
   }
 
+  /** V2: HMAC-SHA256(timestamp + body, secret), hex. */
+  private signV2(timestamp: string, body: string): string {
+    return createHmac('sha256', this.secret).update(timestamp + body).digest('hex');
+  }
+
+  private v2Headers(body: string): Record<string, string> {
+    const ts = String(Math.floor(Date.now() / 1000));
+    return {
+      ApiKey: this.token,
+      Timestamp: ts,
+      Signature: this.signV2(ts, body),
+      'Content-Type': 'application/json',
+    };
+  }
+
+  // ── создание депозита ────────────────────────────────────────────────
+
   async createDeposit(req: CreateDepositRequest): Promise<CreateDepositResult> {
+    const cfg = (req.config ?? {}) as Record<string, unknown>;
+    const paymentSystem = typeof cfg['paymentSystem'] === 'string' ? (cfg['paymentSystem'] as string) : '';
+
+    // P2R-системы идут через V2 API с выдачей реквизитов, остальные — V1 redirect
+    if (/^p2r/i.test(paymentSystem)) {
+      return this.createDepositV2(req, paymentSystem);
+    }
+    return this.createDepositV1(req, paymentSystem);
+  }
+
+  /** V2 P2R: реквизиты (номер карты) возвращаются сразу в ответе. */
+  private async createDepositV2(req: CreateDepositRequest, method: string): Promise<CreateDepositResult> {
     const amount = req.convertedAmount ?? (Number(req.amountMinor) / 100).toFixed(2);
     const currency = (req.convertedCurrency ?? req.currency ?? 'AZN').toUpperCase();
 
-    const cfg = (req.config ?? {}) as Record<string, unknown>;
-    const paymentSystem = typeof cfg['paymentSystem'] === 'string' ? (cfg['paymentSystem'] as string) : '';
+    const body = JSON.stringify({
+      order_id: req.depositId,
+      payment: {
+        amount,
+        currency,
+        description: `Deposit ${req.depositId}`,
+        method,
+        allow_modify_amount: true,
+      },
+      return_url: {
+        success: `${this.webPublicUrl}/deposit?status=success`,
+        failure: `${this.webPublicUrl}/deposit?status=fail`,
+      },
+      ...(this.callbackUrl ? { callback: { url: this.callbackUrl } } : {}),
+      customer: {
+        id: req.userId,
+        language: req.locale === 'az' ? 'en' : 'ru',
+      },
+    });
+
+    const response = await fetch(`${this.v2BaseUrl}/p2r/create`, {
+      method: 'POST',
+      headers: this.v2Headers(body),
+      body,
+    });
+
+    const text = await response.text();
+    if (!response.ok) {
+      this.logger.error(`Betatransfer v2 create HTTP ${response.status}: ${text}`);
+      throw new Error(`Betatransfer v2 API error ${response.status}: ${text}`);
+    }
+
+    let json: {
+      id?: string | number;
+      order_id?: string;
+      status?: string;
+      payment?: { awaiting_amount?: string; awaiting_currency?: string };
+      requisite?: { type?: string; data?: Record<string, string | null> };
+      processing?: { url?: string };
+      expired_at?: string;
+    };
+    try {
+      json = JSON.parse(text) as typeof json;
+    } catch {
+      this.logger.error(`Betatransfer v2 create non-JSON response: ${text}`);
+      throw new Error('Betatransfer v2 API returned non-JSON response');
+    }
+
+    const btId = json.id !== undefined ? String(json.id) : '';
+    if (!btId) {
+      this.logger.error(`Betatransfer v2 create failed: ${text}`);
+      throw new Error('Betatransfer v2 API returned no order id');
+    }
+
+    // Реквизит для перевода: карта / iban / кошелёк — берём первое непустое поле data
+    const reqData = json.requisite?.data ?? {};
+    const externalAddress =
+      reqData['card'] ?? reqData['iban'] ?? reqData['wallet'] ?? reqData['address'] ?? undefined;
+
+    const awaitingAmount = json.payment?.awaiting_amount ?? amount;
+    const awaitingCurrency = json.payment?.awaiting_currency ?? currency;
+
+    this.logger.log(
+      `Betatransfer v2 createDeposit order=${req.depositId} bt_id=${btId} ` +
+        `${awaitingAmount} ${awaitingCurrency} requisite=${externalAddress ? '****' + String(externalAddress).slice(-4) : '—'} ` +
+        `bank=${reqData['bank_name'] ?? '—'}`,
+    );
+
+    return {
+      // externalId = id заказа у Betatransfer: по нему верифицируем статус через GET /v2/p2r/{id}
+      externalId: btId,
+      externalAddress: externalAddress ?? undefined,
+      paymentUrl: json.processing?.url,
+      originalAmount: awaitingAmount,
+      originalCurrency: awaitingCurrency,
+      exchangeRate: req.exchangeRate,
+      expiresAt: json.expired_at,
+    };
+  }
+
+  /** V1: редирект-флоу (эквайринг и другие не-P2R системы). */
+  private async createDepositV1(req: CreateDepositRequest, paymentSystem: string): Promise<CreateDepositResult> {
+    const amount = req.convertedAmount ?? (Number(req.amountMinor) / 100).toFixed(2);
+    const currency = (req.convertedCurrency ?? req.currency ?? 'AZN').toUpperCase();
 
     // Порядок вставки важен: подпись = md5(конкатенация значений в этом порядке + secret).
     const params: Record<string, string> = {
@@ -61,7 +183,7 @@ export class BetatransferProvider implements PaymentProvider {
     };
     if (this.callbackUrl) params.urlResult = this.callbackUrl;
     if (paymentSystem) params.paymentSystem = paymentSystem;
-    params.sign = this.signRequest(params);
+    params.sign = this.signV1Request(params);
 
     const response = await fetch(`${this.baseUrl}/api/payment?token=${encodeURIComponent(this.token)}`, {
       method: 'POST',
@@ -112,41 +234,113 @@ export class BetatransferProvider implements PaymentProvider {
     };
   }
 
-  verifyAndParseWebhook(_headers: Record<string, string>, rawBody: string): ParsedWebhook {
-    // Betatransfer шлёт form-urlencoded: id, orderId, orderAmount, paidAmount, amount,
-    // currency, status, sign, ... Подпись: sign = md5(amount + orderId + secret).
-    const form = new URLSearchParams(rawBody);
-    const payload: Record<string, string> = {};
-    form.forEach((value, key) => {
-      payload[key] = value;
-    });
+  // ── вебхуки ──────────────────────────────────────────────────────────
 
+  async verifyAndParseWebhook(_headers: Record<string, string>, rawBody: string): Promise<ParsedWebhook> {
+    // Определяем формат: V2 шлёт JSON, V1 — form-urlencoded с md5-подписью.
+    const trimmed = rawBody.trim();
+    let payload: Record<string, unknown>;
+    if (trimmed.startsWith('{')) {
+      try {
+        payload = JSON.parse(trimmed) as Record<string, unknown>;
+      } catch {
+        throw new BadRequestException('Invalid JSON webhook body');
+      }
+    } else {
+      const form = new URLSearchParams(rawBody);
+      const obj: Record<string, string> = {};
+      form.forEach((value, key) => {
+        obj[key] = value;
+      });
+      payload = obj;
+    }
+
+    // V1-формат: есть orderId + sign → проверяем md5(amount + orderId + secret)
+    if (typeof payload.sign === 'string' && typeof payload.orderId === 'string') {
+      return this.parseV1Webhook(payload as Record<string, string>);
+    }
+
+    // V2-формат: есть id заказа → верифицируем статусом из подписанного GET /v2/p2r/{id}.
+    // Сам колбэк — только триггер: его содержимому не доверяем.
+    const btId = payload.id !== undefined ? String(payload.id as string | number) : '';
+    if (btId) {
+      return this.verifyV2ByOrderInfo(btId, payload);
+    }
+
+    throw new BadRequestException('Unrecognized webhook payload');
+  }
+
+  private parseV1Webhook(payload: Record<string, string>): ParsedWebhook {
     const orderId = payload.orderId;
-    if (!orderId) throw new BadRequestException('Missing orderId in webhook payload');
-
     const amount = payload.amount ?? '';
     const sign = payload.sign ?? '';
-    if (!sign) throw new BadRequestException('Missing sign in webhook payload');
 
     const expected = createHash('md5').update(amount + orderId + this.secret).digest('hex');
     const expectedBuf = Buffer.from(expected);
     const actualBuf = Buffer.from(sign.toLowerCase());
     if (expectedBuf.length !== actualBuf.length || !timingSafeEqual(expectedBuf, actualBuf)) {
-      this.logger.warn(`Betatransfer signature mismatch orderId=${orderId}`);
+      this.logger.warn(`Betatransfer v1 signature mismatch orderId=${orderId}`);
       throw new BadRequestException('Invalid webhook signature');
     }
 
-    const status = mapBetatransferStatus(payload.status);
+    const status = mapV1Status(payload.status);
 
     // partial_payment: зачисляем фактически оплаченную сумму, а не запрошенную
     const isPartial = (payload.status ?? '').toLowerCase() === 'partial_payment';
     const receivedAmount = isPartial && payload.paidAmount ? payload.paidAmount : undefined;
     const receivedCurrency = isPartial && payload.paidAmount ? (payload.currency ?? 'AZN') : undefined;
 
+    return { externalId: orderId, status, rawPayload: payload, receivedAmount, receivedCurrency };
+  }
+
+  /** Авторитетная проверка V2-заказа: GET /v2/p2r/{id} с HMAC-подписью timestamp. */
+  private async verifyV2ByOrderInfo(btId: string, callbackPayload: unknown): Promise<ParsedWebhook> {
+    const ts = String(Math.floor(Date.now() / 1000));
+    const response = await fetch(`${this.v2BaseUrl}/p2r/${encodeURIComponent(btId)}`, {
+      method: 'GET',
+      headers: {
+        ApiKey: this.token,
+        Timestamp: ts,
+        Signature: this.signV2(ts, ''),
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const text = await response.text();
+    if (!response.ok) {
+      this.logger.warn(`Betatransfer v2 order info ${btId} HTTP ${response.status}: ${text}`);
+      throw new BadRequestException('Betatransfer order verification failed');
+    }
+
+    let info: {
+      id?: string | number;
+      order_id?: string;
+      status?: string;
+      payment?: {
+        customer_amount?: string | null;
+        customer_currency?: string | null;
+        currency?: string;
+      };
+    };
+    try {
+      info = JSON.parse(text) as typeof info;
+    } catch {
+      throw new BadRequestException('Betatransfer order verification returned non-JSON');
+    }
+
+    const status = mapV2Status(info.status);
+
+    // Зачисляем фактически оплаченную сумму, если провайдер её сообщил
+    const customerAmount = info.payment?.customer_amount ?? undefined;
+    const receivedAmount = status === 'COMPLETED' && customerAmount ? customerAmount : undefined;
+    const receivedCurrency = receivedAmount
+      ? (info.payment?.customer_currency ?? info.payment?.currency ?? 'AZN')
+      : undefined;
+
     return {
-      externalId: orderId,
+      externalId: btId,
       status,
-      rawPayload: payload,
+      rawPayload: { callback: callbackPayload, orderInfo: info },
       receivedAmount,
       receivedCurrency,
     };
@@ -154,10 +348,10 @@ export class BetatransferProvider implements PaymentProvider {
 }
 
 /**
- * Маппинг статусов Betatransfer → внутренние статусы депозита.
+ * Маппинг статусов Betatransfer V1 → внутренние статусы депозита.
  * См. https://docs.betatransfer.io/payment-withdrawal-statuses-1945734m0
  */
-function mapBetatransferStatus(raw: string | undefined): ParsedWebhook['status'] {
+function mapV1Status(raw: string | undefined): ParsedWebhook['status'] {
   switch ((raw ?? '').toLowerCase()) {
     case 'success':
     case 'partial_payment':
@@ -170,6 +364,22 @@ function mapBetatransferStatus(raw: string | undefined): ParsedWebhook['status']
     case 'blocked':
       return 'FAILED';
     // new / pending / checkPayment / verification — промежуточные, не трогаем депозит
+    default:
+      return 'PENDING';
+  }
+}
+
+/** Маппинг статусов Betatransfer V2 (processing|paid|partial_paid|expired|failed). */
+function mapV2Status(raw: string | undefined): ParsedWebhook['status'] {
+  switch ((raw ?? '').toLowerCase()) {
+    case 'paid':
+    case 'partial_paid':
+      return 'COMPLETED';
+    case 'expired':
+      return 'EXPIRED';
+    case 'failed':
+      return 'FAILED';
+    // processing и прочие — промежуточные
     default:
       return 'PENDING';
   }

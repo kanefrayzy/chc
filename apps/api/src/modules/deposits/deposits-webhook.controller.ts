@@ -47,7 +47,7 @@ export class DepositsWebhookController {
     this.logger.log(`Webhook [${providerSlug}] body=${rawBody} headers=${JSON.stringify(headers)}`);
 
     const provider = this.providers.get(providerId);
-    const parsed = provider.verifyAndParseWebhook(headers, rawBody);
+    const parsed = await provider.verifyAndParseWebhook(headers, rawBody);
 
     // Промежуточный статус (pending/checkPayment/…): подпись валидна, но депозит не трогаем.
     if (parsed.status === 'PENDING') {

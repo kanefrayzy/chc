@@ -169,8 +169,13 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
           originalCurrency: result.originalCurrency ?? null,
           exchangeRate: result.exchangeRate ?? null,
           status: 'PROCESSING',
-          // Если провайдер сигнализирует «без истечения», сбрасываем expiresAt в null
-          expiresAt: result.noExpiry ? null : expiresAt,
+          // Если провайдер сигнализирует «без истечения», сбрасываем expiresAt в null;
+          // если провайдер дал свой срок жизни счёта — используем его
+          expiresAt: result.noExpiry
+            ? null
+            : result.expiresAt
+              ? new Date(result.expiresAt)
+              : expiresAt,
         },
       });
       return updated;

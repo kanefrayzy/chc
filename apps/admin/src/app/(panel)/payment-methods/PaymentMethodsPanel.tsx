@@ -240,7 +240,7 @@ function MethodForm({ data, onChange, error, loading, onSubmit, onCancel, submit
         <textarea
           rows={5}
           className="w-full font-mono border border-border rounded-md px-3 py-1.5 text-xs bg-surface text-ink-900"
-          placeholder='{"paymentSystem":"card_az"}'
+          placeholder='{"paymentSystem":"P2R_AZN"}'
           value={data.configJson}
           onChange={(e) => onChange({ ...data, configJson: e.target.value })}
         />

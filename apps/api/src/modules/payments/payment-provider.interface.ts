@@ -41,6 +41,11 @@ export interface CreateDepositResult {
    * Используется WestWallet: статичный адрес кошелька не истекает.
    */
   noExpiry?: boolean;
+  /**
+   * Срок жизни счёта у провайдера (ISO-8601). Если задан — используется
+   * вместо стандартного таймера (Betatransfer V2 даёт своё expired_at).
+   */
+  expiresAt?: string;
 }
 
 export interface ParsedWebhook {
@@ -65,6 +70,12 @@ export interface ParsedWebhook {
 export interface PaymentProvider {
   readonly id: PaymentProviderEnum;
   createDeposit(req: CreateDepositRequest): Promise<CreateDepositResult>;
-  /** Проверяет подпись webhook'а и возвращает нормализованный результат. */
-  verifyAndParseWebhook(headers: Record<string, string>, rawBody: string): ParsedWebhook;
+  /**
+   * Проверяет подпись webhook'а и возвращает нормализованный результат.
+   * Может быть асинхронным (Betatransfer V2 верифицирует статус запросом к API).
+   */
+  verifyAndParseWebhook(
+    headers: Record<string, string>,
+    rawBody: string,
+  ): ParsedWebhook | Promise<ParsedWebhook>;
 }
