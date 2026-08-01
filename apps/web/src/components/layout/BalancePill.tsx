@@ -11,9 +11,7 @@ import { PlusIcon, ArrowUpIcon } from '@/components/icons';
 export interface BalancePillProps {
   locale: 'ru' | 'az' | 'en';
   /** initial balance (минор) — берётся из SSR, чтобы не было прыжка */
-  initialBalanceMinor: string | null;
-  depositHref: string;
-  withdrawHref: string;
+  initialBalanceMinor: string | null;
 }
 
 export function BalancePill({

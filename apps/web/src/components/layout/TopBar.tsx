@@ -73,9 +73,7 @@ export async function TopBar({ locale }: TopBarProps): Promise<JSX.Element> {
               <RedeemCodeButton />
               <BalancePill
                 locale={locale as 'ru' | 'az' | 'en'}
-                initialBalanceMinor={initialBalance}
-                depositHref={`${localePrefix}/deposit`}
-                withdrawHref={`${localePrefix}/withdraw`}
+                initialBalanceMinor={initialBalance}
               />
               <UserMenu username={user.username} avatarUrl={user.avatarUrl ?? null} localePrefix={localePrefix} />
             </>

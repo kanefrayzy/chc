@@ -14,6 +14,7 @@ import {
 } from '@/lib/api/payment-methods';
 import { getPublicSettings } from '@/lib/api/settings';
 import { ApiException } from '@/lib/api/client';
+import { WithdrawalsList } from '@/features/withdrawals/components/WithdrawalsList';
 
 const FALLBACK_MIN = 5_000n;
 const FALLBACK_MAX = 1_000_000n;
@@ -55,10 +56,15 @@ const inputClasses =
 
 export interface WithdrawPanelProps {
   balanceMinor: string;
+  locale?: string;
   onSuccess?: () => void;
 }
 
-export function WithdrawPanel({ balanceMinor, onSuccess }: WithdrawPanelProps): JSX.Element {
+export function WithdrawPanel({
+  balanceMinor,
+  locale = 'ru',
+  onSuccess,
+}: WithdrawPanelProps): JSX.Element {
   const router = useRouter();
   const [methods, setMethods] = useState<PublicPaymentMethod[]>([]);
   const [methodsLoading, setMethodsLoading] = useState(true);
@@ -275,6 +281,14 @@ export function WithdrawPanel({ balanceMinor, onSuccess }: WithdrawPanelProps): 
       <SubmitButton loading={isPending} disabled={!selected} accent="purple">
         {isPending ? 'Отправляем…' : 'Вывести средства'}
       </SubmitButton>
+
+      {/* Заявки: статусы и отмена — отдельной страницы вывода больше нет */}
+      <div className="border-t border-border pt-4">
+        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-text-muted">
+          Мои заявки
+        </p>
+        <WithdrawalsList locale={locale} pageSize={5} />
+      </div>
     </form>
   );
 }

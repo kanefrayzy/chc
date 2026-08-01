@@ -3,8 +3,10 @@ import { getTranslations } from 'next-intl/server';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { MobileBottomNav, type MobileBottomNavItem } from './MobileBottomNav';
+import { Suspense } from 'react';
 import { AuthModal } from './AuthModal';
 import { WalletModalHost } from './WalletModalHost';
+import { PaymentReturnHandler } from './PaymentReturnHandler';
 import { RanksModal } from './RanksModal';
 import { RedeemCodeModal } from './RedeemCodeModal';
 import { ChatWidget } from './ChatWidget';
@@ -54,7 +56,7 @@ export async function AppShell({ locale, children }: AppShellProps): Promise<JSX
   }
   if (user) {
     bottomItems.push({
-      href: '/deposit',
+      href: '/',
       label: tNav('deposit'),
       icon: <ArrowDownIcon className={BN_ICON} />,
       action: 'deposit',
@@ -93,6 +95,11 @@ export async function AppShell({ locale, children }: AppShellProps): Promise<JSX
         <MobileBottomNav items={bottomItems} localePrefix={localePrefix} />
         <AuthModal />
         <WalletModalHost locale={locale} initialBalanceMinor={balanceMinor} />
+        {user && (
+          <Suspense fallback={null}>
+            <PaymentReturnHandler />
+          </Suspense>
+        )}
         <RanksModal locale={locale} isAuthed={Boolean(user)} />
         <RedeemCodeModal isAuthed={Boolean(user)} />
         <ChatWidget viewerId={user?.id ?? null} />

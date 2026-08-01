@@ -94,9 +94,10 @@ export class BetatransferProvider implements PaymentProvider {
         method,
         allow_modify_amount: true,
       },
+      // Отдельных страниц пополнения нет — возвращаем на главную, кошелёк открывается модалкой
       return_url: {
-        success: `${this.webPublicUrl}/deposit?status=success`,
-        failure: `${this.webPublicUrl}/deposit?status=fail`,
+        success: `${this.webPublicUrl}/?payment=success`,
+        failure: `${this.webPublicUrl}/?payment=fail`,
       },
       ...(this.callbackUrl ? { callback: { url: this.callbackUrl } } : {}),
       customer: {
@@ -182,8 +183,8 @@ export class BetatransferProvider implements PaymentProvider {
       currency,
       orderId: req.depositId,
       locale: req.locale === 'az' ? 'en' : 'ru', // az не поддерживается платёжной страницей
-      urlSuccess: `${this.webPublicUrl}/deposit?status=success`,
-      urlFail: `${this.webPublicUrl}/deposit?status=fail`,
+      urlSuccess: `${this.webPublicUrl}/?payment=success`,
+      urlFail: `${this.webPublicUrl}/?payment=fail`,
       payerId: req.userId,
       fullCallback: '1',
     };

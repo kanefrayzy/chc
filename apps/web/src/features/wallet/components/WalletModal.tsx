@@ -147,7 +147,11 @@ export function WalletModal({
           {isDeposit ? (
             <DepositPanel locale={locale} onSuccess={handleSuccess} />
           ) : (
-            <WithdrawPanel balanceMinor={balanceMinor ?? '0'} onSuccess={handleSuccess} />
+            <WithdrawPanel
+              balanceMinor={balanceMinor ?? '0'}
+              locale={locale}
+              onSuccess={handleSuccess}
+            />
           )}
         </div>
       </div>

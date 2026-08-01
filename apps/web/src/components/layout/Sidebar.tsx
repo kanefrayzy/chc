@@ -120,13 +120,13 @@ async function buildSections(locale: string): Promise<SidebarSection[]> {
       title: tSidebar('payments'),
       items: [
         {
-          href: '/deposit',
+          href: '/',
           label: tNav('deposit'),
           icon: <ArrowDownIcon className={ICON_CLS} />,
           action: 'deposit',
         },
         {
-          href: '/withdraw',
+          href: '/',
           label: tNav('withdraw'),
           icon: <ArrowUpIcon className={ICON_CLS} />,
           action: 'withdraw',

@@ -6,7 +6,8 @@ const ACCESS_COOKIE = 'chc_at';
 const REFRESH_COOKIE = 'chc_rt';
 
 /** Пути (без префикса локали), требующие авторизации. */
-const PROTECTED_PATHS = ['/profile', '/wallet', '/deposit', '/withdraw', '/referrals', '/play'];
+// Пополнение и вывод живут в модалке кошелька, отдельных страниц нет
+const PROTECTED_PATHS = ['/profile', '/wallet', '/referrals', '/play'];
 
 /** Пути (без префикса локали), недоступные авторизованным. */
 const GUEST_ONLY_PATHS = ['/login', '/register'];
