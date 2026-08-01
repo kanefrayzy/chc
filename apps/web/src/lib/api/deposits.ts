@@ -38,11 +38,6 @@ export const depositsApi = {
       body: req,
       credentials: 'include',
     }),
-  cancel: (id: string) =>
-    apiFetch<DepositDto>(`/deposits/${id}/cancel`, {
-      method: 'POST',
-      credentials: 'include',
-    }),
   list: (args: { limit?: number; cursor?: string } = {}) => {
     const params = new URLSearchParams();
     if (args.limit) params.set('limit', String(args.limit));

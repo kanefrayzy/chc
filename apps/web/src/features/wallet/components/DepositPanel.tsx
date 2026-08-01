@@ -34,7 +34,6 @@ export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Elem
   const [activeDeposit, setActiveDeposit] = useState<DepositDto | null | undefined>(undefined);
   const [walletDeposit, setWalletDeposit] = useState<DepositDto | null>(null);
   const [walletCreating, setWalletCreating] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
 
   const loadActiveDeposit = useCallback((): void => {
     depositsApi
@@ -99,23 +98,6 @@ export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Elem
     setActiveDeposit(null);
     router.refresh();
   }, [router]);
-
-  const handleCancelDeposit = useCallback(
-    (deposit: DepositDto): void => {
-      setCancelling(true);
-      depositsApi
-        .cancel(deposit.id)
-        .then(() => {
-          setActiveDeposit(null);
-          setAmount('');
-        })
-        .catch((err) => {
-          toast.error(err instanceof ApiException ? err.message : 'Не удалось отменить счёт');
-        })
-        .finally(() => setCancelling(false));
-    },
-    [],
-  );
 
   /** Крипто-метод: адрес выдаётся сразу при выборе, сумма не нужна. */
   const handleSelect = useCallback((m: PublicPaymentMethod): void => {
@@ -184,14 +166,9 @@ export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Elem
   if (activeDeposit !== null) {
     return (
       <div className="space-y-3">
-        <RequisiteCard
-          deposit={activeDeposit}
-          locale={locale}
-          onExpire={handleExpire}
-          onCancel={cancelling ? undefined : () => handleCancelDeposit(activeDeposit)}
-        />
+        <RequisiteCard deposit={activeDeposit} locale={locale} onExpire={handleExpire} />
         <p className="text-center text-xs text-text-muted">
-          Чтобы пополнить на другую сумму — отмените текущий счёт.
+          Новое пополнение можно создать после оплаты этого счёта или по истечении таймера.
         </p>
       </div>
     );

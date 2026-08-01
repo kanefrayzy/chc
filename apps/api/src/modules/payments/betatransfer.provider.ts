@@ -159,11 +159,11 @@ export class BetatransferProvider implements PaymentProvider {
     if (reqData['card_owner']) requisiteDetails.owner = reqData['card_owner'] as string;
 
     return {
-      // externalId = id заказа у Betatransfer: по нему верифицируем статус через GET /v2/p2r/{id}
-      externalId: btId,
+      // externalId = наш depositId: именно его Betatransfer присылает в колбэке как orderId
+      externalId: req.depositId,
       externalAddress: externalAddress ?? undefined,
       ...(Object.keys(requisiteDetails).length > 0 ? { requisiteDetails } : {}),
-      paymentUrl: json.processing?.url,
+      // Платёжную страницу не показываем: оплата идёт переводом по реквизитам (H2H)
       originalAmount: awaitingAmount,
       originalCurrency: awaitingCurrency,
       exchangeRate: req.exchangeRate,
@@ -243,7 +243,8 @@ export class BetatransferProvider implements PaymentProvider {
   // ── вебхуки ──────────────────────────────────────────────────────────
 
   async verifyAndParseWebhook(_headers: Record<string, string>, rawBody: string): Promise<ParsedWebhook> {
-    // Определяем формат: V2 шлёт JSON, V1 — form-urlencoded с md5-подписью.
+    // Betatransfer шлёт колбэк form-urlencoded (в том числе для заказов, созданных
+    // через V2 P2R): `id` — номер заказа у провайдера, `orderId` — наш depositId.
     const trimmed = rawBody.trim();
     let payload: Record<string, unknown>;
     if (trimmed.startsWith('{')) {
@@ -261,14 +262,14 @@ export class BetatransferProvider implements PaymentProvider {
       payload = obj;
     }
 
-    // V1-формат: есть orderId + sign → проверяем md5(amount + orderId + secret)
+    const btId = payload.id !== undefined ? String(payload.id as string | number) : '';
+
+    // Подписанный колбэк — основная проверка подлинности.
     if (typeof payload.sign === 'string' && typeof payload.orderId === 'string') {
-      return this.parseV1Webhook(payload as Record<string, string>);
+      return this.parseSignedWebhook(payload as Record<string, string>, btId);
     }
 
-    // V2-формат: есть id заказа → верифицируем статусом из подписанного GET /v2/p2r/{id}.
-    // Сам колбэк — только триггер: его содержимому не доверяем.
-    const btId = payload.id !== undefined ? String(payload.id as string | number) : '';
+    // Без подписи доверять нечему — статус берём из подписанного запроса к API.
     if (btId) {
       return this.verifyV2ByOrderInfo(btId, payload);
     }
@@ -276,7 +277,14 @@ export class BetatransferProvider implements PaymentProvider {
     throw new BadRequestException('Unrecognized webhook payload');
   }
 
-  private parseV1Webhook(payload: Record<string, string>): ParsedWebhook {
+  /**
+   * Колбэк с подписью `md5(amount + orderId + secret)`.
+   * `externalId` — наш depositId (в колбэке это `orderId`).
+   */
+  private async parseSignedWebhook(
+    payload: Record<string, string>,
+    btId: string,
+  ): Promise<ParsedWebhook> {
     const orderId = payload.orderId;
     const amount = payload.amount ?? '';
     const sign = payload.sign ?? '';
@@ -292,18 +300,60 @@ export class BetatransferProvider implements PaymentProvider {
     const expectedBuf = Buffer.from(expected);
     const actualBuf = Buffer.from(sign.toLowerCase());
     if (expectedBuf.length !== actualBuf.length || !timingSafeEqual(expectedBuf, actualBuf)) {
-      this.logger.warn(`Betatransfer v1 signature mismatch orderId=${orderId}`);
+      this.logger.warn(`Betatransfer signature mismatch orderId=${orderId}`);
       throw new BadRequestException('Invalid webhook signature');
     }
 
-    const status = mapV1Status(payload.status);
+    let status = mapV1Status(payload.status);
 
-    // partial_payment: зачисляем фактически оплаченную сумму, а не запрошенную
-    const isPartial = (payload.status ?? '').toLowerCase() === 'partial_payment';
-    const receivedAmount = isPartial && payload.paidAmount ? payload.paidAmount : undefined;
-    const receivedCurrency = isPartial && payload.paidAmount ? (payload.currency ?? 'AZN') : undefined;
+    // Дополнительная сверка статуса с API (защита от повтора устаревшего колбэка).
+    // Недоступность API не отменяет корректную подпись — только логируем.
+    if (btId) {
+      try {
+        const info = await this.fetchV2Order(btId);
+        if (info) {
+          const apiStatus = mapV2Status(info.status);
+          if (apiStatus !== status) {
+            this.logger.warn(
+              `Betatransfer status mismatch order=${orderId}: callback=${payload.status} api=${info.status} — берём данные API`,
+            );
+            status = apiStatus;
+          }
+        }
+      } catch (e) {
+        this.logger.warn(`Betatransfer API cross-check failed for ${btId}: ${String(e)}`);
+      }
+    }
+
+    // Зачисляем сумму, которую фактически заплатил игрок (paidAmount),
+    // а не сумму за вычетом комиссии провайдера (amount) — комиссию платит казино.
+    const paid = payload.paidAmount;
+    const receivedAmount = paid && Number(paid) > 0 ? paid : undefined;
+    const receivedCurrency = receivedAmount ? (payload.currency ?? 'AZN') : undefined;
+
+    this.logger.log(
+      `Betatransfer webhook order=${orderId} bt_id=${btId || '—'} status=${payload.status} → ${status} paid=${paid ?? '—'}`,
+    );
 
     return { externalId: orderId, status, rawPayload: payload, receivedAmount, receivedCurrency };
+  }
+
+  /** Данные заказа из V2 API; null — если заказа там нет (создан не через P2R). */
+  private async fetchV2Order(btId: string): Promise<{ status?: string } | null> {
+    const ts = String(Math.floor(Date.now() / 1000));
+    const response = await fetch(`${this.v2BaseUrl}/p2r/${encodeURIComponent(btId)}`, {
+      method: 'GET',
+      headers: {
+        ApiKey: this.token,
+        Timestamp: ts,
+        Signature: this.signV2(ts, ''),
+        'Content-Type': 'application/json',
+      },
+    });
+    if (response.status === 404) return null;
+    const text = await response.text();
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${text}`);
+    return JSON.parse(text) as { status?: string };
   }
 
   /** Авторитетная проверка V2-заказа: GET /v2/p2r/{id} с HMAC-подписью timestamp. */

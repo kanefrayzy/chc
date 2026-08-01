@@ -8,7 +8,6 @@ export interface RequisiteCardProps {
   deposit: DepositDto;
   locale: string;
   onExpire?: () => void;
-  onCancel?: () => void;
 }
 
 function formatCardNumber(value: string): string {
@@ -110,7 +109,7 @@ function CopyButton({ value, className = '' }: { value: string; className?: stri
  * Карточка активного счёта: сумма, таймер, реквизиты для перевода.
  * Для крипты — QR-код и адрес, для карты — форматированный номер, банк и владелец.
  */
-export function RequisiteCard({ deposit, locale, onExpire, onCancel }: RequisiteCardProps): JSX.Element {
+export function RequisiteCard({ deposit, locale, onExpire }: RequisiteCardProps): JSX.Element {
   const isCrypto = deposit.provider === 'WESTWALLET';
   const isActive = deposit.status === 'PENDING' || deposit.status === 'PROCESSING';
   const secondsLeft = useCountdown(isActive && !isCrypto ? deposit.expiresAt : null, onExpire);
@@ -248,40 +247,7 @@ export function RequisiteCard({ deposit, locale, onExpire, onCancel }: Requisite
         </div>
       )}
 
-      {/* Действия */}
-      <div className="flex items-center gap-2 border-t border-border px-5 py-3">
-        {deposit.paymentUrl && (
-          <a
-            href={deposit.paymentUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-card-hover py-2.5 text-xs font-semibold text-text-primary transition-colors hover:border-border-strong"
-          >
-            Открыть страницу оплаты
-            <svg viewBox="0 0 16 16" className="h-3 w-3" aria-hidden>
-              <path
-                d="M6 3h7v7M13 3L4 12"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </a>
-        )}
-        {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-xl px-3 py-2.5 text-xs font-medium text-text-muted transition-colors hover:text-danger"
-          >
-            Отменить
-          </button>
-        )}
-      </div>
-
-      <p className="px-5 pb-3 text-[11px] text-text-muted" suppressHydrationWarning>
+      <p className="border-t border-border px-5 py-3 text-[11px] text-text-muted" suppressHydrationWarning>
         Создан {new Date(deposit.createdAt).toLocaleString(locale === 'az' ? 'az-AZ' : 'ru-RU')}
       </p>
     </div>

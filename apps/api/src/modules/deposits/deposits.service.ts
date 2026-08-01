@@ -214,27 +214,6 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Пользователь закрывает свой активный счёт, чтобы создать новый
-   * (иначе нужно ждать истечения таймера). Деньги не двигались — просто
-   * помечаем счёт истёкшим. Поздняя оплата всё равно будет зачислена
-   * (см. applyWebhook: COMPLETED применяется и к EXPIRED).
-   */
-  async cancelByUser(params: { userId: string; depositId: string }): Promise<Deposit> {
-    const deposit = await this.prisma.deposit.findUnique({ where: { id: params.depositId } });
-    if (!deposit || deposit.userId !== params.userId) {
-      throw new NotFoundException('DEPOSIT_NOT_FOUND');
-    }
-    if (deposit.status === 'EXPIRED' || deposit.status === 'FAILED') return deposit;
-    if (deposit.status !== 'PENDING' && deposit.status !== 'PROCESSING') {
-      throw new ConflictException('DEPOSIT_NOT_CANCELLABLE');
-    }
-    return this.prisma.deposit.update({
-      where: { id: deposit.id },
-      data: { status: 'EXPIRED', expiresAt: new Date() },
-    });
-  }
-
-  /**
    * Применяет финальный статус депозита по данным webhook'а.
    * Идемпотентен: повторный вызов с тем же externalId не дублирует ledger.
    */
@@ -246,10 +225,21 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
     receivedAmount?: string;
     receivedCurrency?: string;
   }): Promise<{ ok: true; alreadyProcessed: boolean }> {
-    const deposit = await this.prisma.deposit.findUnique({
-      where: { externalId: params.externalId },
+    // Провайдер может прислать как свой номер заказа (externalId), так и наш
+    // идентификатор депозита — ищем по обоим, иначе платёж не найдётся и не зачислится.
+    const deposit = await this.prisma.deposit.findFirst({
+      where: {
+        provider: params.provider,
+        OR: [{ externalId: params.externalId }, { id: params.externalId }],
+      },
+      orderBy: { createdAt: 'desc' },
     });
-    if (!deposit) throw new NotFoundException('Deposit not found');
+    if (!deposit) {
+      this.logger.error(
+        `Webhook: deposit not found by externalId/id=${params.externalId} (${params.provider})`,
+      );
+      throw new NotFoundException('Deposit not found');
+    }
     if (deposit.provider !== params.provider) {
       throw new BadRequestException('Provider mismatch');
     }

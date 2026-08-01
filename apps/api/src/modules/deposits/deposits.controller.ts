@@ -39,16 +39,6 @@ export class DepositsController {
     return toPublicDeposit(deposit);
   }
 
-  /** Закрыть свой активный счёт, чтобы создать новый с другой суммой. */
-  @Post(':id/cancel')
-  async cancel(
-    @CurrentUser() user: AccessTokenPayload,
-    @Param('id') id: string,
-  ): Promise<PublicDepositDto> {
-    const deposit = await this.deposits.cancelByUser({ userId: user.sub, depositId: id });
-    return toPublicDeposit(deposit);
-  }
-
   @Get()
   async list(
     @CurrentUser() user: AccessTokenPayload,
