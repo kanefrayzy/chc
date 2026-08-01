@@ -1,16 +1,21 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.module';
 import { AdminAuditService } from './admin-audit.service';
+import { WithdrawalsService } from '../withdrawals/withdrawals.service';
 
 @Injectable()
 export class AdminWithdrawalsService {
+  private readonly logger = new Logger(AdminWithdrawalsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
+    private readonly withdrawals: WithdrawalsService,
   ) {}
 
   async list(params: { status?: string; limit: number; cursor?: string }) {
@@ -45,6 +50,34 @@ export class AdminWithdrawalsService {
       if (w.status === 'COMPLETED') return w;
       if (w.status !== 'PENDING' && w.status !== 'PROCESSING') {
         throw new ConflictException('WITHDRAWAL_NOT_APPROVABLE');
+      }
+
+      // Полуавтомат/автомат: по «Одобрить» выплату отправляет система, а
+      // заявка закрывается уже колбэком провайдера. Ручной режим — как раньше:
+      // модератор платит сам и просто фиксирует факт выплаты.
+      const mode = await this.withdrawals.getAutoMode();
+      if ((mode === 'semi' || mode === 'auto') && w.method === 'AUTO_BETATRANSFER') {
+        const externalId = await this.withdrawals.sendPayout(w.id).catch((e: unknown) => {
+          this.logger.error(`Выплата ${w.id} не отправлена провайдеру: ${String(e)}`);
+          throw new ConflictException('PAYOUT_PROVIDER_ERROR');
+        });
+        if (externalId) {
+          await this.audit.log({
+            actorId: params.actorId,
+            action: 'withdrawal.payout_sent',
+            entityType: 'withdrawal',
+            entityId: w.id,
+            payload: { amountMinor: w.amountMinor.toString(), externalId },
+            ip: params.ip,
+            userAgent: params.userAgent,
+            tx,
+          });
+          return tx.withdrawal.findUniqueOrThrow({
+            where: { id: w.id },
+            include: { user: { select: { username: true } } },
+          });
+        }
+        // Сумма выше порога или нет реквизитов карты — закрываем вручную
       }
 
       // Захватываем заявку условно: если пользователь параллельно отменил её

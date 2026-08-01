@@ -240,6 +240,122 @@ export class BetatransferProvider implements PaymentProvider {
     };
   }
 
+  // ── выплаты (payout) ─────────────────────────────────────────────────
+
+  /**
+   * Создаёт выплату на карту: POST /api/withdrawal-payment (form-urlencoded).
+   *
+   * Сумму задаём как `paymentAmount` + `paymentCurrency` — это то, что получит
+   * клиент на карту (AZN). Списание с баланса мерчанта в USD провайдер посчитает
+   * сам по своему курсу, поэтому игрок всегда получает ровно запрошенную сумму.
+   */
+  async createPayout(req: {
+    withdrawalId: string;
+    amountMinor: bigint;
+    currency?: string;
+    cardNumber: string;
+    holderFirstName?: string;
+    holderLastName?: string;
+    paymentSystem: string;
+    callbackUrl?: string;
+  }): Promise<{ externalId: string; raw: unknown }> {
+    if (!this.token || !this.secret) {
+      throw new Error('BETATRANSFER credentials are not configured');
+    }
+
+    const amount = (Number(req.amountMinor) / 100).toFixed(2);
+    const card = req.cardNumber.replace(/\D/g, '');
+
+    // Порядок важен: подпись = md5(конкатенация значений в этом порядке + secret)
+    const params: Record<string, string> = {
+      paymentAmount: amount,
+      paymentCurrency: (req.currency ?? 'AZN').toUpperCase(),
+      orderId: req.withdrawalId,
+      paymentSystem: req.paymentSystem,
+      address: card,
+    };
+    if (req.holderFirstName) params.receiverFirstName = req.holderFirstName;
+    if (req.holderLastName) params.receiverLastName = req.holderLastName;
+    if (req.callbackUrl) params.urlResult = req.callbackUrl;
+    params.sign = this.signV1Request(params);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/withdrawal-payment?token=${encodeURIComponent(this.token)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(params).toString(),
+      },
+    );
+
+    const text = await response.text();
+    if (!response.ok) {
+      this.logger.error(`Betatransfer payout HTTP ${response.status}: ${text}`);
+      throw new Error(`Betatransfer payout error ${response.status}: ${text}`);
+    }
+
+    let json: { status?: string; id?: number | string; message?: string; errors?: unknown };
+    try {
+      json = JSON.parse(text) as typeof json;
+    } catch {
+      throw new Error('Betatransfer payout returned non-JSON response');
+    }
+
+    if (json.id === undefined || (json.status && json.status !== 'success')) {
+      this.logger.error(`Betatransfer payout rejected: ${text}`);
+      throw new Error(`Betatransfer payout rejected: ${json.message ?? text}`);
+    }
+
+    this.logger.log(
+      `Betatransfer payout order=${req.withdrawalId} bt_id=${json.id} ${amount} ${params.paymentCurrency} → ****${card.slice(-4)}`,
+    );
+    return { externalId: String(json.id), raw: json };
+  }
+
+  /**
+   * Колбэк о статусе выплаты (form-urlencoded, подпись md5(amount + orderId + secret)).
+   * Статусы: success — выплачено, cancel — отменено провайдером (нужен возврат средств).
+   */
+  verifyPayoutWebhook(rawBody: string): {
+    withdrawalId: string;
+    status: 'COMPLETED' | 'FAILED' | 'PENDING';
+    rawPayload: Record<string, string>;
+  } {
+    const form = new URLSearchParams(rawBody);
+    const payload: Record<string, string> = {};
+    form.forEach((value, key) => {
+      payload[key] = value;
+    });
+
+    const orderId = payload.orderId;
+    if (!orderId) throw new BadRequestException('Missing orderId in payout webhook');
+    if (!this.secret) {
+      this.logger.error('BETATRANSFER_API_SECRET is not set — rejecting payout webhook');
+      throw new BadRequestException('Webhook verification unavailable');
+    }
+
+    const expected = createHash('md5')
+      .update((payload.amount ?? '') + orderId + this.secret)
+      .digest('hex');
+    const expectedBuf = Buffer.from(expected);
+    const actualBuf = Buffer.from((payload.sign ?? '').toLowerCase());
+    if (expectedBuf.length !== actualBuf.length || !timingSafeEqual(expectedBuf, actualBuf)) {
+      this.logger.warn(`Betatransfer payout signature mismatch orderId=${orderId}`);
+      throw new BadRequestException('Invalid webhook signature');
+    }
+
+    const raw = (payload.status ?? '').toLowerCase();
+    const status: 'COMPLETED' | 'FAILED' | 'PENDING' =
+      raw === 'success' || raw === 'partial_withdraw'
+        ? 'COMPLETED'
+        : raw === 'cancel' || raw === 'error' || raw === 'blocked'
+          ? 'FAILED'
+          : 'PENDING';
+
+    this.logger.log(`Betatransfer payout webhook order=${orderId} status=${raw} → ${status}`);
+    return { withdrawalId: orderId, status, rawPayload: payload };
+  }
+
   // ── вебхуки ──────────────────────────────────────────────────────────
 
   async verifyAndParseWebhook(_headers: Record<string, string>, rawBody: string): Promise<ParsedWebhook> {

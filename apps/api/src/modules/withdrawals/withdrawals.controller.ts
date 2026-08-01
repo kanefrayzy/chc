@@ -32,7 +32,7 @@ export class WithdrawalsController {
     @CurrentUser() user: AccessTokenPayload,
     @Body() body: CreateWithdrawalDto,
   ): Promise<PublicWithdrawalDto> {
-    const w = await this.withdrawals.createWithdrawal({
+    const w = await this.withdrawals.createAndMaybePayout({
       userId: user.sub,
       paymentMethodId: body.paymentMethodId,
       amountMinor: BigInt(body.amountMinor),

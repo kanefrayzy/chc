@@ -247,6 +247,28 @@ export function RequisiteCard({ deposit, locale, onExpire }: RequisiteCardProps)
         </div>
       )}
 
+      {/* Эквайринг: реквизитов нет, оплата на стороне провайдера — даём вернуться к оплате */}
+      {!requisite && deposit.paymentUrl && (
+        <div className="border-t border-border px-5 py-4">
+          <a
+            href={deposit.paymentUrl}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand py-3 text-sm font-bold text-bg-base transition-all hover:bg-brand-dim hover:shadow-[0_0_28px_rgba(0,255,136,0.35)]"
+          >
+            Продолжить оплату
+            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden>
+              <path
+                d="M4 8h8m-3.5-3.5L12 8l-3.5 3.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </a>
+        </div>
+      )}
+
       <p className="border-t border-border px-5 py-3 text-[11px] text-text-muted" suppressHydrationWarning>
         Создан {new Date(deposit.createdAt).toLocaleString(locale === 'az' ? 'az-AZ' : 'ru-RU')}
       </p>

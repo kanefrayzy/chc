@@ -102,6 +102,25 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     isPublic: false,
     description: 'Сумма (qəpik), выше которой автовыводы переходят в ручной режим',
   },
+  {
+    key: 'withdrawal.auto_mode',
+    type: 'string',
+    defaultValue: 'manual',
+    isPublic: false,
+    description:
+      'Режим выплат на карты через Betatransfer: manual — модератор платит сам (заявка просто закрывается в админке); ' +
+      'semi — модератор нажимает «Одобрить», выплату отправляет система (полуавтомат); ' +
+      'auto — выплата уходит провайдеру сразу при создании заявки, без модератора. ' +
+      'В режимах semi/auto суммы выше withdrawal.manual_threshold_minor всё равно уходят модератору.',
+  },
+  {
+    key: 'withdrawal.payout_payment_system',
+    type: 'string',
+    defaultValue: 'USD_CardAZN',
+    isPublic: false,
+    description:
+      'Код платёжной системы Betatransfer для выплат на карты (выдаёт менеджер, например USD_CardAZN).',
+  },
   // ─── Реферальная программа ────────────────────────────────────────────
   {
     key: 'referral.from_loss_bps',

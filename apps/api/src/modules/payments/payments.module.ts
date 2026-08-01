@@ -24,6 +24,6 @@ export class PaymentProviderRegistry {
 
 @Module({
   providers: [BetatransferProvider, WestWalletProvider, PaymentProviderRegistry],
-  exports: [PaymentProviderRegistry],
+  exports: [PaymentProviderRegistry, BetatransferProvider],
 })
 export class PaymentsModule {}

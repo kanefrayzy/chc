@@ -10,6 +10,7 @@ import { PrismaService } from '../../common/prisma/prisma.module';
 import { debitBalance } from '../../common/balance';
 import { PaymentMethodsService } from '../payment-methods/payment-methods.service';
 import { SettingsService } from '../settings/settings.service';
+import { BetatransferProvider } from '../payments/betatransfer.provider';
 
 const DEFAULT_MAX_MINOR = 1_000_000n; // 10 000 AZN (страховочный потолок)
 
@@ -22,6 +23,7 @@ export class WithdrawalsService {
     private readonly prisma: PrismaService,
     private readonly settings: SettingsService,
     private readonly methods: PaymentMethodsService,
+    private readonly betatransfer: BetatransferProvider,
   ) {
     this.maxMinorFallback = BigInt(process.env.WITHDRAWAL_MAX_MINOR ?? DEFAULT_MAX_MINOR.toString());
   }
@@ -34,6 +36,154 @@ export class WithdrawalsService {
   /** Маппинг провайдера PaymentMethod → внутренний enum WithdrawalMethod. */
   private providerToMethod(provider: PaymentProviderEnum): WithdrawalMethod {
     return provider === 'BETATRANSFER' ? 'AUTO_BETATRANSFER' : 'AUTO_WESTWALLET';
+  }
+
+  /** Режим выплат из настроек: manual | semi | auto. */
+  async getAutoMode(): Promise<'manual' | 'semi' | 'auto'> {
+    const raw = await this.settings.get<string>('withdrawal.auto_mode').catch(() => 'manual');
+    return raw === 'auto' || raw === 'semi' ? raw : 'manual';
+  }
+
+  /** Порог, выше которого выплата всегда уходит модератору. */
+  private async getManualThresholdMinor(): Promise<bigint> {
+    try {
+      const raw = await this.settings.get<string>('withdrawal.manual_threshold_minor');
+      return BigInt(raw);
+    } catch {
+      return 0n;
+    }
+  }
+
+  /**
+   * Отправляет выплату провайдеру. Возвращает externalId или null, если
+   * автовыплата неприменима (другой провайдер, не карта, сумма выше порога).
+   * Ошибка провайдера не роняет заявку — она останется модератору.
+   */
+  async sendPayout(withdrawalId: string): Promise<string | null> {
+    const w = await this.prisma.withdrawal.findUnique({
+      where: { id: withdrawalId },
+      include: { paymentMethod: true },
+    });
+    if (!w) throw new NotFoundException('WITHDRAWAL_NOT_FOUND');
+    if (w.method !== 'AUTO_BETATRANSFER') return null;
+
+    const threshold = await this.getManualThresholdMinor();
+    if (threshold > 0n && w.amountMinor > threshold) {
+      this.logger.log(
+        `Withdrawal ${w.id}: ${w.amountMinor} выше порога ${threshold} — отправляем модератору`,
+      );
+      return null;
+    }
+
+    const dest = (w.destination ?? {}) as Record<string, unknown>;
+    const cardNumber = typeof dest.cardNumber === 'string' ? dest.cardNumber : '';
+    if (!cardNumber) return null;
+
+    const holder = typeof dest.cardHolder === 'string' ? dest.cardHolder.trim() : '';
+    const [firstName, ...restName] = holder.split(/\s+/).filter(Boolean);
+
+    const paymentSystem =
+      (await this.settings.get<string>('withdrawal.payout_payment_system').catch(() => '')) ||
+      'USD_CardAZN';
+
+    const payout = await this.betatransfer.createPayout({
+      withdrawalId: w.id,
+      amountMinor: w.amountMinor,
+      currency: w.paymentMethod?.currency ?? 'AZN',
+      cardNumber,
+      ...(firstName ? { holderFirstName: firstName } : {}),
+      ...(restName.length > 0 ? { holderLastName: restName.join(' ') } : {}),
+      paymentSystem,
+      ...(process.env.BETATRANSFER_PAYOUT_CALLBACK_URL
+        ? { callbackUrl: process.env.BETATRANSFER_PAYOUT_CALLBACK_URL }
+        : {}),
+    });
+
+    await this.prisma.withdrawal.updateMany({
+      where: { id: w.id, status: { in: ['PENDING', 'PROCESSING'] } },
+      data: { status: 'PROCESSING', externalId: payout.externalId },
+    });
+    return payout.externalId;
+  }
+
+  /**
+   * Применяет статус выплаты из колбэка провайдера.
+   * success → COMPLETED (hold списывается окончательно);
+   * cancel → FAILED с возвратом средств на баланс.
+   */
+  async applyPayoutWebhook(params: {
+    withdrawalId: string;
+    status: 'COMPLETED' | 'FAILED' | 'PENDING';
+    rawPayload: Record<string, string>;
+  }): Promise<{ ok: true; alreadyProcessed: boolean }> {
+    if (params.status === 'PENDING') return { ok: true, alreadyProcessed: false };
+
+    return this.prisma.$transaction(async (tx) => {
+      const w = await tx.withdrawal.findUnique({ where: { id: params.withdrawalId } });
+      if (!w) throw new NotFoundException('WITHDRAWAL_NOT_FOUND');
+      if (w.status === 'COMPLETED' || w.status === 'REJECTED' || w.status === 'CANCELLED') {
+        return { ok: true as const, alreadyProcessed: true };
+      }
+
+      if (params.status === 'COMPLETED') {
+        const claimed = await tx.withdrawal.updateMany({
+          where: { id: w.id, status: { in: ['PENDING', 'PROCESSING'] } },
+          data: {
+            status: 'COMPLETED',
+            completedAt: new Date(),
+            rawWebhookPayload: params.rawPayload as Prisma.InputJsonValue,
+          },
+        });
+        if (claimed.count !== 1) return { ok: true as const, alreadyProcessed: true };
+
+        // Hold из PENDING становится окончательным списанием
+        const hold = await tx.transaction.findUnique({
+          where: { idempotencyKey: `withdrawal:${w.id}:hold` },
+        });
+        if (hold && hold.status === 'PENDING') {
+          await tx.transaction.update({ where: { id: hold.id }, data: { status: 'COMPLETED' } });
+        }
+        this.logger.log(`Withdrawal ${w.id} COMPLETED по колбэку провайдера`);
+        return { ok: true as const, alreadyProcessed: false };
+      }
+
+      // Провайдер отменил выплату — возвращаем деньги игроку
+      const claimed = await tx.withdrawal.updateMany({
+        where: { id: w.id, status: { in: ['PENDING', 'PROCESSING'] } },
+        data: {
+          status: 'FAILED',
+          completedAt: new Date(),
+          reason: 'Отклонено платёжной системой',
+          rawWebhookPayload: params.rawPayload as Prisma.InputJsonValue,
+        },
+      });
+      if (claimed.count !== 1) return { ok: true as const, alreadyProcessed: true };
+
+      const refundKey = `withdrawal:${w.id}:refund`;
+      const existing = await tx.transaction.findUnique({ where: { idempotencyKey: refundKey } });
+      if (!existing) {
+        const user = await tx.user.update({
+          where: { id: w.userId },
+          data: { balanceMinor: { increment: w.amountMinor } },
+          select: { balanceMinor: true },
+        });
+        await tx.transaction.create({
+          data: {
+            userId: w.userId,
+            type: 'WITHDRAW',
+            status: 'REVERSED',
+            amountMinor: w.amountMinor,
+            balanceAfterMinor: user.balanceMinor,
+            idempotencyKey: refundKey,
+            referenceType: 'withdrawal',
+            referenceId: w.id,
+            description: 'Выплата отклонена платёжной системой — возврат',
+          },
+        });
+      }
+      this.logger.warn(`Withdrawal ${w.id} FAILED по колбэку провайдера — средства возвращены`);
+      return { ok: true as const, alreadyProcessed: false };
+    });
   }
 
   async createWithdrawal(params: {
@@ -90,6 +240,31 @@ export class WithdrawalsService {
 
       return withdrawal;
     });
+  }
+
+  /**
+   * Заявка на вывод + (в режиме auto) немедленная отправка выплаты провайдеру.
+   * Ошибка провайдера не отменяет заявку — она просто останется модератору.
+   */
+  async createAndMaybePayout(params: {
+    userId: string;
+    paymentMethodId: string;
+    amountMinor: bigint;
+    destination: Prisma.InputJsonValue;
+  }): Promise<Withdrawal> {
+    const withdrawal = await this.createWithdrawal(params);
+
+    if ((await this.getAutoMode()) !== 'auto') return withdrawal;
+
+    try {
+      const externalId = await this.sendPayout(withdrawal.id);
+      if (externalId) {
+        return await this.prisma.withdrawal.findUniqueOrThrow({ where: { id: withdrawal.id } });
+      }
+    } catch (e) {
+      this.logger.error(`Автовыплата ${withdrawal.id} не прошла, заявка уходит модератору: ${String(e)}`);
+    }
+    return withdrawal;
   }
 
   async listForUser(params: {

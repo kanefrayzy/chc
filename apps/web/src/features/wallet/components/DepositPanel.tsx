@@ -149,6 +149,12 @@ export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Elem
           paymentMethodId: selected.id,
           amountMinor: minor.toString(),
         });
+        // Эквайринг (карта вводится на стороне провайдера) — сразу уводим на оплату.
+        // У P2P-методов paymentUrl нет: там реквизиты показываются на сайте.
+        if (created.paymentUrl) {
+          window.location.href = created.paymentUrl;
+          return;
+        }
         setActiveDeposit(created);
         setAmount('');
         router.refresh();

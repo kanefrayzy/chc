@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { RanksModule } from '../ranks/ranks.module';
 import { PaymentMethodsModule } from '../payment-methods/payment-methods.module';
+import { WithdrawalsModule } from '../withdrawals/withdrawals.module';
 import { AdminAuditService } from './admin-audit.service';
 import { AdminUsersService } from './admin-users.service';
 import { AdminCodePurchasesService } from './admin-code-purchases.service';
@@ -22,7 +23,7 @@ import { AdminTranslationsController } from './admin-translations.controller';
 import { AdminExchangeRatesController } from './admin-exchange-rates.controller';
 
 @Module({
-  imports: [AuthModule, RanksModule, PaymentMethodsModule],
+  imports: [AuthModule, RanksModule, PaymentMethodsModule, WithdrawalsModule],
   controllers: [
     AdminDashboardController,
     AdminUsersController,
