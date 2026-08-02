@@ -13,6 +13,7 @@ import { PaymentProviderRegistry } from '../payments/payments.module';
 import { PaymentMethodsService } from '../payment-methods/payment-methods.service';
 import { SettingsService } from '../settings/settings.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { ReferralsService } from '../referrals/referrals.service';
 
 const DEPOSIT_EXPIRE_MINUTES = 15;
 
@@ -27,6 +28,7 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
     private readonly settings: SettingsService,
     private readonly methods: PaymentMethodsService,
     private readonly realtime: RealtimeGateway,
+    private readonly referrals: ReferralsService,
   ) {}
 
   onModuleInit(): void {
@@ -358,6 +360,14 @@ export class DepositsService implements OnModuleInit, OnModuleDestroy {
           amountMinor: actualAmountMinor,   // обновляем на фактическую сумму в AZN
           rawWebhookPayload: params.rawPayload as Prisma.InputJsonValue,
         },
+      });
+
+      // Реферальный бонус пригласившему — процент с суммы пополнения
+      await this.referrals.creditDepositBonus({
+        referredId: deposit.userId,
+        depositAmountMinor: actualAmountMinor,
+        depositId: deposit.id,
+        tx,
       });
     });
 

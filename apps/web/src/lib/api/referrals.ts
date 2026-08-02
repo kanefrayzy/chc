@@ -1,12 +1,12 @@
 import { apiFetch } from './client';
 
-export type ReferralEarningKind = 'FROM_LOSS' | 'FROM_WIN';
+export type ReferralEarningKind = 'FROM_LOSS' | 'FROM_WIN' | 'FROM_DEPOSIT';
 
 export interface ReferralSummaryDto {
   referralCode: string;
   referralsCount: number;
   totalEarningsMinor: string;
-  rates: { fromLossBps: number; fromWinBps: number };
+  rates: { fromLossBps: number; fromDepositBps: number };
 }
 
 export interface ReferralEarningDto {

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { Prisma, ReferralEarningKind } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.module';
 import {
+  REFERRAL_FROM_DEPOSIT_BPS,
   REFERRAL_FROM_LOSS_BPS,
   REFERRAL_FROM_WIN_BPS,
   calcEarningBps,
@@ -18,8 +19,18 @@ export class ReferralsService {
   ) {}
 
   private async getRateBps(kind: ReferralEarningKind): Promise<number> {
-    const key = kind === 'FROM_LOSS' ? 'referral.from_loss_bps' : 'referral.from_win_bps';
-    const fallback = kind === 'FROM_LOSS' ? REFERRAL_FROM_LOSS_BPS : REFERRAL_FROM_WIN_BPS;
+    const key =
+      kind === 'FROM_LOSS'
+        ? 'referral.from_loss_bps'
+        : kind === 'FROM_DEPOSIT'
+          ? 'referral.from_deposit_bps'
+          : 'referral.from_win_bps';
+    const fallback =
+      kind === 'FROM_LOSS'
+        ? REFERRAL_FROM_LOSS_BPS
+        : kind === 'FROM_DEPOSIT'
+          ? REFERRAL_FROM_DEPOSIT_BPS
+          : REFERRAL_FROM_WIN_BPS;
     try {
       const v = await this.settings.get<number>(key);
       return typeof v === 'number' && v >= 0 ? v : fallback;
@@ -217,8 +228,25 @@ export class ReferralsService {
     }
   }
 
+  /** Бонус пригласившему с пополнения приглашённого (5% по умолчанию). */
+  async creditDepositBonus(params: {
+    referredId: string;
+    depositAmountMinor: bigint;
+    depositId: string;
+    tx?: Prisma.TransactionClient;
+  }): Promise<void> {
+    await this.creditEarning({
+      referredId: params.referredId,
+      kind: 'FROM_DEPOSIT',
+      sourceAmountMinor: params.depositAmountMinor,
+      referenceType: 'deposit',
+      referenceId: params.depositId,
+      ...(params.tx ? { tx: params.tx } : {}),
+    });
+  }
+
   async getSummary(userId: string) {
-    const [user, referralsCount, agg, fromLossBps, fromWinBps] = await Promise.all([
+    const [user, referralsCount, agg, fromLossBps, fromDepositBps] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
         select: { referralCode: true },
@@ -229,7 +257,7 @@ export class ReferralsService {
         _sum: { earningMinor: true },
       }),
       this.getRateBps('FROM_LOSS'),
-      this.getRateBps('FROM_WIN'),
+      this.getRateBps('FROM_DEPOSIT'),
     ]);
     return {
       referralCode: user?.referralCode ?? '',
@@ -237,7 +265,7 @@ export class ReferralsService {
       totalEarningsMinor: agg._sum.earningMinor ?? 0n,
       rates: {
         fromLossBps,
-        fromWinBps,
+        fromDepositBps,
       },
     };
   }

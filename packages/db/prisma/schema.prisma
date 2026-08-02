@@ -560,8 +560,9 @@ model CaseOpening {
 // =========================================================
 
 enum ReferralEarningKind {
-  FROM_LOSS  // 10%
-  FROM_WIN   // 3%
+  FROM_LOSS     // % от чистой маржи казино по игроку (ADR-0008)
+  FROM_WIN      // не используется с ADR-0008, оставлен для старых записей
+  FROM_DEPOSIT  // % от суммы пополнения приглашённого
 }
 
 model ReferralEarning {

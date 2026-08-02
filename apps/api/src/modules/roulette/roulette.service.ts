@@ -176,7 +176,7 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
       .map((g) => ({
         username: g.user?.username ?? 'player',
         avatarUrl: g.user?.avatarUrl ?? null,
-        amountMinor: g.payoutMinor - g.betMinor, // чистый выигрыш
+        amountMinor: g.payoutMinor, // общая сумма выигрыша (как её видит игрок)
         game: 'mines' as const,
         multiplierBps: g.multiplierBps,
         mineCount: g.mineCount,
@@ -215,7 +215,7 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
         {
           username: u?.username ?? 'player',
           avatarUrl: u?.avatarUrl ?? null,
-          amountMinor: net,
+          amountMinor: payout, // весь банк, который забрал победитель
           game: 'classic' as const,
           // во сколько раз победитель увеличил свою ставку
           multiplierBps: stake > 0n ? Number((payout * 10_000n) / stake) : 0,

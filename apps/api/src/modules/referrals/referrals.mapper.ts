@@ -35,7 +35,7 @@ export interface ReferralSummaryDto {
   referralCode: string;
   referralsCount: number;
   totalEarningsMinor: string;
-  rates: { fromLossBps: number; fromWinBps: number };
+  rates: { fromLossBps: number; fromDepositBps: number };
 }
 
 export interface ReferralUser {

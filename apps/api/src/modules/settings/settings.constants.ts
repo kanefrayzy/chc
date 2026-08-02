@@ -130,6 +130,13 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     description: 'Базисные пункты от лосса (1000 bps = 10%)',
   },
   {
+    key: 'referral.from_deposit_bps',
+    type: 'number',
+    defaultValue: 500,
+    isPublic: false,
+    description: 'Бонус пригласившему с каждого пополнения приглашённого, в bps (500 = 5%)',
+  },
+  {
     key: 'referral.from_win_bps',
     type: 'number',
     defaultValue: 300,

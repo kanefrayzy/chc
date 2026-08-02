@@ -48,7 +48,7 @@ const GROUPS: { id: string; label: string; description: string; keys: string[] }
     id: 'referral',
     label: '🤝 Рефералы',
     description: 'Комиссии реферальной программы',
-    keys: ['referral.from_loss_bps', 'referral.from_win_bps'],
+    keys: ['referral.from_loss_bps', 'referral.from_deposit_bps', 'referral.from_win_bps'],
   },
   {
     id: 'brand',
@@ -93,7 +93,8 @@ const LABELS: Record<string, string> = {
   'withdrawal.min_amount_minor': 'Минимальный вывод',
   'withdrawal.manual_threshold_minor': 'Порог ручного вывода',
   'referral.from_loss_bps': 'Комиссия от проигрыша реферала',
-  'referral.from_win_bps': 'Комиссия от выигрыша реферала',
+  'referral.from_deposit_bps': 'Бонус с пополнения реферала (500 = 5%)',
+  'referral.from_win_bps': 'НЕ ИСПОЛЬЗУЕТСЯ (бонус с выигрыша отключён)',
   'brand.site_name': 'Название сайта',
   'brand.logo_url': 'Логотип',
   'brand.support_email': 'Email поддержки',

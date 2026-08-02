@@ -94,6 +94,32 @@ export function TicketConversation({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalAction?.key]);
 
+  // Страховка поверх WebSocket: если сокет не авторизовался (например, истёк
+  // access-токен) — переписка всё равно обновляется без перезагрузки страницы.
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setInterval(() => {
+      if (document.hidden) return;
+      adminApi.tickets
+        .messages(ticketId, { limit: 30 })
+        .then((fresh) => {
+          if (cancelled) return;
+          setMessages((prev) => {
+            const known = new Set(prev.map((m) => m.id));
+            const added = fresh.filter((m) => !known.has(m.id));
+            return added.length === 0 ? prev : [...prev, ...added];
+          });
+        })
+        .catch(() => {
+          /* молча — следующая попытка через интервал */
+        });
+    }, 10_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [ticketId]);
+
   // WebSocket: real-time подписка
   // Deps: только ticketId — статус управляется через onStatus, не нужно пересоздавать WS-листенеры
   useEffect(() => {

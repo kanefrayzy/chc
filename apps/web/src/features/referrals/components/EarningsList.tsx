@@ -2,9 +2,10 @@ import { useTranslations } from 'next-intl';
 import { Card, CardBody, Badge } from '@chcgreen/ui';
 import type { ReferralEarningDto } from '@/lib/api/referrals';
 
-const KIND_VARIANT: Record<ReferralEarningDto['kind'], 'success' | 'brand'> = {
+const KIND_VARIANT: Record<ReferralEarningDto['kind'], 'success' | 'brand' | 'info'> = {
   FROM_LOSS: 'success',
   FROM_WIN: 'brand',
+  FROM_DEPOSIT: 'info',
 };
 
 export interface EarningsListProps {

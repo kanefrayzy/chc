@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import type { AdminTicketRow } from '../../../lib/api/admin';
+import { adminApi, type AdminTicketRow } from '../../../lib/api/admin';
 import { getAdminSocket } from '../../../lib/realtime';
 import { formatDateTime, shortId } from '../../../lib/format';
 import { Badge } from '../../../components/ui/Badge';
@@ -36,6 +36,27 @@ interface TicketsListProps {
 
 export function TicketsList({ initialItems, status }: TicketsListProps) {
   const [tickets, setTickets] = useState(initialItems);
+
+  // Страховка поверх WebSocket: список обновляется сам, даже если сокет
+  // не авторизовался (истёкший токен) — без перезагрузки страницы.
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setInterval(() => {
+      if (document.hidden) return;
+      adminApi.tickets
+        .list({ ...(status ? { status } : {}), limit: 50 })
+        .then((res) => {
+          if (!cancelled) setTickets(res.items);
+        })
+        .catch(() => {
+          /* молча — повторим на следующем тике */
+        });
+    }, 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [status]);
 
   useEffect(() => {
     const socket = getAdminSocket();
