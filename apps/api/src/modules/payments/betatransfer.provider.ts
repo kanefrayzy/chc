@@ -8,6 +8,59 @@ import {
 } from './payment-provider.interface';
 
 /**
+ * Отказ провайдера по выплате с сообщением, пригодным для показа модератору.
+ * `reason` — уже переведённая причина (лимиты, баланс, реквизиты), `raw` — ответ API.
+ */
+export class BetatransferPayoutError extends Error {
+  constructor(
+    readonly reason: string,
+    readonly raw: string,
+    readonly httpStatus: number,
+  ) {
+    super(reason);
+    this.name = 'BetatransferPayoutError';
+  }
+}
+
+/** Переводит ответ Betatransfer об отказе в понятную модератору фразу. */
+function describePayoutFailure(httpStatus: number, body: string): string {
+  type PayoutErrorBody = { message?: string; errors?: Record<string, string[] | string> };
+  let parsed: PayoutErrorBody | null;
+  try {
+    parsed = JSON.parse(body) as PayoutErrorBody;
+  } catch {
+    parsed = null;
+  }
+
+  const messages: string[] = [];
+  const errors = parsed?.errors;
+  if (errors && typeof errors === 'object') {
+    for (const value of Object.values(errors)) {
+      for (const text of Array.isArray(value) ? value : [value]) {
+        if (typeof text === 'string') messages.push(text);
+      }
+    }
+  }
+  if (messages.length === 0 && typeof parsed?.message === 'string') messages.push(parsed.message);
+
+  const joined = messages.join('; ');
+  const min = /Minimum amount:\s*([\d.]+)\s*([A-Z]{3})/i.exec(joined);
+  if (min) return `Сумма ниже минимума платёжной системы (${min[1]} ${min[2]})`;
+  const max = /Maximum amount:\s*([\d.]+)\s*([A-Z]{3})/i.exec(joined);
+  if (max) return `Сумма выше максимума платёжной системы (${max[1]} ${max[2]})`;
+  if (/Insufficient account balance/i.test(joined)) {
+    return 'Недостаточно средств на балансе мерчанта в Betatransfer — пополните баланс';
+  }
+  if (/not a valid card number/i.test(joined)) return 'Платёжная система не приняла номер карты';
+  if (httpStatus === 403) {
+    return /IP Address/i.test(joined)
+      ? 'IP сервера не в белом списке Betatransfer'
+      : 'Betatransfer не разрешает выплаты по API для этого аккаунта';
+  }
+  return joined || `Betatransfer вернул ошибку ${httpStatus}`;
+}
+
+/**
  * Шлюз Betatransfer. Два флоу депозита:
  *
  * 1. **V2 P2R** (paymentSystem начинается с "P2R") — реквизиты выдаются сразу в ответе:
@@ -291,20 +344,29 @@ export class BetatransferProvider implements PaymentProvider {
 
     const text = await response.text();
     if (!response.ok) {
+      const reason = describePayoutFailure(response.status, text);
       this.logger.error(`Betatransfer payout HTTP ${response.status}: ${text}`);
-      throw new Error(`Betatransfer payout error ${response.status}: ${text}`);
+      throw new BetatransferPayoutError(reason, text, response.status);
     }
 
     let json: { status?: string; id?: number | string; message?: string; errors?: unknown };
     try {
       json = JSON.parse(text) as typeof json;
     } catch {
-      throw new Error('Betatransfer payout returned non-JSON response');
+      throw new BetatransferPayoutError(
+        'Betatransfer вернул некорректный ответ',
+        text,
+        response.status,
+      );
     }
 
     if (json.id === undefined || (json.status && json.status !== 'success')) {
       this.logger.error(`Betatransfer payout rejected: ${text}`);
-      throw new Error(`Betatransfer payout rejected: ${json.message ?? text}`);
+      throw new BetatransferPayoutError(
+        describePayoutFailure(response.status, text),
+        text,
+        response.status,
+      );
     }
 
     this.logger.log(

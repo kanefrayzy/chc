@@ -82,7 +82,13 @@ export class WithdrawalsService {
     const holder = typeof dest.cardHolder === 'string' ? dest.cardHolder.trim() : '';
     const [firstName, ...restName] = holder.split(/\s+/).filter(Boolean);
 
+    // Платёжная система выплаты: сперва из настроек метода (config.payoutPaymentSystem),
+    // затем глобальная настройка, затем дефолт провайдера.
+    const methodConfig = (w.paymentMethod?.config ?? {}) as Record<string, unknown>;
+    const configuredSystem =
+      typeof methodConfig.payoutPaymentSystem === 'string' ? methodConfig.payoutPaymentSystem : '';
     const paymentSystem =
+      configuredSystem ||
       (await this.settings.get<string>('withdrawal.payout_payment_system').catch(() => '')) ||
       'USD_CardAZN';
 

@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../common/prisma/prisma.module';
 import { AdminAuditService } from './admin-audit.service';
 import { WithdrawalsService } from '../withdrawals/withdrawals.service';
+import { BetatransferPayoutError } from '../payments/betatransfer.provider';
 
 @Injectable()
 export class AdminWithdrawalsService {
@@ -59,7 +60,10 @@ export class AdminWithdrawalsService {
       if ((mode === 'semi' || mode === 'auto') && w.method === 'AUTO_BETATRANSFER') {
         const externalId = await this.withdrawals.sendPayout(w.id).catch((e: unknown) => {
           this.logger.error(`Выплата ${w.id} не отправлена провайдеру: ${String(e)}`);
-          throw new ConflictException('PAYOUT_PROVIDER_ERROR');
+          // Модератору показываем причину отказа, а не безликий код ошибки.
+          throw new ConflictException(
+            e instanceof BetatransferPayoutError ? e.reason : 'PAYOUT_PROVIDER_ERROR',
+          );
         });
         if (externalId) {
           await this.audit.log({
