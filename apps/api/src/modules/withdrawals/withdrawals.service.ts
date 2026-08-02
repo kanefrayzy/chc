@@ -113,6 +113,59 @@ export class WithdrawalsService {
   }
 
   /**
+   * Спрашивает у провайдера текущее состояние выплаты и, если оно финальное,
+   * применяет его как обычный колбэк. Нужен, когда колбэк не дошёл: заявка
+   * иначе висит в PROCESSING без признаков жизни.
+   */
+  async syncPayoutStatus(withdrawalId: string): Promise<{
+    applied: boolean;
+    status: 'COMPLETED' | 'FAILED' | 'PENDING';
+    providerStatus: string;
+    providerId: string | null;
+    amount: string | null;
+    currency: string | null;
+    commission: string | null;
+    paymentSystem: string | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+  }> {
+    const w = await this.prisma.withdrawal.findUnique({ where: { id: withdrawalId } });
+    if (!w) throw new NotFoundException('WITHDRAWAL_NOT_FOUND');
+    if (w.method !== 'AUTO_BETATRANSFER') throw new BadRequestException('PAYOUT_NOT_AUTOMATED');
+
+    const info = await this.betatransfer.fetchPayoutInfo(w.id);
+
+    let applied = false;
+    if (info.status !== 'PENDING') {
+      const flat: Record<string, string> = {};
+      for (const [key, value] of Object.entries(info.raw)) {
+        if (value !== null && value !== undefined && typeof value !== 'object') {
+          flat[key] = String(value);
+        }
+      }
+      const res = await this.applyPayoutWebhook({
+        withdrawalId: w.id,
+        status: info.status,
+        rawPayload: flat,
+      });
+      applied = !res.alreadyProcessed;
+    }
+
+    return {
+      applied,
+      status: info.status,
+      providerStatus: info.providerStatus,
+      providerId: info.providerId,
+      amount: info.amount,
+      currency: info.currency,
+      commission: info.commission,
+      paymentSystem: info.paymentSystem,
+      createdAt: info.createdAt,
+      updatedAt: info.updatedAt,
+    };
+  }
+
+  /**
    * Применяет статус выплаты из колбэка провайдера.
    * success → COMPLETED (hold списывается окончательно);
    * cancel → FAILED с возвратом средств на баланс.

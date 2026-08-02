@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { cn } from '../../lib/cn';
 
 interface Column<T> {
@@ -14,11 +14,14 @@ export function DataTable<T extends { id: string }>({
   columns,
   empty,
   className,
+  renderDetail,
 }: {
   rows: T[];
   columns: Column<T>[];
   empty?: ReactNode;
   className?: string;
+  /** Разворачиваемая строка под записью: вернуть null, если раскрывать нечего. */
+  renderDetail?: (row: T) => ReactNode;
 }) {
   if (rows.length === 0) {
     return (
@@ -50,28 +53,34 @@ export function DataTable<T extends { id: string }>({
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {rows.map((row, i) => (
-            <tr
-              key={row.id}
-              className={cn(
-                'hover:bg-elevated/70 transition-colors',
-                i % 2 === 0 ? 'bg-surface' : 'bg-surface',
-              )}
-            >
-              {columns.map((c) => (
-                <td
-                  key={c.key}
-                  className={cn(
-                    'px-4 py-3.5 align-middle',
-                    c.align === 'right' && 'text-right',
-                    c.align === 'center' && 'text-center',
-                  )}
-                >
-                  {c.cell(row)}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const detail = renderDetail?.(row) ?? null;
+            return (
+              <Fragment key={row.id}>
+                <tr className="hover:bg-elevated/70 transition-colors bg-surface">
+                  {columns.map((c) => (
+                    <td
+                      key={c.key}
+                      className={cn(
+                        'px-4 py-3.5 align-middle',
+                        c.align === 'right' && 'text-right',
+                        c.align === 'center' && 'text-center',
+                      )}
+                    >
+                      {c.cell(row)}
+                    </td>
+                  ))}
+                </tr>
+                {detail && (
+                  <tr className="bg-elevated/40">
+                    <td colSpan={columns.length} className="px-4 pb-4 pt-0">
+                      {detail}
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
         </tbody>
       </table>
     </div>

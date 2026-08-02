@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   adminApi,
   type AdminWithdrawalRow,
+  type PayoutStatusInfo,
   type WithdrawalStatus,
 } from '../../../lib/api/admin';
 import { ApiException } from '../../../lib/api/client';
@@ -42,6 +43,30 @@ const methodLabel: Record<AdminWithdrawalRow['method'], string> = {
   MANUAL_MODERATOR: 'Вручную',
 };
 
+/** Что означает статус на стороне Betatransfer — простыми словами. */
+const providerStatusLabel: Record<string, string> = {
+  new: 'Принята провайдером, ещё не обработана',
+  pending: 'Провайдер обрабатывает выплату',
+  verification: 'Провайдер проверяет получателя',
+  checkPayment: 'Ручная проверка на стороне провайдера',
+  success: 'Деньги отправлены на карту',
+  partial_withdraw: 'Выплачено частично',
+  cancel: 'Провайдер отменил выплату',
+  error: 'Ошибка на стороне провайдера',
+  blocked: 'Выплата заблокирована',
+  not_paid: 'Не оплачена',
+  not_paid_timeout: 'Истёк срок обработки',
+};
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[11px] uppercase tracking-wide text-ink-400">{label}</div>
+      <div className="text-sm text-ink-900">{value}</div>
+    </div>
+  );
+}
+
 export function WithdrawalsTable({
   initialItems,
   status,
@@ -54,6 +79,9 @@ export function WithdrawalsTable({
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<AdminWithdrawalRow | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [checkingId, setCheckingId] = useState<string | null>(null);
+  const [payoutInfo, setPayoutInfo] = useState<Record<string, PayoutStatusInfo>>({});
+  const [payoutError, setPayoutError] = useState<Record<string, string>>({});
 
   async function refresh() {
     try {
@@ -75,6 +103,29 @@ export function WithdrawalsTable({
       setError(e instanceof ApiException ? e.message : 'Не удалось подтвердить');
     } finally {
       setApprovingId(null);
+    }
+  }
+
+  // Сверка с Betatransfer: показывает, что там с выплатой, и подхватывает
+  // финальный статус, если колбэк до нас не дошёл.
+  async function onCheckPayout(id: string) {
+    setCheckingId(id);
+    setPayoutError((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    try {
+      const info = await adminApi.withdrawals.payoutStatus(id);
+      setPayoutInfo((prev) => ({ ...prev, [id]: info }));
+      if (info.applied) await refresh();
+    } catch (e) {
+      setPayoutError((prev) => ({
+        ...prev,
+        [id]: e instanceof ApiException ? e.message : 'Не удалось получить статус',
+      }));
+    } finally {
+      setCheckingId(null);
     }
   }
 
@@ -153,6 +204,16 @@ export function WithdrawalsTable({
               if (r.status !== 'PENDING' && r.status !== 'PROCESSING') return null;
               return (
                 <div className="flex items-center gap-2 justify-end">
+                  {r.status === 'PROCESSING' && r.method === 'AUTO_BETATRANSFER' && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={checkingId === r.id}
+                      onClick={() => void onCheckPayout(r.id)}
+                    >
+                      {checkingId === r.id ? 'Проверяем…' : 'Проверить статус'}
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="success"
@@ -169,6 +230,73 @@ export function WithdrawalsTable({
             },
           },
         ]}
+        renderDetail={(r) => {
+          const info = payoutInfo[r.id];
+          const err = payoutError[r.id];
+          // Панель нужна только там, где есть что рассказать о выплате
+          if (!info && !err && !(r.status === 'PROCESSING' || r.status === 'FAILED')) return null;
+
+          return (
+            <div className="rounded-lg border border-border bg-surface p-3">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-400">
+                Выплата через Betatransfer
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <InfoRow label="Заявка" value={r.id} />
+                <InfoRow label="ID у провайдера" value={r.externalId ?? 'ещё не присвоен'} />
+                <InfoRow label="Карта получателя" value={r.destination.display} />
+                <InfoRow label="Сумма к зачислению" value={`${minorToAzn(r.amountMinor)} AZN`} />
+
+                {info && (
+                  <>
+                    <InfoRow
+                      label="Статус у провайдера"
+                      value={
+                        providerStatusLabel[info.providerStatus] ??
+                        info.providerStatus ??
+                        'неизвестен'
+                      }
+                    />
+                    {info.amount && (
+                      <InfoRow
+                        label="Списано с баланса"
+                        value={`${info.amount} ${info.currency ?? ''}`.trim()}
+                      />
+                    )}
+                    {info.commission && <InfoRow label="Комиссия" value={info.commission} />}
+                    {info.paymentSystem && (
+                      <InfoRow label="Платёжная система" value={info.paymentSystem} />
+                    )}
+                    {info.updatedAt && (
+                      <InfoRow label="Обновлено провайдером" value={info.updatedAt} />
+                    )}
+                  </>
+                )}
+
+                {r.reason && <InfoRow label="Причина" value={r.reason} />}
+              </div>
+
+              {info?.applied && (
+                <div className="mt-2 text-xs text-success">
+                  Статус применён — заявка обновлена.
+                </div>
+              )}
+              {info && !info.applied && info.status === 'PENDING' && (
+                <div className="mt-2 text-xs text-ink-500">
+                  Выплата ещё в работе у провайдера — ждём финальный статус.
+                </div>
+              )}
+              {err && <div className="mt-2 text-xs text-danger">{err}</div>}
+              {!info && !err && r.status === 'PROCESSING' && (
+                <div className="mt-2 text-xs text-ink-500">
+                  Отправлено провайдеру, ждём колбэк. Нажмите «Проверить статус», чтобы
+                  спросить Betatransfer напрямую.
+                </div>
+              )}
+            </div>
+          );
+        }}
       />
 
       <RejectModal

@@ -61,6 +61,12 @@ export class AdminWithdrawalsController {
     return toAdminWithdrawal(w);
   }
 
+  /** Спросить провайдера о судьбе выплаты (когда колбэк не дошёл). */
+  @Post(':id/payout-status')
+  async payoutStatus(@Param('id') id: string) {
+    return this.service.syncPayoutStatus(id);
+  }
+
   @Post(':id/reject')
   async reject(
     @CurrentUser() actor: AccessTokenPayload,

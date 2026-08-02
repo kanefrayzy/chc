@@ -185,6 +185,20 @@ export interface AdminWithdrawalRow {
   completedAt: string | null;
 }
 
+/** Ответ Betatransfer о состоянии выплаты (ручная сверка, когда колбэк не дошёл). */
+export interface PayoutStatusInfo {
+  applied: boolean;
+  status: 'COMPLETED' | 'FAILED' | 'PENDING';
+  providerStatus: string;
+  providerId: string | null;
+  amount: string | null;
+  currency: string | null;
+  commission: string | null;
+  paymentSystem: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
 // ─── Tickets ─────────────────────────────────────────────────────────────
 
 export type TicketStatus = 'OPEN' | 'WAITING_USER' | 'WAITING_MODERATOR' | 'CLOSED';
@@ -364,6 +378,8 @@ export const adminApi = {
       apiFetch<AdminWithdrawalRow>(`/admin/withdrawals/${id}/approve`, { method: 'POST', body }),
     reject: (id: string, body: { reason: string }) =>
       apiFetch<AdminWithdrawalRow>(`/admin/withdrawals/${id}/reject`, { method: 'POST', body }),
+    payoutStatus: (id: string) =>
+      apiFetch<PayoutStatusInfo>(`/admin/withdrawals/${id}/payout-status`, { method: 'POST' }),
   },
 
   tickets: {

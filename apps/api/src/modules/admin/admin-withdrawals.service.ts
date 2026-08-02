@@ -37,6 +37,16 @@ export class AdminWithdrawalsService {
     return { items, nextCursor };
   }
 
+  /** Запрашивает статус выплаты у Betatransfer и применяет его, если он финальный. */
+  async syncPayoutStatus(withdrawalId: string) {
+    try {
+      return await this.withdrawals.syncPayoutStatus(withdrawalId);
+    } catch (e) {
+      if (e instanceof BetatransferPayoutError) throw new ConflictException(e.reason);
+      throw e;
+    }
+  }
+
   async approve(params: {
     actorId: string;
     withdrawalId: string;

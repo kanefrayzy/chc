@@ -375,6 +375,83 @@ export class BetatransferProvider implements PaymentProvider {
     return { externalId: String(json.id), raw: json };
   }
 
+  /** Провайдерский статус → наш. Общая таблица для колбэка и опроса /api/info. */
+  private mapPayoutStatus(raw: string): 'COMPLETED' | 'FAILED' | 'PENDING' {
+    const s = raw.toLowerCase();
+    if (s === 'success' || s === 'partial_withdraw') return 'COMPLETED';
+    if (s === 'cancel' || s === 'error' || s === 'blocked') return 'FAILED';
+    return 'PENDING';
+  }
+
+  /**
+   * Опрос состояния выплаты: POST /api/info (form-urlencoded, sign = md5(orderId + secret)).
+   * Нужен, когда колбэк не дошёл — модератор может проверить выплату вручную.
+   */
+  async fetchPayoutInfo(orderId: string): Promise<{
+    status: 'COMPLETED' | 'FAILED' | 'PENDING';
+    providerStatus: string;
+    providerId: string | null;
+    amount: string | null;
+    currency: string | null;
+    commission: string | null;
+    paymentSystem: string | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+    raw: Record<string, unknown>;
+  }> {
+    if (!this.token || !this.secret) {
+      throw new Error('BETATRANSFER credentials are not configured');
+    }
+
+    const params = { orderId, sign: '' };
+    params.sign = createHash('md5').update(orderId + this.secret).digest('hex');
+
+    const response = await fetch(
+      `${this.baseUrl}/api/info?token=${encodeURIComponent(this.token)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(params).toString(),
+      },
+    );
+
+    const text = await response.text();
+    if (!response.ok) {
+      this.logger.error(`Betatransfer info HTTP ${response.status}: ${text}`);
+      throw new BetatransferPayoutError(
+        describePayoutFailure(response.status, text),
+        text,
+        response.status,
+      );
+    }
+
+    let json: Record<string, unknown>;
+    try {
+      json = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      throw new BetatransferPayoutError('Betatransfer вернул некорректный ответ', text, 200);
+    }
+
+    const str = (key: string): string | null => {
+      const v = json[key];
+      return v === null || v === undefined ? null : String(v);
+    };
+    const providerStatus = str('status') ?? '';
+
+    return {
+      status: this.mapPayoutStatus(providerStatus),
+      providerStatus,
+      providerId: str('id'),
+      amount: str('amount'),
+      currency: str('currency'),
+      commission: str('commission'),
+      paymentSystem: str('paymentSystem'),
+      createdAt: str('createdAt'),
+      updatedAt: str('updatedAt'),
+      raw: json,
+    };
+  }
+
   /**
    * Колбэк о статусе выплаты (form-urlencoded, подпись md5(amount + orderId + secret)).
    * Статусы: success — выплачено, cancel — отменено провайдером (нужен возврат средств).
@@ -408,12 +485,7 @@ export class BetatransferProvider implements PaymentProvider {
     }
 
     const raw = (payload.status ?? '').toLowerCase();
-    const status: 'COMPLETED' | 'FAILED' | 'PENDING' =
-      raw === 'success' || raw === 'partial_withdraw'
-        ? 'COMPLETED'
-        : raw === 'cancel' || raw === 'error' || raw === 'blocked'
-          ? 'FAILED'
-          : 'PENDING';
+    const status = this.mapPayoutStatus(raw);
 
     this.logger.log(`Betatransfer payout webhook order=${orderId} status=${raw} → ${status}`);
     return { withdrawalId: orderId, status, rawPayload: payload };
