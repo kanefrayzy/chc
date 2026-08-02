@@ -13,7 +13,6 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { DataTable } from '../../../components/ui/DataTable';
 import { WithdrawalStatusFilter } from './WithdrawalStatusFilter';
-import { ApproveWithdrawalModal } from './ApproveWithdrawalModal';
 import { RejectModal } from '../code-purchases/RejectModal';
 
 const statusTone: Record<
@@ -52,7 +51,7 @@ export function WithdrawalsTable({
 }) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
-  const [approveTarget, setApproveTarget] = useState<AdminWithdrawalRow | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<AdminWithdrawalRow | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,14 +64,17 @@ export function WithdrawalsTable({
     }
   }
 
-  async function onApprove(id: string, externalId?: string, note?: string) {
+  // Подтверждение в один клик — без промежуточного окна
+  async function onApprove(id: string) {
     setError(null);
+    setApprovingId(id);
     try {
-      await adminApi.withdrawals.approve(id, { externalId, note });
-      setApproveTarget(null);
+      await adminApi.withdrawals.approve(id, {});
       await refresh();
     } catch (e) {
       setError(e instanceof ApiException ? e.message : 'Не удалось подтвердить');
+    } finally {
+      setApprovingId(null);
     }
   }
 
@@ -151,8 +153,13 @@ export function WithdrawalsTable({
               if (r.status !== 'PENDING' && r.status !== 'PROCESSING') return null;
               return (
                 <div className="flex items-center gap-2 justify-end">
-                  <Button size="sm" variant="success" onClick={() => setApproveTarget(r)}>
-                    Подтвердить
+                  <Button
+                    size="sm"
+                    variant="success"
+                    disabled={approvingId === r.id}
+                    onClick={() => void onApprove(r.id)}
+                  >
+                    {approvingId === r.id ? 'Отправляем…' : 'Подтвердить'}
                   </Button>
                   <Button size="sm" variant="secondary" onClick={() => setRejectTarget(r)}>
                     Отклонить
@@ -164,11 +171,6 @@ export function WithdrawalsTable({
         ]}
       />
 
-      <ApproveWithdrawalModal
-        target={approveTarget}
-        onClose={() => setApproveTarget(null)}
-        onSubmit={onApprove}
-      />
       <RejectModal
         title="Отклонить вывод"
         target={rejectTarget}
