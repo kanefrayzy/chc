@@ -45,13 +45,16 @@ DO $$ BEGIN
     FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Стартовые копилки: суммы в qəpik, доли ставки в bps (сумма 100 bps = 1% ставки)
+-- Стартовые копилки. ВАЖНО: seedMinor — реальные деньги: при срыве игрок
+-- получает всю копилку, а она откатывается к этому значению. Значения ниже
+-- намеренно консервативные, поднимать их следует осознанно из админки.
+-- Отчисления в bps: суммарно 100 bps = 1% оборота.
 INSERT INTO "ProgressiveJackpot" ("tier", "seedMinor", "currentMinor", "contributionBps", "updatedAt")
 VALUES
-  ('GRAND', 50000000, 50000000, 50, NOW()),
-  ('MAJOR',  5000000,  5000000, 25, NOW()),
-  ('MINOR',   500000,   500000, 15, NOW()),
-  ('MINI',     50000,    50000, 10, NOW())
+  ('GRAND', 500000, 500000, 50, NOW()),   -- 5 000 AZN
+  ('MAJOR', 100000, 100000, 25, NOW()),   -- 1 000 AZN
+  ('MINOR',  20000,  20000, 15, NOW()),   --   200 AZN
+  ('MINI',    5000,   5000, 10, NOW())    --    50 AZN
 ON CONFLICT ("tier") DO NOTHING;
 
 -- ── магазин кодов ───────────────────────────────────────────────────────
