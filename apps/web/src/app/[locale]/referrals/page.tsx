@@ -3,10 +3,8 @@ import { getTranslations } from 'next-intl/server';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
-import { ReferralCodeCard } from '@/features/referrals/components/ReferralCodeCard';
-import { ReferralStats } from '@/features/referrals/components/ReferralStats';
+import { ReferralDashboard } from '@/features/referrals/components/ReferralDashboard';
 import { EarningsSection } from '@/features/referrals/components/EarningsSection';
-import { ReferralsSection } from '@/features/referrals/components/ReferralsSection';
 import { getServerUser } from '@/lib/api/server';
 import { referralsApi } from '@/lib/api/referrals';
 
@@ -34,7 +32,7 @@ export default async function ReferralsPage({ params }: ReferralsPageProps): Pro
   const [summary, earnings, referrals] = await Promise.all([
     referralsApi.me(cookieHeader),
     referralsApi.earnings({ cookieHeader, limit: 20 }),
-    referralsApi.list({ cookieHeader, limit: 20 }),
+    referralsApi.list({ cookieHeader, limit: 50 }),
   ]);
 
   const h = headers();
@@ -47,28 +45,31 @@ export default async function ReferralsPage({ params }: ReferralsPageProps): Pro
 
   return (
     <AppShell locale={params.locale}>
-      <h1 className="text-2xl font-bold text-text-primary">{t('pageTitle')}</h1>
-      <p className="mt-1 text-sm text-text-secondary">{t('pageSubtitle')}</p>
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-6">
-          <ReferralCodeCard code={summary.referralCode} shareUrl={shareUrl} />
-          <ReferralsSection
-            locale={params.locale}
-            initialItems={referrals.items}
-            initialCursor={referrals.nextCursor}
-          />
-          <EarningsSection
-            locale={params.locale}
-            initialItems={earnings.items}
-            initialCursor={earnings.nextCursor}
-          />
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-xl ring-1 ring-brand/25"
+        >
+          👥
+        </span>
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">{t('pageTitle')}</h1>
+          <p className="text-sm text-text-secondary">{t('pageSubtitle')}</p>
         </div>
-        <aside>
-          <ReferralStats
-            referralsCount={summary.referralsCount}
-            totalEarningsMinor={summary.totalEarningsMinor}
-          />
-        </aside>
+      </div>
+
+      <div className="mt-6 space-y-4">
+        <ReferralDashboard
+          summary={summary}
+          referrals={referrals.items}
+          shareUrl={shareUrl}
+          locale={params.locale}
+        />
+        <EarningsSection
+          locale={params.locale}
+          initialItems={earnings.items}
+          initialCursor={earnings.nextCursor}
+        />
       </div>
     </AppShell>
   );

@@ -7,6 +7,12 @@ export interface ReferralSummaryDto {
   referralsCount: number;
   totalEarningsMinor: string;
   rates: { fromLossBps: number; fromDepositBps: number };
+  /** Рефералы, дошедшие до первого пополнения. */
+  ftdCount: number;
+  depositsCount: number;
+  depositsMinor: string;
+  /** Суммарный оборот приглашённых игроков. */
+  wageredMinor: string;
 }
 
 export interface ReferralEarningDto {
@@ -33,6 +39,8 @@ export interface ReferralUserDto {
   createdAt: string;
   totalWageredMinor: string;
   earnedFromMinor: string;
+  depositsMinor: string;
+  depositsCount: number;
 }
 
 export interface ReferralsPageDto {

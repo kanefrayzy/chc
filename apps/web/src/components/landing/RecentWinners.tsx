@@ -16,7 +16,7 @@ type Filter = 'all' | 'big';
 
 /** Ставки с множителем от ×5 считаем «крупными» — они и есть самое интересное в ленте. */
 const BIG_MULTIPLIER_BPS = 50_000;
-const FEED_LIMIT = 12;
+const FEED_LIMIT = 15;
 
 function initials(name: string): string {
   const cleaned = name.replace(/[^a-zA-Zа-яА-Я0-9]/g, '');
@@ -35,6 +35,7 @@ const GAME_BADGE: Record<RecentWinnerDto['game'], { label: string; cls: string }
   roulette: { label: 'Roulette', cls: 'bg-brand/15 text-brand' },
   mines: { label: 'Mines', cls: 'bg-accent-purple/15 text-accent-purple' },
   classic: { label: 'Classic', cls: 'bg-warning/15 text-warning' },
+  lottery: { label: 'Лотерея', cls: 'bg-info/15 text-info' },
 };
 
 /** Чем больше множитель, тем ярче подсветка — крупные выигрыши видно сразу. */
@@ -108,12 +109,21 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
     };
     socket.on('roulette:winners', handler);
 
+    // Лента живёт и без ставок (боты появляются по времени) — периодически обновляем
+    const poll = setInterval(() => {
+      rouletteApi
+        .recentWinners(FEED_LIMIT)
+        .then((res) => apply(res.items))
+        .catch(() => undefined);
+    }, 30_000);
+
     // Пересчёт «сколько времени назад» без перезапроса данных
     const timer = setInterval(() => setNow(Date.now()), 30_000);
 
     return () => {
       cancelled = true;
       socket.off('roulette:winners', handler);
+      clearInterval(poll);
       clearInterval(timer);
     };
   }, []);
@@ -144,48 +154,50 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
   }, [winners]);
 
   return (
-    <aside
+    <section
       aria-labelledby="recent-winners-title"
-      className="h-fit rounded-2xl border border-border bg-bg-card p-4 sm:p-5"
+      className="mt-8 rounded-2xl border border-border bg-bg-card p-4 sm:mt-10 sm:p-5"
     >
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h3
-          id="recent-winners-title"
-          className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-text-secondary"
-        >
-          <TrophyIcon className="h-4 w-4 text-brand" />
-          {t('title')}
-        </h3>
-        <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-text-muted">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-75" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
-          </span>
-          live
-        </span>
-      </div>
-
-      {/* Фильтр: вся лента или только крупные множители */}
-      <div className="mb-3 flex gap-1 rounded-lg border border-border bg-bg-base/70 p-0.5">
-        {([
-          { id: 'all' as const, label: 'Все' },
-          { id: 'big' as const, label: `Крупные${bigCount > 0 ? ` · ${bigCount}` : ''}` },
-        ]).map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setFilter(tab.id)}
-            aria-pressed={filter === tab.id}
-            className={[
-              'flex-1 rounded-md py-1.5 text-[11px] font-semibold transition-colors',
-              filter === tab.id
-                ? 'bg-bg-card-hover text-text-primary'
-                : 'text-text-muted hover:text-text-secondary',
-            ].join(' ')}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <h2
+            id="recent-winners-title"
+            className="flex items-center gap-2 text-base font-bold text-text-primary sm:text-lg"
           >
-            {tab.label}
-          </button>
-        ))}
+            <TrophyIcon className="h-5 w-5 text-brand" />
+            {t('title')}
+          </h2>
+          <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-text-muted">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
+            </span>
+            live
+          </span>
+        </div>
+
+        {/* Фильтр: вся лента или только крупные множители */}
+        <div className="flex gap-1 rounded-lg border border-border bg-bg-base/70 p-0.5">
+          {([
+            { id: 'all' as const, label: 'Все' },
+            { id: 'big' as const, label: `Крупные${bigCount > 0 ? ` · ${bigCount}` : ''}` },
+          ]).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setFilter(tab.id)}
+              aria-pressed={filter === tab.id}
+              className={[
+                'rounded-md px-3 py-1.5 text-[11px] font-semibold transition-colors',
+                filter === tab.id
+                  ? 'bg-bg-card-hover text-text-primary'
+                  : 'text-text-muted hover:text-text-secondary',
+              ].join(' ')}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {visible.length === 0 ? (
@@ -193,20 +205,20 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
           {filter === 'big' ? 'Пока нет крупных выигрышей' : t('empty')}
         </div>
       ) : (
-        <ul className="space-y-1.5">
+        <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((w, idx) => {
             const k = keyOf(w);
             const isFresh = freshKeys.has(k);
             const isTop = k === topKey;
-            const badge = GAME_BADGE[w.game];
+            const badge = GAME_BADGE[w.game] ?? GAME_BADGE.roulette;
             return (
               <li
                 key={k}
                 className={[
-                  'flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition-all duration-500',
+                  'flex items-center gap-2.5 rounded-lg border px-2 py-2 transition-all duration-500',
                   isFresh
-                    ? 'bg-brand/10 ring-1 ring-brand/30'
-                    : 'hover:bg-bg-card-hover',
+                    ? 'border-brand/30 bg-brand/10'
+                    : 'border-transparent bg-bg-base/40 hover:bg-bg-card-hover',
                 ].join(' ')}
               >
                 <div className="relative shrink-0">
@@ -243,7 +255,7 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
                     <span className="truncate text-sm font-semibold text-text-primary">
                       {w.username}
                     </span>
-                    <span className="shrink-0 text-[10px] text-text-muted">
+                    <span className="shrink-0 text-[10px] text-text-muted" suppressHydrationWarning>
                       {timeAgo(w.createdAt, now)}
                     </span>
                   </div>
@@ -287,11 +299,11 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
 
       <Link
         href={`${localePrefix}/roulette`}
-        className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-elevated px-3 py-2 text-xs font-semibold text-text-secondary transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+        className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-elevated px-3 py-2.5 text-xs font-semibold text-text-secondary transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
       >
         {t('viewAll')}
         <ArrowRightIcon className="h-3.5 w-3.5" />
       </Link>
-    </aside>
+    </section>
   );
 }

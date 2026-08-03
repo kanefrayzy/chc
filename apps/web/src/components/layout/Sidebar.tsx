@@ -62,6 +62,14 @@ async function buildSections(locale: string): Promise<SidebarSection[]> {
     icon: <DiceIcon className={ICON_CLS} />,
     badge: 'LIVE',
   });
+  if (settings['gameplay.lottery_enabled'] ?? true) {
+    games.push({
+      href: '/lottery',
+      label: tNav('lottery'),
+      icon: <GiftIcon className={ICON_CLS} />,
+      badge: 'NEW',
+    });
+  }
   games.push({
     href: '/cases',
     label: tNav('cases'),
@@ -70,11 +78,16 @@ async function buildSections(locale: string): Promise<SidebarSection[]> {
     disabled: true,
   });
   games.push({
+    href: '/codes',
+    label: tNav('buyCode'),
+    icon: <TicketIcon className={ICON_CLS} />,
+    badge: 'NEW',
+  });
+  games.push({
     href: '/play',
     label: tSidebar('insertCode'),
     icon: <TicketIcon className={ICON_CLS} />,
     action: 'code',
-    badge: 'NEW',
   });
   if (settings['gameplay.ranks_enabled']) {
     games.push({

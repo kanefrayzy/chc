@@ -41,6 +41,12 @@ const NAV: NavItem[] = [
     moderatorHidden: true,
   },
   {
+    href: '/code-shop',
+    label: 'Магазин кодов',
+    icon: <Icon d="M4 7h16l-1 12H5L4 7zM9 7V5a3 3 0 016 0v2M9 12h6" />,
+    moderatorHidden: true,
+  },
+  {
     href: '/withdrawals',
     label: 'Выводы',
     icon: <Icon d="M12 2v20M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 010 7H6" />,
@@ -90,6 +96,12 @@ const NAV: NavItem[] = [
     href: '/classic',
     label: 'Классический',
     icon: <Icon d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83M12 8a4 4 0 100 8 4 4 0 000-8z" />,
+    superAdminOnly: true,
+  },
+  {
+    href: '/jackpot',
+    label: 'Джекпот',
+    icon: <Icon d="M8 21h8M12 17v4M6 4h12v4a6 6 0 01-12 0V4zM6 6H4a2 2 0 000 4h2M18 6h2a2 2 0 010 4h-2" />,
     superAdminOnly: true,
   },
   {

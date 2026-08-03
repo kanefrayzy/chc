@@ -3,6 +3,7 @@ import { apiFetch } from './client';
 export interface PublicSettings {
   'gameplay.roulette_enabled': boolean;
   'gameplay.mines_enabled': boolean;
+  'gameplay.lottery_enabled': boolean;
   'gameplay.referrals_enabled': boolean;
   'gameplay.chat_enabled': boolean;
   'gameplay.ranks_enabled': boolean;
@@ -46,6 +47,7 @@ export interface PublicSettings {
 const DEFAULTS: PublicSettings = {
   'gameplay.roulette_enabled': true,
   'gameplay.mines_enabled': true,
+  'gameplay.lottery_enabled': true,
   'gameplay.referrals_enabled': true,
   'gameplay.chat_enabled': true,
   'gameplay.ranks_enabled': true,

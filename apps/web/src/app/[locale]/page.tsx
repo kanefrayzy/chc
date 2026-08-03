@@ -4,8 +4,11 @@ import { GameTiles } from '@/components/landing/GameTiles';
 import { FeaturesFooter, type FeatureItem } from '@/components/landing/FeaturesFooter';
 import { RecentWinners } from '@/components/landing/RecentWinners';
 import { TelegramBanner } from '@/components/landing/TelegramBanner';
+import { ProgressiveJackpot } from '@/components/landing/ProgressiveJackpot';
+import { LastBigWin } from '@/components/landing/LastBigWin';
 import { getServerUser } from '@/lib/api/server';
 import { getPublicSettings } from '@/lib/api/settings';
+import { progressiveApi } from '@/lib/api/progressive';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +24,12 @@ export default async function HomePage({
 }: {
   params: { locale: string };
 }): Promise<JSX.Element> {
-  const [user, settings] = await Promise.all([getServerUser(), getPublicSettings()]);
+  const [user, settings, jackpots] = await Promise.all([
+    getServerUser(),
+    getPublicSettings(),
+    // Витрина не должна ронять главную, если джекпот недоступен
+    progressiveApi.list().catch(() => ({ items: [] })),
+  ]);
   const isAuthed = Boolean(user);
   const telegramUrl = settings['brand.social_telegram'] || '';
   const telegramLabel = settings['brand.social_telegram_label'] || '';
@@ -30,12 +38,12 @@ export default async function HomePage({
     <AppShell locale={params.locale}>
       <Hero locale={params.locale} isAuthed={isAuthed} />
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="min-w-0">
-          <GameTiles locale={params.locale} />
-        </div>
-        <RecentWinners locale={params.locale} />
-      </div>
+      <ProgressiveJackpot initialItems={jackpots.items} />
+      <LastBigWin locale={params.locale} />
+
+      <GameTiles locale={params.locale} />
+
+      <RecentWinners locale={params.locale} />
 
       <TelegramBanner href={telegramUrl} label={telegramLabel} />
 

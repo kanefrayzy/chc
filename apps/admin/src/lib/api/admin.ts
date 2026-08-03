@@ -199,6 +199,61 @@ export interface PayoutStatusInfo {
   updatedAt: string | null;
 }
 
+// ─── Code shop ───────────────────────────────────────────────────────────
+
+export interface AdminCodeProduct {
+  id: string;
+  name: string;
+  denominationMinor: string;
+  priceMinor: string;
+  description: string | null;
+  displayOrder: number;
+  enabled: boolean;
+  stock: number;
+  soldCount: number;
+}
+
+export interface AdminCodeItem {
+  id: string;
+  code: string;
+  status: 'AVAILABLE' | 'SOLD' | 'DISABLED';
+  soldTo: string | null;
+  soldAt: string | null;
+}
+
+export interface AdminCodeSale {
+  id: string;
+  code: string;
+  productName: string;
+  denominationMinor: string;
+  priceMinor: string;
+  username: string | null;
+  soldAt: string | null;
+}
+
+// ─── Progressive jackpot ─────────────────────────────────────────────────
+
+export type JackpotTier = 'GRAND' | 'MAJOR' | 'MINOR' | 'MINI';
+
+export interface AdminJackpotRow {
+  tier: JackpotTier;
+  seedMinor: string;
+  currentMinor: string;
+  contributionBps: number;
+  enabled: boolean;
+  lastWinnerName: string | null;
+  lastWinMinor: string;
+  lastWonAt: string | null;
+}
+
+export interface AdminJackpotWin {
+  id: string;
+  tier: JackpotTier;
+  username: string | null;
+  amountMinor: string;
+  createdAt: string;
+}
+
 // ─── Tickets ─────────────────────────────────────────────────────────────
 
 export type TicketStatus = 'OPEN' | 'WAITING_USER' | 'WAITING_MODERATOR' | 'CLOSED';
@@ -380,6 +435,73 @@ export const adminApi = {
       apiFetch<AdminWithdrawalRow>(`/admin/withdrawals/${id}/reject`, { method: 'POST', body }),
     payoutStatus: (id: string) =>
       apiFetch<PayoutStatusInfo>(`/admin/withdrawals/${id}/payout-status`, { method: 'POST' }),
+  },
+
+  codeShop: {
+    products: (opts?: FetchOptions) =>
+      apiFetch<{ items: AdminCodeProduct[] }>('/admin/code-shop/products', { ...withCookie(opts) }),
+    createProduct: (body: {
+      name: string;
+      denominationMinor: string;
+      priceMinor: string;
+      description?: string;
+      displayOrder?: number;
+      enabled?: boolean;
+    }) => apiFetch<{ id: string }>('/admin/code-shop/products', { method: 'POST', body }),
+    updateProduct: (
+      id: string,
+      body: Partial<{
+        name: string;
+        denominationMinor: string;
+        priceMinor: string;
+        description: string | null;
+        displayOrder: number;
+        enabled: boolean;
+      }>,
+    ) => apiFetch<{ ok: true }>(`/admin/code-shop/products/${id}`, { method: 'PATCH', body }),
+    deleteProduct: (id: string) =>
+      apiFetch<{ ok: true }>(`/admin/code-shop/products/${id}`, { method: 'DELETE' }),
+    addCodes: (id: string, codes: string) =>
+      apiFetch<{ added: number; skipped: number }>(`/admin/code-shop/products/${id}/codes`, {
+        method: 'POST',
+        body: { codes },
+      }),
+    listCodes: (id: string, status?: 'AVAILABLE' | 'SOLD') =>
+      apiFetch<{ items: AdminCodeItem[] }>(
+        `/admin/code-shop/products/${id}/codes${status ? `?status=${status}` : ''}`,
+      ),
+    deleteCode: (id: string) =>
+      apiFetch<{ ok: true }>(`/admin/code-shop/codes/${id}`, { method: 'DELETE' }),
+    sales: (params: { limit?: number; cursor?: string } = {}, opts?: FetchOptions) => {
+      const qs = new URLSearchParams();
+      if (params.limit) qs.set('limit', String(params.limit));
+      if (params.cursor) qs.set('cursor', params.cursor);
+      const q = qs.toString();
+      return apiFetch<Page<AdminCodeSale>>(`/admin/code-shop/sales${q ? `?${q}` : ''}`, {
+        ...withCookie(opts),
+      });
+    },
+  },
+
+  progressive: {
+    list: (opts?: FetchOptions) =>
+      apiFetch<{ items: AdminJackpotRow[] }>('/admin/progressive', { ...withCookie(opts) }),
+    wins: (opts?: FetchOptions) =>
+      apiFetch<{ items: AdminJackpotWin[] }>('/admin/progressive/wins', { ...withCookie(opts) }),
+    update: (
+      tier: string,
+      body: Partial<{
+        seedMinor: string;
+        currentMinor: string;
+        contributionBps: number;
+        enabled: boolean;
+      }>,
+    ) => apiFetch<{ ok: true }>(`/admin/progressive/${tier}`, { method: 'PATCH', body }),
+    award: (tier: string, userId: string) =>
+      apiFetch<{ id: string; tier: string; username: string; amountMinor: string }>(
+        `/admin/progressive/${tier}/award`,
+        { method: 'POST', body: { userId } },
+      ),
   },
 
   tickets: {

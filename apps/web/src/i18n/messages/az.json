@@ -79,7 +79,9 @@
     "chat": "Söhbət",
     "deposit": "Depozit",
     "withdraw": "Çıxarış",
-    "profile": "Profil"
+    "profile": "Profil",
+    "lottery": "Lotereya",
+    "buyCode": "Kod al"
   },
   "hero": {
     "badge": "Saniyələr içində ödəniş · Ədalətli oyun",
@@ -186,7 +188,9 @@
         "withdrawal": "Çıxarış",
         "code": "Kod alışı"
       },
-      "errors": { "loadFailed": "Tarixçəni yükləmək alınmadı." }
+      "errors": {
+        "loadFailed": "Tarixçəni yükləmək alınmadı."
+      }
     },
     "overview": {
       "title": "İcmal",
@@ -257,20 +261,24 @@
       "empty": "Hələ doldurma yoxdur.",
       "loadMore": "Daha çox yüklə",
       "loading": "Yüklənir…",
-      "errors": { "loadFailed": "Doldurma siyahısını yükləmək alınmadı." }
+      "errors": {
+        "loadFailed": "Doldurma siyahısını yükləmək alınmadı."
+      }
     },
     "card": {
       "provider": "Provayder",
       "payNow": "Ödənişə keçid",
       "address": "Köçürmə üçün ünvan",
-      "expectedAmount": "Ödənilməli",      "timeLeft": "Qalan vaxt",
+      "expectedAmount": "Ödənilməli",
+      "timeLeft": "Qalan vaxt",
       "expired": "Müddəti keçib",
       "copy": "Kopyala",
       "copied": "Kopyalandı!",
       "cardTitle": "Köçürmə üçün kart nömrəsi",
       "transferAmount": "Dəqiq məbləği köçürün",
       "transferHint": "Dəqiq məbləği köçürün — əks halda ödəniş keçməyəcək.",
-      "autoCredit": "Hesablama 1–5 dəqiqə ərzində avtomatik baş verir.",      "status": {
+      "autoCredit": "Hesablama 1–5 dəqiqə ərzində avtomatik baş verir.",
+      "status": {
         "PENDING": "Yaradıldı",
         "PROCESSING": "İşlənir",
         "COMPLETED": "Hesablandı",
@@ -312,7 +320,9 @@
       "empty": "Hələ çıxarış müraciəti yoxdur.",
       "loadMore": "Daha çox yüklə",
       "loading": "Yüklənir…",
-      "errors": { "loadFailed": "Müraciət siyahısını yükləmək alınmadı." }
+      "errors": {
+        "loadFailed": "Müraciət siyahısını yükləmək alınmadı."
+      }
     },
     "card": {
       "method": "Üsul",
@@ -335,7 +345,9 @@
     "list": {
       "title": "Mənim müraciətlərim",
       "empty": "Hələ müraciətiniz yoxdur.",
-      "errors": { "loadFailed": "Çat siyahısı yüklənmədi." }
+      "errors": {
+        "loadFailed": "Çat siyahısı yüklənmədi."
+      }
     },
     "thread": {
       "empty": "Hələ mesaj yoxdur.",
