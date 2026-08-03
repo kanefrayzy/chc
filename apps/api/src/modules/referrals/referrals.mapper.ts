@@ -36,6 +36,12 @@ export interface ReferralSummaryDto {
   referralsCount: number;
   totalEarningsMinor: string;
   rates: { fromLossBps: number; fromDepositBps: number };
+  /** Сколько рефералов дошли до первого пополнения. */
+  ftdCount: number;
+  depositsCount: number;
+  depositsMinor: string;
+  /** Суммарный оборот приглашённых игроков. */
+  wageredMinor: string;
 }
 
 export interface ReferralUser {
@@ -44,6 +50,8 @@ export interface ReferralUser {
   createdAt: Date;
   totalWageredMinor: bigint;
   earnedFromMinor: bigint;
+  depositsMinor: bigint;
+  depositsCount: number;
 }
 
 export interface PublicReferralDto {
@@ -52,6 +60,8 @@ export interface PublicReferralDto {
   createdAt: string;
   totalWageredMinor: string;
   earnedFromMinor: string;
+  depositsMinor: string;
+  depositsCount: number;
 }
 
 export function toPublicReferral(r: ReferralUser): PublicReferralDto {
@@ -61,5 +71,7 @@ export function toPublicReferral(r: ReferralUser): PublicReferralDto {
     createdAt: r.createdAt.toISOString(),
     totalWageredMinor: minorToJson(r.totalWageredMinor),
     earnedFromMinor: minorToJson(r.earnedFromMinor),
+    depositsMinor: minorToJson(r.depositsMinor),
+    depositsCount: r.depositsCount,
   };
 }

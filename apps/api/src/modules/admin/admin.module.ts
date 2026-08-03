@@ -21,6 +21,7 @@ import { AdminRouletteController } from './admin-roulette.controller';
 import { AdminMinesController } from './admin-mines.controller';
 import { AdminTranslationsController } from './admin-translations.controller';
 import { AdminExchangeRatesController } from './admin-exchange-rates.controller';
+import { AdminProgressiveController } from './admin-progressive.controller';
 
 @Module({
   imports: [AuthModule, RanksModule, PaymentMethodsModule, WithdrawalsModule],
@@ -38,6 +39,7 @@ import { AdminExchangeRatesController } from './admin-exchange-rates.controller'
     AdminMinesController,
     AdminTranslationsController,
     AdminExchangeRatesController,
+    AdminProgressiveController,
   ],
   providers: [
     AdminAuditService,

@@ -14,6 +14,7 @@ import { ReferralsService } from '../referrals/referrals.service';
 import { RanksService } from '../ranks/ranks.service';
 import { SettingsService } from '../settings/settings.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { ProgressiveService } from '../progressive/progressive.service';
 import {
   CLASSIC_DEFAULT_COMMISSION_BPS,
   CLASSIC_DEFAULT_MAX_BET,
@@ -58,6 +59,7 @@ export class ClassicService implements OnModuleInit, OnModuleDestroy {
     private readonly ranks: RanksService,
     private readonly settings: SettingsService,
     private readonly realtime: RealtimeGateway,
+    private readonly progressive: ProgressiveService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -278,6 +280,9 @@ export class ClassicService implements OnModuleInit, OnModuleDestroy {
       this.countdownStartedAt = new Date();
       this.scheduleNextTick(result.round);
     }
+
+    // Отчисление в прогрессивные копилки — после коммита ставки.
+    void this.progressive.contribute(amountMinor);
 
     // Эмит «новой ставки» и обновлённого раунда в комнату
     void this.emitState();

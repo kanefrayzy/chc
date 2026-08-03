@@ -73,6 +73,27 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     isPublic: true,
     description: 'Включает мини-игру Mines',
   },
+  {
+    key: 'gameplay.lottery_enabled',
+    type: 'boolean',
+    defaultValue: true,
+    isPublic: true,
+    description: 'Включает моментальную лотерею «три в ряд»',
+  },
+  {
+    key: 'lottery.bet_minor',
+    type: 'string',
+    defaultValue: '50',
+    isPublic: true,
+    description: 'Цена лотерейного билета в qəpik (50 = 0.50 AZN). Призы масштабируются автоматически',
+  },
+  {
+    key: 'winners.bots_enabled',
+    type: 'boolean',
+    defaultValue: true,
+    isPublic: true,
+    description: 'Разбавлять ленту последних выигрышей ботами, когда реальных мало',
+  },
   // ─── Лимиты по деньгам ────────────────────────────────────────────────
   {
     key: 'deposit.min_amount_minor',

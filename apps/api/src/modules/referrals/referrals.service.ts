@@ -315,13 +315,71 @@ export class ReferralsService {
       grouped.map((g) => [g.referredId, g._sum.earningMinor ?? 0n]),
     );
 
+    // Депозиты каждого реферала — их видно в таблице «Ваши рефералы».
+    const deposits = await this.prisma.deposit.groupBy({
+      by: ['userId'],
+      where: { userId: { in: users.map((u) => u.id) }, status: 'COMPLETED' },
+      _sum: { amountMinor: true },
+      _count: { _all: true },
+    });
+    const depositMap = new Map(
+      deposits.map((d) => [d.userId, { sum: d._sum.amountMinor ?? 0n, count: d._count._all }]),
+    );
+
     const items = users.map((u) => ({
       id: u.id,
       username: u.username,
       createdAt: u.createdAt,
       totalWageredMinor: u.totalWageredMinor,
       earnedFromMinor: earnedMap.get(u.id) ?? 0n,
+      depositsMinor: depositMap.get(u.id)?.sum ?? 0n,
+      depositsCount: depositMap.get(u.id)?.count ?? 0,
     }));
     return { items, nextCursor };
+  }
+
+  /**
+   * Расширенная сводка для партнёрской страницы: сколько приглашено, сколько
+   * из них дошли до первого депозита (FTD), их суммарные пополнения и оборот.
+   */
+  async getDetailedSummary(userId: string) {
+    const base = await this.getSummary(userId);
+
+    const referrals = await this.prisma.user.findMany({
+      where: { referredById: userId },
+      select: { id: true, totalWageredMinor: true },
+    });
+    const ids = referrals.map((r) => r.id);
+
+    const wageredMinor = referrals.reduce((sum, r) => sum + r.totalWageredMinor, 0n);
+
+    if (ids.length === 0) {
+      return {
+        ...base,
+        ftdCount: 0,
+        depositsCount: 0,
+        depositsMinor: 0n,
+        wageredMinor: 0n,
+      };
+    }
+
+    const deposits = await this.prisma.deposit.groupBy({
+      by: ['userId'],
+      where: { userId: { in: ids }, status: 'COMPLETED' },
+      _sum: { amountMinor: true },
+      _count: { _all: true },
+    });
+
+    const depositsMinor = deposits.reduce((sum, d) => sum + (d._sum.amountMinor ?? 0n), 0n);
+    const depositsCount = deposits.reduce((sum, d) => sum + d._count._all, 0);
+
+    return {
+      ...base,
+      // FTD — игроки, у которых есть хотя бы одно завершённое пополнение
+      ftdCount: deposits.length,
+      depositsCount,
+      depositsMinor,
+      wageredMinor,
+    };
   }
 }

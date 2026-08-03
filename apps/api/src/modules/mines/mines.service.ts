@@ -13,6 +13,7 @@ import { RanksService } from '../ranks/ranks.service';
 import { SettingsService } from '../settings/settings.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { RouletteService } from '../roulette/roulette.service';
+import { ProgressiveService } from '../progressive/progressive.service';
 import {
   MINES_DEFAULT_HOUSE_EDGE_BPS,
   MINES_MAX_MINES,
@@ -43,6 +44,7 @@ export class MinesService {
     private readonly settings: SettingsService,
     private readonly realtime: RealtimeGateway,
     private readonly roulette: RouletteService,
+    private readonly progressive: ProgressiveService,
   ) {}
 
   // ────────────────────────── PUBLIC API ──────────────────────────
@@ -186,6 +188,9 @@ export class MinesService {
       }
       throw err;
     });
+
+    // Отчисление в прогрессивные копилки — после коммита ставки.
+    void this.progressive.contribute(amountMinor);
 
     const dto = toPublicMinesGame(game, houseEdgeBps);
     this.emitState(userId, dto);

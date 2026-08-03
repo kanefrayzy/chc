@@ -43,6 +43,26 @@ function formatTime(iso: string | null | undefined): string {
   return d.toLocaleDateString('ru', { day: 'numeric', month: 'short' });
 }
 
+/**
+ * Вкладки списка. «В работе» — диалог живёт, но ответа от нас не ждут:
+ * либо мы уже ответили (WAITING_USER), либо тикет просто открыт.
+ */
+type StatusTab = 'all' | 'waiting' | 'active' | 'closed';
+
+const STATUS_TABS: { id: StatusTab; label: string }[] = [
+  { id: 'all', label: 'Все' },
+  { id: 'waiting', label: 'Ждут ответа' },
+  { id: 'active', label: 'В работе' },
+  { id: 'closed', label: 'Закрытые' },
+];
+
+function matchesTab(status: string, tab: StatusTab): boolean {
+  if (tab === 'all') return status !== 'CLOSED';
+  if (tab === 'waiting') return status === 'WAITING_MODERATOR';
+  if (tab === 'active') return status === 'OPEN' || status === 'WAITING_USER';
+  return status === 'CLOSED';
+}
+
 interface PanelData {
   ticket: AdminTicketRow;
   messages: AdminMessage[];
@@ -59,7 +79,7 @@ export function TicketsDashboard({ initialTickets }: TicketsDashboardProps) {
   const [panelData, setPanelData] = useState<PanelData | null>(null);
   const [panelLoading, setPanelLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [showClosed, setShowClosed] = useState(false);
+  const [tab, setTab] = useState<StatusTab>('all');
   // Balance shown in header (updates after adjust)
   const [panelBalance, setPanelBalance] = useState<string | null>(null);
   // External action trigger for TicketConversation forms
@@ -137,7 +157,7 @@ export function TicketsDashboard({ initialTickets }: TicketsDashboardProps) {
 
   const searchLower = search.trim().toLowerCase();
   const filtered = tickets.filter((t) => {
-    if (!showClosed && t.status === 'CLOSED') return false;
+    if (!matchesTab(t.status, tab)) return false;
     if (!searchLower) return true;
     return (
       (t.username ?? '').toLowerCase().includes(searchLower) ||
@@ -145,6 +165,13 @@ export function TicketsDashboard({ initialTickets }: TicketsDashboardProps) {
       t.id.includes(searchLower)
     );
   });
+
+  const tabCounts: Record<StatusTab, number> = {
+    all: tickets.filter((t) => matchesTab(t.status, 'all')).length,
+    waiting: tickets.filter((t) => matchesTab(t.status, 'waiting')).length,
+    active: tickets.filter((t) => matchesTab(t.status, 'active')).length,
+    closed: tickets.filter((t) => matchesTab(t.status, 'closed')).length,
+  };
 
   const handleAction = (type: 'block' | 'credit' | 'debit') => {
     setActionType(type);
@@ -169,6 +196,32 @@ export function TicketsDashboard({ initialTickets }: TicketsDashboardProps) {
             placeholder="Поиск..."
             className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border text-ink-900 placeholder-ink-400 outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
           />
+          {/* Статусы: переключение без перезагрузки — список уже в памяти */}
+          <div className="flex items-center gap-0.5 rounded-lg border border-border bg-surface p-0.5">
+            {STATUS_TABS.map((opt) => {
+              const count = tabCounts[opt.id];
+              const active = tab === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setTab(opt.id)}
+                  aria-pressed={active}
+                  title={opt.label}
+                  className={cn(
+                    'flex-1 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors truncate',
+                    active
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-ink-500 hover:bg-elevated hover:text-ink-900',
+                  )}
+                >
+                  {opt.label}
+                  {count > 0 && <span className="ml-1 opacity-60">{count}</span>}
+                </button>
+              );
+            })}
+          </div>
+
           <div className="flex items-center justify-between text-xs text-ink-500">
             <span>
               {unreadCount > 0 && (
@@ -178,15 +231,6 @@ export function TicketsDashboard({ initialTickets }: TicketsDashboardProps) {
               )}
               {filtered.length} диалогов
             </span>
-            <button
-              onClick={() => setShowClosed((v) => !v)}
-              className={cn(
-                'text-xs transition-colors',
-                showClosed ? 'text-primary' : 'text-ink-400 hover:text-ink-600',
-              )}
-            >
-              {showClosed ? '✓ Закрытые' : 'Закрытые'}
-            </button>
           </div>
         </div>
 

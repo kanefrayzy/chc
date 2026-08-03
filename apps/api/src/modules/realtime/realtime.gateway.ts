@@ -196,4 +196,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   emitClassic(event: string, payload: unknown): void {
     this.server.to(CLASSIC_ROOM).emit(event, payload);
   }
+
+  /** Всем подключённым — для витринных данных вроде джекпота и ленты выигрышей. */
+  emitAll(event: string, payload: unknown): void {
+    this.server.emit(event, payload);
+  }
 }

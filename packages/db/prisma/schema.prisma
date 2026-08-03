@@ -74,6 +74,9 @@ model User {
   auditLogs       AuditLog[]
   referralEarnings ReferralEarning[] @relation("EarningReferrer")
   referralFromMe   ReferralEarning[] @relation("EarningReferred")
+  lotteryTickets   LotteryTicket[]
+  boughtCodes      CodeItem[]
+  progressiveWins  ProgressiveJackpotWin[]
 
   @@index([email])
   @@index([username])
@@ -116,6 +119,8 @@ enum TransactionType {
   JACKPOT_BET
   JACKPOT_WIN
   JACKPOT_COMMISSION
+  PROGRESSIVE_WIN
+  CODE_SHOP_BUY
 }
 
 enum TransactionStatus {
@@ -624,4 +629,111 @@ model AppSetting {
   key       String   @id
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+// =========================================================
+// PROGRESSIVE JACKPOT (4 копилки, растут с каждой ставки)
+// =========================================================
+
+enum ProgressiveTier {
+  GRAND
+  MAJOR
+  MINOR
+  MINI
+}
+
+/// Одна копилка. Пополняется долей от каждой ставки (contributionBps),
+/// после розыгрыша откатывается к seedMinor. Строк ровно четыре.
+model ProgressiveJackpot {
+  tier            ProgressiveTier @id
+  seedMinor       BigInt          @default(0)  // стартовая сумма после срыва
+  currentMinor    BigInt          @default(0)
+  contributionBps Int             @default(0)  // доля ставки в этот пул
+  enabled         Boolean         @default(true)
+  lastWonAt       DateTime?
+  lastWinnerName  String?
+  lastWinMinor    BigInt          @default(0)
+  updatedAt       DateTime        @updatedAt
+}
+
+model ProgressiveJackpotWin {
+  id                   String          @id @default(cuid())
+  tier                 ProgressiveTier
+  userId               String
+  user                 User            @relation(fields: [userId], references: [id])
+  amountMinor          BigInt
+  awardedByModeratorId String?
+  createdAt            DateTime        @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+}
+
+// =========================================================
+// CODE SHOP (магазин готовых кодов стороннего казино)
+// =========================================================
+
+/// Номинал в продаже: «Код 5 AZN». Цена задаётся отдельно от номинала,
+/// чтобы можно было делать скидку или наценку без перезаливки кодов.
+model CodeProduct {
+  id                String     @id @default(cuid())
+  name              String
+  denominationMinor BigInt                          // номинал кода
+  priceMinor        BigInt                          // сколько списываем с баланса
+  description       String?
+  iconUrl           String?
+  displayOrder      Int        @default(0)
+  enabled           Boolean    @default(true)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  items             CodeItem[]
+
+  @@index([enabled, displayOrder])
+}
+
+enum CodeItemStatus {
+  AVAILABLE
+  SOLD
+  DISABLED
+}
+
+model CodeItem {
+  id         String         @id @default(cuid())
+  productId  String
+  product    CodeProduct    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  code       String
+  status     CodeItemStatus @default(AVAILABLE)
+  soldToId   String?
+  soldTo     User?          @relation(fields: [soldToId], references: [id])
+  soldAt     DateTime?
+  priceMinor BigInt?                                // цена на момент продажи
+  createdAt  DateTime       @default(now())
+
+  @@unique([productId, code])
+  @@index([productId, status])
+  @@index([soldToId, soldAt])
+}
+
+// =========================================================
+// LOTTERY (моментальная лотерея «три в ряд»)
+// =========================================================
+
+model LotteryTicket {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  betMinor       BigInt
+  prizeMinor     BigInt   @default(0)
+  symbols        Int[]                    // 9 индексов призовых уровней
+  winningSymbol  Int?                     // индекс уровня, если выпало три в ряд
+  // provably fair
+  serverSeed     String
+  serverSeedHash String
+  clientSeed     String
+  nonce          Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }

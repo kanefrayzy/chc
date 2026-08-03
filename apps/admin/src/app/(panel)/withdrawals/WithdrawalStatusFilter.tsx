@@ -7,7 +7,6 @@ const OPTIONS: { value: string; label: string }[] = [
   { value: 'PENDING', label: 'Ожидают' },
   { value: 'PROCESSING', label: 'В процессе' },
   { value: 'COMPLETED', label: 'Завершены' },
-  { value: 'FAILED', label: 'Ошибки' },
   { value: 'REJECTED', label: 'Отклонены' },
   { value: 'CANCELLED', label: 'Отменены' },
 ];

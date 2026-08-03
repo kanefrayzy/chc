@@ -19,12 +19,16 @@ export class ReferralsController {
 
   @Get('me')
   async me(@CurrentUser() user: AccessTokenPayload): Promise<ReferralSummaryDto> {
-    const s = await this.referrals.getSummary(user.sub);
+    const s = await this.referrals.getDetailedSummary(user.sub);
     return {
       referralCode: s.referralCode,
       referralsCount: s.referralsCount,
       totalEarningsMinor: minorToJson(s.totalEarningsMinor),
       rates: s.rates,
+      ftdCount: s.ftdCount,
+      depositsCount: s.depositsCount,
+      depositsMinor: minorToJson(s.depositsMinor),
+      wageredMinor: minorToJson(s.wageredMinor),
     };
   }
 

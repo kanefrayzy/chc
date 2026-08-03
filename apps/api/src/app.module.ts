@@ -24,6 +24,10 @@ import { RanksModule } from './modules/ranks/ranks.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
+import { ProgressiveModule } from './modules/progressive/progressive.module';
+import { WinnersModule } from './modules/winners/winners.module';
+import { CodeShopModule } from './modules/code-shop/code-shop.module';
+import { LotteryModule } from './modules/lottery/lottery.module';
 
 @Module({
   imports: [
@@ -53,6 +57,10 @@ import { RealtimeModule } from './modules/realtime/realtime.module';
     RanksModule,
     SettingsModule,
     RealtimeModule,
+    ProgressiveModule,
+    WinnersModule,
+    CodeShopModule,
+    LotteryModule,
     AdminModule,
   ],
   controllers: [HealthController],

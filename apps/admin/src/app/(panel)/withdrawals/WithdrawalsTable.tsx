@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   adminApi,
@@ -79,18 +79,30 @@ export function WithdrawalsTable({
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<AdminWithdrawalRow | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [checkingId, setCheckingId] = useState<string | null>(null);
   const [payoutInfo, setPayoutInfo] = useState<Record<string, PayoutStatusInfo>>({});
   const [payoutError, setPayoutError] = useState<Record<string, string>>({});
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     try {
       const res = await adminApi.withdrawals.list({ status, limit: 50 });
       setItems(res.items);
     } catch {
       router.refresh();
     }
-  }
+  }, [status, router]);
+
+  // Смена таба меняет только query-параметр, поэтому серверные пропсы могут
+  // остаться прежними — данные под новый статус забираем сами.
+  const mountedStatus = useRef(status);
+  useEffect(() => {
+    if (mountedStatus.current === status) return;
+    mountedStatus.current = status;
+    setError(null);
+    setLoading(true);
+    void refresh().finally(() => setLoading(false));
+  }, [status, refresh]);
 
   // Подтверждение в один клик — без промежуточного окна
   async function onApprove(id: string) {
@@ -144,7 +156,7 @@ export function WithdrawalsTable({
     <div>
       <div className="mb-4 flex items-center justify-between">
         <WithdrawalStatusFilter value={status} />
-        <Button variant="ghost" size="sm" onClick={refresh}>
+        <Button variant="ghost" size="sm" onClick={() => void refresh()}>
           Обновить
         </Button>
       </div>
@@ -152,8 +164,8 @@ export function WithdrawalsTable({
       {error && <div className="mb-3 text-sm text-danger">{error}</div>}
 
       <DataTable
-        rows={items}
-        empty="Нет заявок"
+        rows={loading ? [] : items}
+        empty={loading ? 'Загружаем…' : 'Нет заявок'}
         columns={[
           {
             key: 'id',

@@ -14,6 +14,8 @@ import { ReferralsService } from '../referrals/referrals.service';
 import { RanksService } from '../ranks/ranks.service';
 import { SettingsService } from '../settings/settings.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { ProgressiveService } from '../progressive/progressive.service';
+import { BotWinnersService } from '../winners/bot-winners.service';
 import {
   PAYOUT_MULTIPLIER,
   ROULETTE_TOTAL_SLOTS,
@@ -45,6 +47,8 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
     private readonly ranks: RanksService,
     private readonly settings: SettingsService,
     private readonly realtime: RealtimeGateway,
+    private readonly progressive: ProgressiveService,
+    private readonly bots: BotWinnersService,
   ) {
   }
 
@@ -125,7 +129,7 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
     avatarUrl: string | null;
     amountMinor: string;
     color?: RouletteColor;
-    game: 'roulette' | 'mines' | 'classic';
+    game: 'roulette' | 'mines' | 'classic' | 'lottery';
     multiplierBps?: number;
     mineCount?: number;
     createdAt: string;
@@ -224,7 +228,32 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
       ];
     });
 
-    return [...rouletteItems, ...minesItems, ...classicItems]
+    // Лотерея: выигрышные билеты.
+    const lotteryRows = await this.prisma.lotteryTicket.findMany({
+      where: { prizeMinor: { gt: 0n } },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit * 5, 50),
+      include: { user: { select: { username: true, avatarUrl: true } } },
+    });
+
+    const lotteryItems = lotteryRows
+      .filter((t) => t.prizeMinor > t.betMinor) // возврат ставки выигрышем не считаем
+      .map((t) => ({
+        username: t.user?.username ?? 'player',
+        avatarUrl: t.user?.avatarUrl ?? null,
+        amountMinor: t.prizeMinor,
+        game: 'lottery' as const,
+        multiplierBps:
+          t.betMinor > 0n ? Number((t.prizeMinor * 10_000n) / t.betMinor) : 0,
+        createdAt: t.createdAt,
+      }));
+
+    const real = [...rouletteItems, ...minesItems, ...classicItems, ...lotteryItems];
+
+    // Витринные записи — только чтобы лента не выглядела пустой (см. ADR-0014).
+    const bots = (await this.bots.enabled()) ? this.bots.list() : [];
+
+    return [...real, ...bots]
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, limit)
       .map((e) => ({
@@ -257,7 +286,7 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const placed = await this.prisma.$transaction(async (tx) => {
       const round = await tx.rouletteRound.findFirst({
         where: { status: 'BETTING' },
         orderBy: { startedAt: 'desc' },
@@ -326,6 +355,10 @@ export class RouletteService implements OnModuleInit, OnModuleDestroy {
 
       return bet;
     });
+
+    // Отчисление в прогрессивные копилки — после коммита, ставку не блокирует.
+    void this.progressive.contribute(placed.amountMinor);
+    return placed;
   }
 
   // ============== LIFECYCLE ==============
