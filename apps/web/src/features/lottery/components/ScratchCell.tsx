@@ -5,11 +5,18 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 /** useLayoutEffect ломается при серверном рендере — на сервере берём обычный. */
 const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
-/** Доля стёртого покрытия, после которой ячейка открывается целиком. */
-const REVEAL_THRESHOLD = 0.45;
+/**
+ * Доля стёртого покрытия, после которой ячейка открывается целиком.
+ * Высокий порог — чтобы карту действительно приходилось стирать, а не
+ * задевать курсором.
+ */
+const REVEAL_THRESHOLD = 0.7;
+
+/** Радиус кисти в долях ширины ячейки. Мелкая кисть = несколько проходов. */
+const BRUSH_RATIO = 0.15;
 
 /** Проверяем прогресс не на каждое движение — чтение пикселей недешёвое. */
-const CHECK_EVERY = 6;
+const CHECK_EVERY = 8;
 
 export interface ScratchCellProps {
   /** Меняется вместе с билетом — заставляет перерисовать покрытие. */
@@ -42,8 +49,9 @@ export function ScratchCell({
   const [open, setOpen] = useState(false);
   const drawing = useRef(false);
   const moves = useRef(0);
+  const lastPoint = useRef<{ x: number; y: number } | null>(null);
 
-  /** Рисует покрытие: тёмная фольга с диагональным блеском. */
+  /** Рисует покрытие: тёмная фольга с диагональным блеском и крапом. */
   const paintCover = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -61,25 +69,34 @@ export function ScratchCell({
     ctx.clearRect(0, 0, rect.width, rect.height);
 
     const base = ctx.createLinearGradient(0, 0, rect.width, rect.height);
-    base.addColorStop(0, '#243029');
-    base.addColorStop(0.45, '#2f3d34');
-    base.addColorStop(0.55, '#3b4d41');
-    base.addColorStop(1, '#212b25');
+    base.addColorStop(0, '#26332c');
+    base.addColorStop(0.42, '#33443a');
+    base.addColorStop(0.55, '#405448');
+    base.addColorStop(1, '#222e27');
     ctx.fillStyle = base;
     ctx.fillRect(0, 0, rect.width, rect.height);
 
     // Диагональная штриховка — покрытие не выглядит плоской заливкой
-    ctx.strokeStyle = 'rgba(255,255,255,0.045)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
     ctx.lineWidth = 1;
-    for (let x = -rect.height; x < rect.width; x += 7) {
+    for (let x = -rect.height; x < rect.width; x += 6) {
       ctx.beginPath();
       ctx.moveTo(x, rect.height);
       ctx.lineTo(x + rect.height, 0);
       ctx.stroke();
     }
 
+    // Мелкий крап: фольга становится похожа на настоящую
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    for (let i = 0; i < 90; i += 1) {
+      const px = ((i * 37) % 100) / 100;
+      const py = ((i * 61) % 100) / 100;
+      ctx.fillRect(px * rect.width, py * rect.height, 1.5, 1.5);
+    }
+
     setOpen(false);
     moves.current = 0;
+    lastPoint.current = null;
   }, []);
 
   useIsoLayoutEffect(() => {
@@ -122,9 +139,22 @@ export function ScratchCell({
     // Каждый 16-й пиксель: точности хватает, цена в 16 раз меньше
     for (let i = 3; i < data.length; i += 4 * 16) {
       total += 1;
-      if (data[i] === 0) cleared += 1;
+      // Полупрозрачные пиксели по краю кисти тоже считаем стёртыми
+      if ((data[i] ?? 255) < 24) cleared += 1;
     }
     return total === 0 ? 0 : cleared / total;
+  }
+
+  /** Мягкая кисть: край размыт, как след от монетки. */
+  function stamp(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number): void {
+    const gradient = ctx.createRadialGradient(x, y, radius * 0.35, x, y, radius);
+    gradient.addColorStop(0, 'rgba(0,0,0,1)');
+    gradient.addColorStop(0.7, 'rgba(0,0,0,0.75)');
+    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   function scratchAt(clientX: number, clientY: number): void {
@@ -136,11 +166,23 @@ export function ScratchCell({
     const rect = canvas.getBoundingClientRect();
     const x = clientX - rect.left;
     const y = clientY - rect.top;
+    const radius = Math.max(7, rect.width * BRUSH_RATIO);
 
     ctx.globalCompositeOperation = 'destination-out';
-    ctx.beginPath();
-    ctx.arc(x, y, Math.max(10, rect.width * 0.24), 0, Math.PI * 2);
-    ctx.fill();
+
+    // Ведём непрерывную линию: при быстром движении не остаётся пропусков
+    const prev = lastPoint.current;
+    if (prev) {
+      const dist = Math.hypot(x - prev.x, y - prev.y);
+      const steps = Math.min(24, Math.max(1, Math.round(dist / (radius * 0.4))));
+      for (let i = 1; i <= steps; i += 1) {
+        const t = i / steps;
+        stamp(ctx, prev.x + (x - prev.x) * t, prev.y + (y - prev.y) * t, radius);
+      }
+    } else {
+      stamp(ctx, x, y, radius);
+    }
+    lastPoint.current = { x, y };
 
     moves.current += 1;
     if (moves.current % CHECK_EVERY === 0 && clearedRatio(canvas, ctx) >= REVEAL_THRESHOLD) {
@@ -151,6 +193,7 @@ export function ScratchCell({
   function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>): void {
     if (locked || open) return;
     drawing.current = true;
+    lastPoint.current = null;
     e.currentTarget.setPointerCapture(e.pointerId);
     scratchAt(e.clientX, e.clientY);
   }
@@ -165,6 +208,7 @@ export function ScratchCell({
   }
 
   function stop(e: React.PointerEvent<HTMLCanvasElement>): void {
+    lastPoint.current = null;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     // На отпускании проверяем ещё раз — иначе ячейка может «залипнуть» стёртой
@@ -182,12 +226,17 @@ export function ScratchCell({
       className={[
         'relative aspect-square select-none overflow-hidden rounded-lg transition-all duration-300',
         open && highlight
-          ? 'bg-brand/15 ring-2 ring-brand'
+          ? 'bg-brand/20 ring-2 ring-brand shadow-[0_0_20px_-4px_rgba(0,255,136,0.6)]'
           : 'bg-bg-base ring-1 ring-border',
       ].join(' ')}
     >
       {/* Приз под покрытием */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-1">
+      <div
+        className={[
+          'absolute inset-0 flex flex-col items-center justify-center px-1 transition-transform duration-300',
+          open ? 'scale-100' : 'scale-90',
+        ].join(' ')}
+      >
         <span
           className={`font-mono text-sm font-black leading-none tabular-nums sm:text-base ${tone}`}
         >

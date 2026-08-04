@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { codeShopApi, type CodeProductDto, type PurchasedCodeDto } from '@/lib/api/code-shop';
 import { ApiException } from '@/lib/api/client';
 import { CloseIcon, TicketIcon } from '@/components/icons';
@@ -13,13 +14,13 @@ function formatAzn(minor: string): string {
   return `${major.toLocaleString('ru-RU')},${frac}`;
 }
 
-/** Понятные тексты вместо кодов ошибок API. */
-const ERRORS: Record<string, string> = {
-  INSUFFICIENT_FUNDS: 'Недостаточно средств на балансе — пополните счёт',
-  OUT_OF_STOCK: 'Коды этого номинала закончились. Загляните позже',
-  CODE_TAKEN: 'Код только что купил другой игрок. Попробуйте ещё раз',
-  PRODUCT_DISABLED: 'Этот номинал сейчас недоступен',
-  PRODUCT_NOT_FOUND: 'Номинал больше не продаётся',
+/** Коды ошибок API → ключи локализации. */
+const ERROR_KEYS: Record<string, string> = {
+  INSUFFICIENT_FUNDS: 'errInsufficient',
+  OUT_OF_STOCK: 'errOutOfStock',
+  CODE_TAKEN: 'errTaken',
+  PRODUCT_DISABLED: 'errDisabled',
+  PRODUCT_NOT_FOUND: 'errNotFound',
 };
 
 export interface CodeShopProps {
@@ -35,6 +36,7 @@ export function CodeShop({
   isAuthed,
   locale,
 }: CodeShopProps): JSX.Element {
+  const t = useTranslations('codeShop');
   const [products, setProducts] = useState(initialProducts);
   const [history, setHistory] = useState(initialHistory);
   const [buyingId, setBuyingId] = useState<string | null>(null);
@@ -62,7 +64,8 @@ export function CodeShop({
       await refresh();
     } catch (e) {
       const raw = e instanceof ApiException ? e.message : '';
-      setError(ERRORS[raw] ?? raw ?? 'Не удалось купить код');
+      const key = ERROR_KEYS[raw];
+      setError(key ? t(key) : raw || t('errGeneric'));
     } finally {
       setBuyingId(null);
     }
@@ -91,12 +94,12 @@ export function CodeShop({
         <div className="overflow-hidden rounded-2xl border border-brand/40 bg-gradient-to-br from-brand/15 via-bg-card to-bg-card">
           <div className="flex items-center justify-between gap-2 border-b border-brand/20 px-4 py-2.5">
             <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-brand">
-              Код куплен
+              {t('bought')}
             </span>
             <button
               type="button"
               onClick={() => setJustBought(null)}
-              aria-label="Скрыть"
+              aria-label={t('hide')}
               className="text-text-muted transition-colors hover:text-text-primary"
             >
               <CloseIcon className="h-4 w-4" />
@@ -104,9 +107,9 @@ export function CodeShop({
           </div>
           <div className="p-4">
             <p className="text-sm text-text-secondary">
-              {justBought.productName} · номинал{' '}
+              {justBought.productName} ·{' '}
               <span className="font-semibold text-text-primary">
-                {formatAzn(justBought.denominationMinor)} AZN
+                {t('denomination', { amount: formatAzn(justBought.denominationMinor) })}
               </span>
             </p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -118,11 +121,11 @@ export function CodeShop({
                 onClick={() => void copy(justBought.code, justBought.id)}
                 className="shrink-0 rounded-lg bg-brand px-5 py-3 text-sm font-bold text-bg-base transition-opacity hover:opacity-90"
               >
-                {copiedId === justBought.id ? 'Скопировано' : 'Копировать'}
+                {copiedId === justBought.id ? t('copied') : t('copy')}
               </button>
             </div>
             <p className="mt-3 text-xs text-text-muted">
-              Код сохранён в истории ниже — вы всегда сможете вернуться и посмотреть его снова.
+              {t('savedHint')}
             </p>
           </div>
         </div>
@@ -130,15 +133,15 @@ export function CodeShop({
 
       {/* Витрина номиналов */}
       <section>
-        <h2 className="text-base font-bold text-text-primary sm:text-lg">Доступные номиналы</h2>
+        <h2 className="text-base font-bold text-text-primary sm:text-lg">{t('available')}</h2>
         <p className="mt-1 text-sm text-text-secondary">
-          Оплата списывается с баланса, код выдаётся сразу — без ожидания оператора.
+          {t('availableHint')}
         </p>
 
         {products.length === 0 ? (
           <div className="mt-4 rounded-xl border border-border bg-bg-card px-4 py-12 text-center">
             <p className="mt-2 text-sm text-text-muted">
-              Сейчас нет кодов в продаже. Загляните позже или напишите в поддержку.
+              {t('empty')}
             </p>
           </div>
         ) : (
@@ -166,18 +169,18 @@ export function CodeShop({
                     </span>
                     {out ? (
                       <span className="rounded-full bg-bg-elevated px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-text-muted ring-1 ring-border">
-                        Нет в наличии
+                        {t('outOfStock')}
                       </span>
                     ) : (
                       <span className="rounded-full bg-brand/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand">
-                        {p.stock} шт
+                        {t('inStock', { count: p.stock })}
                       </span>
                     )}
                   </div>
 
                   <h3 className="mt-3 text-lg font-bold text-text-primary">{p.name}</h3>
                   <p className="mt-0.5 text-sm text-text-secondary">
-                    Номинал {formatAzn(p.denominationMinor)} AZN
+                    {t('denomination', { amount: formatAzn(p.denominationMinor) })}
                   </p>
                   {p.description && (
                     <p className="mt-1 text-xs text-text-muted">{p.description}</p>
@@ -203,14 +206,14 @@ export function CodeShop({
                         onClick={() => void buy(p)}
                         className="mt-3 w-full rounded-xl bg-brand py-3 text-sm font-bold text-bg-base transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-bg-elevated disabled:text-text-muted"
                       >
-                        {busy ? 'Покупаем…' : out ? 'Нет в наличии' : 'Купить'}
+                        {busy ? t('buying') : out ? t('outOfStock') : t('buy')}
                       </button>
                     ) : (
                       <a
                         href={`${prefix}/login`}
                         className="mt-3 block w-full rounded-xl border border-brand/40 py-3 text-center text-sm font-bold text-brand transition-colors hover:bg-brand/10"
                       >
-                        Войти, чтобы купить
+                        {t('loginToBuy')}
                       </a>
                     )}
                   </div>
@@ -224,10 +227,10 @@ export function CodeShop({
       {/* История покупок */}
       {isAuthed && (
         <section>
-          <h2 className="text-base font-bold text-text-primary sm:text-lg">Мои коды</h2>
+          <h2 className="text-base font-bold text-text-primary sm:text-lg">{t('myCodes')}</h2>
           {history.length === 0 ? (
             <p className="mt-3 rounded-xl border border-border bg-bg-card px-4 py-8 text-center text-sm text-text-muted">
-              Вы ещё не покупали коды
+              {t('noPurchases')}
             </p>
           ) : (
             <ul className="mt-3 divide-y divide-border overflow-hidden rounded-xl border border-border bg-bg-card">
@@ -259,7 +262,7 @@ export function CodeShop({
                     onClick={() => void copy(h.code, h.id)}
                     className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-text-secondary transition-colors hover:border-brand/40 hover:text-brand"
                   >
-                    {copiedId === h.id ? 'Готово' : 'Копировать'}
+                    {copiedId === h.id ? t('done') : t('copy')}
                   </button>
                 </li>
               ))}

@@ -1,15 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { lotteryApi, type LotteryInfoDto, type LotteryTicketDto } from '@/lib/api/lottery';
 import { ApiException } from '@/lib/api/client';
-import { ScratchCell } from './ScratchCell';
 import { localePrefix } from '@/lib/i18n/prefix';
+import { ScratchCell } from './ScratchCell';
 
-const ERRORS: Record<string, string> = {
-  INSUFFICIENT_FUNDS: 'Недостаточно средств — пополните баланс',
-  LOTTERY_DISABLED: 'Лотерея временно недоступна',
-};
+/** Сколько последних билетов держим в полоске результатов. */
+const STRIP_SIZE = 12;
 
 function formatAzn(minor: string): string {
   const value = BigInt(minor);
@@ -47,6 +46,7 @@ export interface ScratchCardProps {
 }
 
 export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.Element {
+  const t = useTranslations('lottery');
   const [ticket, setTicket] = useState<LotteryTicketDto | null>(null);
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [revealAll, setRevealAll] = useState(false);
@@ -54,8 +54,20 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
   const [error, setError] = useState<string | null>(null);
   const [autoLeft, setAutoLeft] = useState(0);
   const [showRules, setShowRules] = useState(false);
+  /** Полоска последних исходов: положительные — выигрыши. */
+  const [strip, setStrip] = useState<{ id: string; prizeMinor: string }[]>([]);
   const autoRef = useRef(0);
   const prefix = localePrefix(locale);
+  const price = formatAzn(info.betMinor);
+
+  const errorText = useCallback(
+    (raw: string): string => {
+      if (raw === 'INSUFFICIENT_FUNDS') return t('errInsufficient');
+      if (raw === 'LOTTERY_DISABLED') return t('errDisabled');
+      return raw || t('errGeneric');
+    },
+    [t],
+  );
 
   /** symbol → приз и множитель. */
   const prizeBySymbol = useMemo(() => {
@@ -85,6 +97,10 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
   const winRevealed =
     won && winningIndices.length > 0 && winningIndices.every((i) => revealed.has(i));
 
+  /** Билет в игре — пока карта не вскрыта, новый покупать нельзя. */
+  const inProgress = ticket !== null && !allRevealed;
+  const canBuy = isAuthed && !buying && !inProgress && autoLeft === 0;
+
   const onCellReveal = useCallback((index: number) => {
     setRevealed((prev) => {
       if (prev.has(index)) return prev;
@@ -98,21 +114,23 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
     setError(null);
     setBuying(true);
     try {
-      const t = await lotteryApi.buy();
+      const next = await lotteryApi.buy();
       setRevealAll(false);
       setRevealed(new Set());
-      setTicket(t);
-      return t;
+      setTicket(next);
+      setStrip((prev) =>
+        [{ id: next.id, prizeMinor: next.prizeMinor }, ...prev].slice(0, STRIP_SIZE),
+      );
+      return next;
     } catch (e) {
-      const raw = e instanceof ApiException ? e.message : '';
-      setError(ERRORS[raw] ?? raw ?? 'Не удалось купить билет');
+      setError(errorText(e instanceof ApiException ? e.message : ''));
       autoRef.current = 0;
       setAutoLeft(0);
       return null;
     } finally {
       setBuying(false);
     }
-  }, []);
+  }, [errorText]);
 
   // Автоигра: покупаем билет, сразу вскрываем, пауза, следующий.
   useEffect(() => {
@@ -120,8 +138,8 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
     let cancelled = false;
 
     const run = async (): Promise<void> => {
-      const t = await buy();
-      if (cancelled || !t) return;
+      const next = await buy();
+      if (cancelled || !next) return;
       setRevealAll(true);
       setTimeout(() => {
         if (cancelled) return;
@@ -136,7 +154,32 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
     };
   }, [autoLeft, buy]);
 
+  // История прошлых билетов — чтобы полоска не была пустой при заходе
+  useEffect(() => {
+    if (!isAuthed) return;
+    let cancelled = false;
+    lotteryApi
+      .history({ limit: STRIP_SIZE })
+      .then((res) => {
+        if (cancelled) return;
+        setStrip(res.items.map((i) => ({ id: i.id, prizeMinor: i.prizeMinor })));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthed]);
+
   const cells = ticket?.symbols ?? [];
+
+  /** Подпись главной кнопки зависит от состояния билета. */
+  const buyLabel = buying
+    ? t('buying')
+    : inProgress
+      ? t('scratchFirst')
+      : ticket
+        ? t('newTicket')
+        : t('buy', { price });
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,430px)_1fr]">
@@ -145,18 +188,14 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
         <div className="select-none overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-bg-elevated to-bg-card">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <span className="text-xs font-black uppercase tracking-[0.2em] text-brand">
-              Лотерея
+              {t('badge')}
             </span>
-            <span className="font-mono text-sm font-bold text-text-primary">
-              {formatAzn(info.betMinor)} AZN
-            </span>
+            <span className="font-mono text-sm font-bold text-text-primary">{price} AZN</span>
           </div>
 
           <div className="p-4">
             <p className="text-center text-sm font-semibold text-text-secondary">
-              {ticket
-                ? 'Стирайте покрытие — три одинаковые суммы дают выигрыш'
-                : 'Купите билет, чтобы начать'}
+              {ticket ? t('hintScratch') : t('hintIdle')}
             </p>
 
             <div className="mt-3 grid grid-cols-3 gap-2">
@@ -181,24 +220,30 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
             {/* Результат */}
             <div className="mt-3 flex min-h-[64px] flex-col items-center justify-center rounded-xl border border-border bg-bg-base px-3 py-2 text-center">
               {!ticket ? (
-                <span className="text-sm text-text-muted">Билет не куплен</span>
+                <span className="text-sm text-text-muted">{t('noTicket')}</span>
               ) : winRevealed ? (
                 <>
                   <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand">
-                    Выигрыш
+                    {t('win')}
                   </span>
                   <span className="font-mono text-2xl font-black tabular-nums text-brand">
                     +{formatAzn(ticket.prizeMinor)} AZN
                   </span>
                 </>
               ) : !allRevealed ? (
-                <span className="text-sm text-text-secondary">
-                  Открыто {revealed.size} из 9
-                </span>
+                <>
+                  <span className="text-sm text-text-secondary">
+                    {t('opened', { done: revealed.size, total: 9 })}
+                  </span>
+                  <span className="mt-1.5 h-1 w-32 overflow-hidden rounded-full bg-bg-elevated">
+                    <span
+                      className="block h-full rounded-full bg-brand transition-all duration-300"
+                      style={{ width: `${(revealed.size / 9) * 100}%` }}
+                    />
+                  </span>
+                </>
               ) : (
-                <span className="text-sm font-semibold text-text-muted">
-                  Не повезло — попробуйте ещё раз
-                </span>
+                <span className="text-sm font-semibold text-text-muted">{t('lose')}</span>
               )}
             </div>
           </div>
@@ -216,19 +261,19 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
             <div className="flex gap-2">
               <button
                 type="button"
-                disabled={buying || autoLeft > 0}
+                disabled={!canBuy}
                 onClick={() => void buy()}
-                className="flex-1 rounded-xl bg-brand py-3.5 text-sm font-black uppercase tracking-wide text-bg-base transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex-1 rounded-xl bg-brand py-3.5 text-sm font-black uppercase tracking-wide text-bg-base transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-bg-elevated disabled:text-text-muted"
               >
-                {buying ? 'Покупаем' : `Купить за ${formatAzn(info.betMinor)}`}
+                {buyLabel}
               </button>
               <button
                 type="button"
-                disabled={!ticket || allRevealed || autoLeft > 0}
+                disabled={!inProgress || autoLeft > 0}
                 onClick={() => setRevealAll(true)}
                 className="rounded-xl border border-border px-4 py-3.5 text-sm font-bold text-text-secondary transition-colors hover:border-brand/40 hover:text-brand disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Стереть всё
+                {t('revealAll')}
               </button>
             </div>
 
@@ -241,7 +286,7 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
                 }}
                 className="w-full rounded-xl border border-danger/40 py-2.5 text-sm font-bold text-danger transition-colors hover:bg-danger/10"
               >
-                Остановить автоигру — осталось {autoLeft}
+                {t('autoStop', { left: autoLeft })}
               </button>
             ) : (
               <div className="flex gap-2">
@@ -249,14 +294,14 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
                   <button
                     key={n}
                     type="button"
-                    disabled={buying}
+                    disabled={buying || inProgress}
                     onClick={() => {
                       autoRef.current = n;
                       setAutoLeft(n);
                     }}
-                    className="flex-1 rounded-xl border border-border py-2.5 text-xs font-bold text-text-secondary transition-colors hover:border-brand/40 hover:text-brand disabled:opacity-40"
+                    className="flex-1 rounded-xl border border-border py-2.5 text-xs font-bold text-text-secondary transition-colors hover:border-brand/40 hover:text-brand disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    Авто ×{n}
+                    {t('auto', { count: n })}
                   </button>
                 ))}
               </div>
@@ -267,27 +312,54 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
             href={`${prefix}/login`}
             className="mt-3 block rounded-xl border border-brand/40 py-3.5 text-center text-sm font-bold text-brand transition-colors hover:bg-brand/10"
           >
-            Войти, чтобы играть
+            {t('loginToPlay')}
           </a>
+        )}
+
+        {/* Полоска последних билетов */}
+        {strip.length > 0 && (
+          <div className="mt-3 rounded-xl border border-border bg-bg-card px-3 py-2.5">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+              {t('lastResults')}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {strip.map((s) => {
+                const prize = BigInt(s.prizeMinor);
+                return (
+                  <span
+                    key={s.id}
+                    className={[
+                      'rounded px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums',
+                      prize > 0n
+                        ? 'bg-brand/15 text-brand'
+                        : 'bg-bg-elevated text-text-muted',
+                    ].join(' ')}
+                  >
+                    {prize > 0n ? `+${formatAzn(s.prizeMinor)}` : '—'}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Честность игры */}
         {ticket && allRevealed && (
           <details className="mt-3 rounded-xl border border-border bg-bg-card px-4 py-3">
             <summary className="cursor-pointer text-xs font-semibold text-text-secondary">
-              Проверить честность билета
+              {t('fairness')}
             </summary>
             <dl className="mt-2 space-y-1.5 text-[11px]">
               <div>
-                <dt className="text-text-muted">Хеш серверного сида (зафиксирован до игры)</dt>
+                <dt className="text-text-muted">{t('serverHash')}</dt>
                 <dd className="break-all font-mono text-text-secondary">{ticket.serverSeedHash}</dd>
               </div>
               <div>
-                <dt className="text-text-muted">Серверный сид (раскрыт после)</dt>
+                <dt className="text-text-muted">{t('serverSeed')}</dt>
                 <dd className="break-all font-mono text-text-secondary">{ticket.serverSeed}</dd>
               </div>
               <div>
-                <dt className="text-text-muted">Клиентский сид</dt>
+                <dt className="text-text-muted">{t('clientSeed')}</dt>
                 <dd className="break-all font-mono text-text-secondary">{ticket.clientSeed}</dd>
               </div>
             </dl>
@@ -299,18 +371,16 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
       <div className="space-y-4">
         <div className="overflow-hidden rounded-2xl border border-border bg-bg-card">
           <div className="border-b border-border px-4 py-3">
-            <h2 className="text-sm font-bold text-text-primary">Призовая таблица</h2>
-            <p className="mt-0.5 text-[11px] text-text-muted">
-              Билет {formatAzn(info.betMinor)} AZN — возврат в игру 96%
-            </p>
+            <h2 className="text-sm font-bold text-text-primary">{t('prizeTable')}</h2>
+            <p className="mt-0.5 text-[11px] text-text-muted">{t('prizeNote', { price })}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-[11px] uppercase tracking-wider text-text-muted">
-                  <th className="px-4 py-2 text-left font-semibold">Выигрыш</th>
-                  <th className="px-4 py-2 text-right font-semibold">Множитель</th>
-                  <th className="px-4 py-2 text-right font-semibold">Шанс</th>
+                  <th className="px-4 py-2 text-left font-semibold">{t('colPrize')}</th>
+                  <th className="px-4 py-2 text-right font-semibold">{t('colMultiplier')}</th>
+                  <th className="px-4 py-2 text-right font-semibold">{t('colOdds')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -341,27 +411,15 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
             aria-expanded={showRules}
             className="flex w-full items-center justify-between px-4 py-3 text-left"
           >
-            <span className="text-sm font-bold text-text-primary">Правила игры</span>
+            <span className="text-sm font-bold text-text-primary">{t('rules')}</span>
             <span className="text-lg leading-none text-text-muted">{showRules ? '−' : '+'}</span>
           </button>
           {showRules && (
             <div className="space-y-2 border-t border-border px-4 py-3 text-xs leading-relaxed text-text-secondary">
-              <p>
-                Билет стоит {formatAzn(info.betMinor)} AZN. На карте девять закрытых ячеек,
-                под каждой — сумма. Стирайте покрытие курсором или пальцем.
-              </p>
-              <p>
-                Если открылись три одинаковые суммы, вы выигрываете эту сумму. Выигрыш
-                зачисляется на баланс сразу. Больше одного приза на карте быть не может.
-              </p>
-              <p>
-                Кнопка «Стереть всё» открывает карту целиком. «Авто» покупает и вскрывает
-                несколько билетов подряд, остановить можно в любой момент.
-              </p>
-              <p>
-                Игра проверяемо честная: хеш серверного сида фиксируется до покупки, сам
-                сид раскрывается после вскрытия — результат можно пересчитать.
-              </p>
+              <p>{t('rule1', { price })}</p>
+              <p>{t('rule2')}</p>
+              <p>{t('rule3')}</p>
+              <p>{t('rule4')}</p>
             </div>
           )}
         </div>

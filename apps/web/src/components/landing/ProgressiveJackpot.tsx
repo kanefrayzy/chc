@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { TrophyIcon } from '@/components/icons';
 import { getRealtimeSocket } from '@/lib/realtime/socket';
 import {
@@ -97,6 +98,7 @@ export interface ProgressiveJackpotProps {
 }
 
 export function ProgressiveJackpot({ initialItems }: ProgressiveJackpotProps): JSX.Element | null {
+  const t = useTranslations('jackpot');
   const [items, setItems] = useState<ProgressiveJackpotDto[]>(initialItems);
   const [hint, setHint] = useState(false);
 
@@ -124,7 +126,7 @@ export function ProgressiveJackpot({ initialItems }: ProgressiveJackpotProps): J
   }, []);
 
   const byTier = new Map(items.map((i) => [i.tier, i]));
-  const visible = ORDER.filter((t) => byTier.has(t));
+  const visible = ORDER.filter((tier) => byTier.has(tier));
   if (visible.length === 0) return null;
 
   return (
@@ -138,13 +140,13 @@ export function ProgressiveJackpot({ initialItems }: ProgressiveJackpotProps): J
           className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.15em] text-brand"
         >
           <TrophyIcon className="h-4 w-4" />
-          Прогрессивный Jackpot
+          {t('title')}
         </h2>
         <button
           type="button"
           onClick={() => setHint((v) => !v)}
           aria-expanded={hint}
-          aria-label="Как работает джекпот"
+          aria-label={t('help')}
           className="flex h-5 w-5 items-center justify-center rounded-full border border-border text-[10px] font-bold text-text-muted transition-colors hover:border-brand/40 hover:text-brand"
         >
           i
@@ -159,9 +161,7 @@ export function ProgressiveJackpot({ initialItems }: ProgressiveJackpotProps): J
 
       {hint && (
         <p className="border-t border-border/70 px-4 py-3 text-xs leading-relaxed text-text-secondary">
-          Копилки растут с каждой ставки во всех наших играх. Чем активнее играют
-          на сайте, тем быстрее увеличиваются суммы. Когда джекпот срывают, копилка
-          выплачивается победителю и начинает набираться заново.
+          {t('helpText')}
         </p>
       )}
     </section>

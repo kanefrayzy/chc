@@ -18,11 +18,11 @@ type Filter = 'all' | 'big';
 const BIG_MULTIPLIER_BPS = 50_000;
 const FEED_LIMIT = 15;
 
-const GAME_LABEL: Record<RecentWinnerDto['game'], { label: string; cls: string }> = {
-  roulette: { label: 'Рулетка', cls: 'bg-brand/15 text-brand' },
-  mines: { label: 'Mines', cls: 'bg-accent-purple/15 text-accent-purple' },
-  classic: { label: 'Классика', cls: 'bg-warning/15 text-warning' },
-  lottery: { label: 'Лотерея', cls: 'bg-info/15 text-info' },
+const GAME_STYLE: Record<RecentWinnerDto['game'], { key: string; cls: string }> = {
+  roulette: { key: 'gameRoulette', cls: 'bg-brand/15 text-brand' },
+  mines: { key: 'gameMines', cls: 'bg-accent-purple/15 text-accent-purple' },
+  classic: { key: 'gameClassic', cls: 'bg-warning/15 text-warning' },
+  lottery: { key: 'gameLottery', cls: 'bg-info/15 text-info' },
 };
 
 function initials(name: string): string {
@@ -58,14 +58,16 @@ function formatAzn(minor: string): string {
   return `${major.toLocaleString('ru-RU')},${frac}`;
 }
 
-function timeAgo(iso: string, now: number): string {
+type Translate = (key: string, values?: Record<string, string | number>) => string;
+
+function timeAgo(iso: string, now: number, t: Translate): string {
   const diffSec = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 1000));
-  if (diffSec < 45) return 'только что';
+  if (diffSec < 45) return t('justNow');
   const min = Math.floor(diffSec / 60);
-  if (min < 60) return `${Math.max(1, min)} мин`;
+  if (min < 60) return t('minutes', { n: Math.max(1, min) });
   const hours = Math.floor(min / 60);
-  if (hours < 24) return `${hours} ч`;
-  return `${Math.floor(hours / 24)} д`;
+  if (hours < 24) return t('hours', { n: hours });
+  return t('days', { n: Math.floor(hours / 24) });
 }
 
 function keyOf(w: RecentWinnerDto): string {
@@ -73,17 +75,21 @@ function keyOf(w: RecentWinnerDto): string {
 }
 
 /** Подробности раунда: количество мин, цвет рулетки. */
-function detailsOf(w: RecentWinnerDto): string {
-  if (w.game === 'mines' && typeof w.mineCount === 'number') return `${w.mineCount} мин`;
+function detailsOf(w: RecentWinnerDto, t: Translate): string {
+  if (w.game === 'mines' && typeof w.mineCount === 'number') {
+    return t('mines', { count: w.mineCount });
+  }
   if (w.game === 'roulette' && w.color) {
-    const map: Record<string, string> = { RED: 'красное', BLACK: 'чёрное', GREEN: 'зелёное' };
-    return map[w.color] ?? w.color;
+    const map: Record<string, string> = { RED: 'red', BLACK: 'black', GREEN: 'green' };
+    const key = map[w.color];
+    return key ? t(key) : w.color;
   }
   return '';
 }
 
 export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
   const t = useTranslations('winners');
+  const tt = useTranslations('winnersTable');
   const [winners, setWinners] = useState<RecentWinnerDto[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
   const [now, setNow] = useState(() => Date.now());
@@ -183,8 +189,8 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
 
         <div className="flex gap-1 rounded-lg border border-border bg-bg-base/70 p-0.5">
           {([
-            { id: 'all' as const, label: 'Все' },
-            { id: 'big' as const, label: `Крупные${bigCount > 0 ? ` · ${bigCount}` : ''}` },
+            { id: 'all' as const, label: tt('all') },
+            { id: 'big' as const, label: `${tt('big')}${bigCount > 0 ? ` · ${bigCount}` : ''}` },
           ]).map((tab) => (
             <button
               key={tab.id}
@@ -206,18 +212,18 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
 
       {visible.length === 0 ? (
         <p className="px-4 py-12 text-center text-sm text-text-muted">
-          {filter === 'big' ? 'Пока нет крупных выигрышей' : t('empty')}
+          {filter === 'big' ? tt('noBig') : t('empty')}
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-b border-border text-[11px] uppercase tracking-wider text-text-muted">
-                <th className="px-4 py-2.5 text-left font-semibold sm:px-5">Игрок</th>
-                <th className="px-4 py-2.5 text-left font-semibold">Игра</th>
-                <th className="px-4 py-2.5 text-right font-semibold">Множитель</th>
-                <th className="px-4 py-2.5 text-right font-semibold sm:px-5">Выигрыш</th>
-                <th className="px-4 py-2.5 text-right font-semibold sm:px-5">Когда</th>
+                <th className="px-4 py-2.5 text-left font-semibold sm:px-5">{tt('colPlayer')}</th>
+                <th className="px-4 py-2.5 text-left font-semibold">{tt('colGame')}</th>
+                <th className="px-4 py-2.5 text-right font-semibold">{tt('colMultiplier')}</th>
+                <th className="px-4 py-2.5 text-right font-semibold sm:px-5">{tt('colWin')}</th>
+                <th className="px-4 py-2.5 text-right font-semibold sm:px-5">{tt('colWhen')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -225,8 +231,8 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
                 const k = keyOf(w);
                 const isFresh = freshKeys.has(k);
                 const isTop = k === topKey;
-                const game = GAME_LABEL[w.game] ?? GAME_LABEL.roulette;
-                const details = detailsOf(w);
+                const game = GAME_STYLE[w.game] ?? GAME_STYLE.roulette;
+                const details = detailsOf(w, tt);
                 return (
                   <tr
                     key={k}
@@ -259,10 +265,10 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
                         </span>
                         {isTop && (
                           <span
-                            title="Крупнейший выигрыш"
+                            title={tt('top')}
                             className="shrink-0 rounded bg-warning/15 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-warning"
                           >
-                            топ
+                            {tt('top')}
                           </span>
                         )}
                       </div>
@@ -272,7 +278,7 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
                       <span
                         className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${game.cls}`}
                       >
-                        {game.label}
+                        {tt(game.key)}
                       </span>
                       {details && (
                         <span className="ml-2 text-[11px] text-text-muted">{details}</span>
@@ -297,7 +303,7 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
                       className="px-4 py-2.5 text-right text-xs text-text-muted sm:px-5"
                       suppressHydrationWarning
                     >
-                      {timeAgo(w.createdAt, now)}
+                      {timeAgo(w.createdAt, now, tt)}
                     </td>
                   </tr>
                 );

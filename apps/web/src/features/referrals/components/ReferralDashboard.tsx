@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { ReferralSummaryDto, ReferralUserDto } from '@/lib/api/referrals';
 
 type SortKey = 'date' | 'deposits' | 'earned';
@@ -63,6 +64,7 @@ export function ReferralDashboard({
   shareUrl,
   locale,
 }: ReferralDashboardProps): JSX.Element {
+  const t = useTranslations('referralsDash');
   const [copied, setCopied] = useState(false);
   const [sort, setSort] = useState<SortKey>('date');
   const [desc, setDesc] = useState(true);
@@ -122,39 +124,39 @@ export function ReferralDashboard({
       {/* Показатели */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard
-          label="Рефералов"
+          label={t('referrals')}
           value={String(summary.referralsCount)}
-          hint="Всего по вашей ссылке"
+          hint={t('referralsHint')}
         />
         <StatCard
-          label="С депозитом"
+          label={t('withDeposit')}
           value={String(summary.ftdCount)}
-          hint={`Конверсия ${conversion}%`}
+          hint={t('conversion', { value: conversion })}
           accent="info"
         />
         <StatCard
-          label="Заработано"
+          label={t('earned')}
           value={formatAzn(summary.totalEarningsMinor)}
           unit="AZN"
-          hint="Зачислено на баланс"
+          hint={t('earnedHint')}
           accent="brand"
         />
         <StatCard
-          label="Их депозиты"
+          label={t('theirDeposits')}
           value={formatWhole(summary.depositsMinor)}
           unit="AZN"
-          hint={`${summary.depositsCount} ${summary.depositsCount === 1 ? 'пополнение' : 'пополнений'}`}
+          hint={t('depositsCount', { count: summary.depositsCount })}
         />
         <StatCard
-          label="Их оборот"
+          label={t('theirTurnover')}
           value={formatWhole(summary.wageredMinor)}
           unit="AZN"
-          hint="Сумма всех ставок"
+          hint={t('turnoverHint')}
         />
         <StatCard
-          label="Ваша ставка"
+          label={t('yourRate')}
           value={pct(summary.rates.fromDepositBps)}
-          hint={`и ${pct(summary.rates.fromLossBps)} от проигрыша`}
+          hint={t('rateHint', { value: pct(summary.rates.fromLossBps) })}
           accent="warning"
         />
       </div>
@@ -162,18 +164,20 @@ export function ReferralDashboard({
       {/* Ссылка */}
       <div className="rounded-xl border border-border bg-bg-card p-4">
         <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
-          Ваша реферальная ссылка
+          {t('linkTitle')}
         </div>
         <p className="mt-1 text-xs text-text-secondary">
-          Приглашайте игроков и получайте {pct(summary.rates.fromDepositBps)} с каждого их
-          пополнения и {pct(summary.rates.fromLossBps)} с проигрыша.
+          {t('linkHint', {
+            deposit: pct(summary.rates.fromDepositBps),
+            loss: pct(summary.rates.fromLossBps),
+          })}
         </p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <input
             readOnly
             value={shareUrl}
             onFocus={(e) => e.currentTarget.select()}
-            aria-label="Реферальная ссылка"
+            aria-label={t('linkTitle')}
             className="min-w-0 flex-1 rounded-lg border border-border bg-bg-elevated px-3 py-2.5 font-mono text-sm text-text-secondary outline-none focus:border-brand/50"
           />
           <button
@@ -181,43 +185,43 @@ export function ReferralDashboard({
             onClick={() => void copyLink()}
             className="shrink-0 rounded-lg bg-brand px-5 py-2.5 text-sm font-bold text-bg-base transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
           >
-            {copied ? 'Скопировано' : 'Копировать'}
+            {copied ? t('copied') : t('copy')}
           </button>
         </div>
         <div className="mt-2 text-[11px] text-text-muted">
-          Код приглашения: <span className="font-mono text-text-secondary">{summary.referralCode}</span>
+          {t('inviteCode')}: <span className="font-mono text-text-secondary">{summary.referralCode}</span>
         </div>
       </div>
 
       {/* Таблица рефералов */}
       <div className="overflow-hidden rounded-xl border border-border bg-bg-card">
         <div className="border-b border-border px-4 py-3">
-          <h2 className="text-sm font-bold text-text-primary">Ваши рефералы</h2>
+          <h2 className="text-sm font-bold text-text-primary">{t('tableTitle')}</h2>
         </div>
 
         {sorted.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-text-muted">
-            Пока никто не зарегистрировался по вашей ссылке
+            {t('tableEmpty')}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-sm">
               <thead>
                 <tr className="border-b border-border text-[11px] uppercase tracking-wider text-text-muted">
-                  <th className="px-4 py-2.5 text-left font-semibold">Игрок</th>
+                  <th className="px-4 py-2.5 text-left font-semibold">{t('colPlayer')}</th>
                   <th className="px-4 py-2.5 text-left font-semibold">
                     <button type="button" onClick={() => toggleSort('date')} className="hover:text-text-secondary">
-                      Регистрация{sortArrow('date')}
+                      {t('colRegistered')}{sortArrow('date')}
                     </button>
                   </th>
                   <th className="px-4 py-2.5 text-right font-semibold">
                     <button type="button" onClick={() => toggleSort('deposits')} className="hover:text-text-secondary">
-                      Депозиты{sortArrow('deposits')}
+                      {t('colDeposits')}{sortArrow('deposits')}
                     </button>
                   </th>
                   <th className="px-4 py-2.5 text-right font-semibold">
                     <button type="button" onClick={() => toggleSort('earned')} className="hover:text-text-secondary">
-                      Ваш доход{sortArrow('earned')}
+                      {t('colIncome')}{sortArrow('earned')}
                     </button>
                   </th>
                 </tr>

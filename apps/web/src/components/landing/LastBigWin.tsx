@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ArrowRightIcon, TrophyIcon } from '@/components/icons';
 import { rouletteApi, type RecentWinnerDto } from '@/lib/api/roulette';
@@ -42,6 +43,7 @@ export interface LastBigWinProps {
  * общем списке победителей, поэтому баннер всегда согласован с лентой ниже.
  */
 export function LastBigWin({ locale }: LastBigWinProps): JSX.Element | null {
+  const t = useTranslations('jackpot');
   const [winners, setWinners] = useState<RecentWinnerDto[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const prefix = localePrefix(locale);
@@ -94,10 +96,10 @@ export function LastBigWin({ locale }: LastBigWinProps): JSX.Element | null {
 
       <div className="min-w-0 flex-1">
         <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand">
-          Последний крупный выигрыш
+          {t('lastBigWin')}
         </p>
         <p className="truncate text-sm text-text-secondary">
-          <span className="font-semibold text-text-primary">{top.username}</span> выиграл
+          <span className="font-semibold text-text-primary">{top.username}</span> {t('won')}
         </p>
         <p className="font-mono text-xl font-black tabular-nums text-warning sm:text-2xl">
           {formatWhole(top.amountMinor)}{' '}

@@ -45,11 +45,17 @@ export function LanguageSwitcher({ variant = 'sidebar' }: LanguageSwitcherProps)
   function switchTo(next: LocaleCode): void {
     setOpen(false);
     if (next === currentLocale) return;
+
+    // Определение языка идёт по cookie NEXT_LOCALE. Без её обновления переход
+    // на основной язык (он живёт без префикса) middleware сразу возвращал бы
+    // обратно — со стороны это выглядело как «переключатель не работает».
+    document.cookie = `NEXT_LOCALE=${next}; path=/; max-age=31536000; samesite=lax`;
+
     const segments = pathname.split('/').filter(Boolean);
     if (LOCALES.some((l) => l.code === segments[0])) segments.shift();
-    // Основной язык живёт без префикса — иначе middleware будет редиректить
     const rest = segments.length ? `/${segments.join('/')}` : '';
     const target = `${localePrefix(next)}${rest}` || '/';
+
     router.push(target);
     router.refresh();
   }

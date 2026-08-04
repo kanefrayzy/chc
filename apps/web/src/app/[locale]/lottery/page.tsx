@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { AppShell } from '@/components/layout/AppShell';
 import { TicketIcon } from '@/components/icons';
 import { ScratchCard } from '@/features/lottery/components/ScratchCard';
@@ -10,8 +11,13 @@ import { lotteryApi } from '@/lib/api/lottery';
 
 export const dynamic = 'force-dynamic';
 
-export function generateMetadata({ params }: { params: { locale: string } }): Metadata {
-  return { title: params.locale === 'az' ? 'Poz Qazan' : 'Лотерея' };
+export async function generateMetadata({
+  params,
+}: {
+  params: { locale: string };
+}): Promise<Metadata> {
+  const t = await getTranslations({ locale: params.locale, namespace: 'lottery' });
+  return { title: t('title') };
 }
 
 export default async function LotteryPage({
@@ -24,17 +30,19 @@ export default async function LotteryPage({
     .map((c) => `${c.name}=${c.value}`)
     .join('; ');
 
-  const [user, settings, info] = await Promise.all([
+  const [user, settings, info, t] = await Promise.all([
     getServerUser(),
     getPublicSettings(),
     lotteryApi.info(cookieHeader).catch(() => null),
+    getTranslations({ locale: params.locale, namespace: 'lottery' }),
   ]);
 
   if (!info || (settings['gameplay.lottery_enabled'] ?? true) === false) notFound();
 
   return (
     <AppShell locale={params.locale}>
-      <div className="flex items-center gap-3">
+      {/* На телефоне заголовок съедает первый экран — поле начинается сразу */}
+      <div className="hidden items-center gap-3 sm:flex">
         <span
           aria-hidden
           className="flex h-11 w-11 items-center justify-center rounded-xl bg-warning/10 text-warning ring-1 ring-warning/25"
@@ -42,18 +50,12 @@ export default async function LotteryPage({
           <TicketIcon className="h-5 w-5" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">
-            {params.locale === 'az' ? 'Poz Qazan' : 'Лотерея'}
-          </h1>
-          <p className="text-sm text-text-secondary">
-            {params.locale === 'az'
-              ? 'Üç eyni məbləği toplayın və mükafatı götürün'
-              : 'Соберите три одинаковые суммы и заберите приз'}
-          </p>
+          <h1 className="text-2xl font-bold text-text-primary">{t('title')}</h1>
+          <p className="text-sm text-text-secondary">{t('subtitle')}</p>
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className="sm:mt-6">
         <ScratchCard info={info} isAuthed={Boolean(user)} locale={params.locale} />
       </div>
     </AppShell>
