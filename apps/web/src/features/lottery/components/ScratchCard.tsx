@@ -186,19 +186,24 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
       {/* ── Билет ───────────────────────────────────────────────── */}
       <div>
         <div className="select-none overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-bg-elevated to-bg-card">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <div className="flex items-center justify-between border-b border-border px-4 py-2 sm:py-3">
             <span className="text-xs font-black uppercase tracking-[0.2em] text-brand">
               {t('badge')}
             </span>
             <span className="font-mono text-sm font-bold text-text-primary">{price} AZN</span>
           </div>
 
-          <div className="p-4">
-            <p className="text-center text-sm font-semibold text-text-secondary">
+          <div className="p-3 sm:p-4">
+            <p className="text-center text-xs font-semibold text-text-secondary sm:text-sm">
               {ticket ? t('hintScratch') : t('hintIdle')}
             </p>
 
-            <div className="mt-3 grid grid-cols-3 gap-2">
+            {/*
+              На телефоне поле подгоняется под высоту экрана: карта квадратная,
+              поэтому ограничение ширины ограничивает и высоту — кнопки покупки
+              и «стереть всё» остаются видны на любом экране.
+            */}
+            <div className="mx-auto mt-2 grid w-full max-w-[min(100%,max(180px,calc(100dvh_-_25rem)))] grid-cols-3 gap-2 sm:mt-3 lg:max-w-none">
               {(ticket ? cells : Array.from({ length: 9 }, () => -1)).map((symbol, i) => {
                 const prize = prizeBySymbol.get(symbol);
                 return (
@@ -218,7 +223,7 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
             </div>
 
             {/* Результат */}
-            <div className="mt-3 flex min-h-[64px] flex-col items-center justify-center rounded-xl border border-border bg-bg-base px-3 py-2 text-center">
+            <div className="mt-2 flex min-h-[52px] flex-col items-center justify-center rounded-xl border border-border bg-bg-base px-3 py-2 text-center sm:mt-3 sm:min-h-[64px]">
               {!ticket ? (
                 <span className="text-sm text-text-muted">{t('noTicket')}</span>
               ) : winRevealed ? (
@@ -257,13 +262,13 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
 
         {/* Управление */}
         {isAuthed ? (
-          <div className="mt-3 space-y-2">
+          <div className="mt-2.5 space-y-2 sm:mt-3">
             <div className="flex gap-2">
               <button
                 type="button"
                 disabled={!canBuy}
                 onClick={() => void buy()}
-                className="flex-1 rounded-xl bg-brand py-3.5 text-sm font-black uppercase tracking-wide text-bg-base transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-bg-elevated disabled:text-text-muted"
+                className="flex-1 rounded-xl bg-brand py-3 text-sm font-black uppercase tracking-wide text-bg-base transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-bg-elevated disabled:text-text-muted sm:py-3.5"
               >
                 {buyLabel}
               </button>
@@ -271,7 +276,7 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
                 type="button"
                 disabled={!inProgress || autoLeft > 0}
                 onClick={() => setRevealAll(true)}
-                className="rounded-xl border border-border px-4 py-3.5 text-sm font-bold text-text-secondary transition-colors hover:border-brand/40 hover:text-brand disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-xl border border-border px-4 py-3 text-sm font-bold text-text-secondary transition-colors hover:border-brand/40 hover:text-brand disabled:cursor-not-allowed disabled:opacity-40 sm:py-3.5"
               >
                 {t('revealAll')}
               </button>

@@ -30,7 +30,7 @@ export default async function TranslationsPage({ searchParams }: Props) {
     <>
       <PageHeader
         title="Переводы"
-        subtitle="Редактирование текстов интерфейса (ru / az). Изменения вступают в силу через ~60 секунд."
+        subtitle="Тексты интерфейса по ключам. Правится только то, что вы меняете — остальное берётся из сборки, поэтому новые тексты не теряются."
       />
 
       {/* Locale tabs */}
@@ -52,11 +52,7 @@ export default async function TranslationsPage({ searchParams }: Props) {
       </div>
 
       <div className="rounded-2xl border border-border bg-surface p-6 shadow-card">
-        <TranslationsEditor
-          locale={locale}
-          initial={JSON.stringify(data.messages, null, 2)}
-          isCustom={data.isCustom}
-        />
+        <TranslationsEditor locale={locale} entries={data.entries} isCustom={data.isCustom} />
       </div>
     </>
   );

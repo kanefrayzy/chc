@@ -399,6 +399,14 @@ export interface PaymentMethodInput {
   config?: Record<string, unknown>;
 }
 
+/** Одна строка словаря переводов: путь ключа, дефолт из файла и текущее значение. */
+export interface TranslationEntry {
+  key: string;
+  defaultValue: string;
+  value: string;
+  overridden: boolean;
+}
+
 // ─── API client ──────────────────────────────────────────────────────────
 
 interface FetchOptions {
@@ -730,9 +738,17 @@ export const adminApi = {
 
   translations: {
     get: (locale: 'ru' | 'az', opts?: FetchOptions) =>
-      apiFetch<{ locale: string; messages: Record<string, unknown>; isCustom: boolean }>(
+      apiFetch<{
+        locale: string;
+        isCustom: boolean;
+        entries: TranslationEntry[];
+        messages: Record<string, unknown>;
+      }>(`/admin/translations/${locale}`, { ...withCookie(opts) }),
+    /** Точечная правка: null сбрасывает ключ к встроенному значению. */
+    patch: (locale: 'ru' | 'az', entries: Record<string, string | null>) =>
+      apiFetch<{ locale: string; isCustom: boolean; changed: number }>(
         `/admin/translations/${locale}`,
-        { ...withCookie(opts) },
+        { method: 'PATCH', body: { entries } },
       ),
     save: (locale: 'ru' | 'az', messages: Record<string, unknown>) =>
       apiFetch<{ locale: string; isCustom: boolean }>(`/admin/translations/${locale}`, {
