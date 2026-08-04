@@ -42,8 +42,10 @@ export class AuthController {
     private readonly prisma: PrismaService,
   ) {}
 
-  // Регистрация — узкое горло против массового создания аккаунтов-ботов
-  @Throttle({ default: { ttl: 3_600_000, limit: 5 } })
+  // Регистрация — узкое горло против массового создания аккаунтов-ботов.
+  // 5 в час на IP оказалось мало: мобильные операторы прячут абонентов за общим
+  // NAT, и на тестовом запуске 47 живых регистраций получили отказ.
+  @Throttle({ default: { ttl: 3_600_000, limit: 25 } })
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(
@@ -64,8 +66,9 @@ export class AuthController {
     return { user };
   }
 
-  // Логин — защита от перебора паролей
-  @Throttle({ default: { ttl: 300_000, limit: 10 } })
+  // Логин — защита от перебора паролей. Лимит на общий NAT тоже давил живых
+  // пользователей, но остаётся жёстче регистрации: перебор идёт очередями.
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(

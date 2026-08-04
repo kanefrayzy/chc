@@ -25,10 +25,16 @@ export default async function RoulettePage({ params }: RoulettePageProps): Promi
       .getAll()
       .map((c) => `${c.name}=${c.value}`)
       .join('; ');
-    const balance = await apiFetch<WalletBalanceDto>('/wallet/balance', {
-      headers: { Cookie: cookieHeader },
-    });
-    balanceMinor = balance.balanceMinor;
+    try {
+      const balance = await apiFetch<WalletBalanceDto>('/wallet/balance', {
+        headers: { Cookie: cookieHeader },
+      });
+      balanceMinor = balance.balanceMinor;
+    } catch {
+      // Баланс не критичен для рендера: клиент подтянет его сокетом.
+      // Раньше отказ здесь превращал всю страницу игры в ошибку.
+      balanceMinor = null;
+    }
   }
 
   const [t, settings] = await Promise.all([

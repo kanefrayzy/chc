@@ -66,6 +66,9 @@ export function CodeShop({
       const raw = e instanceof ApiException ? e.message : '';
       const key = ERROR_KEYS[raw];
       setError(key ? t(key) : raw || t('errGeneric'));
+      // Склад мог опустеть, пока страница была открыта: обновляем остатки,
+      // иначе карточка так и предлагает купить то, чего нет
+      if (raw === 'OUT_OF_STOCK' || raw === 'CODE_TAKEN') await refresh();
     } finally {
       setBuyingId(null);
     }

@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import { memoTtl } from './memo';
 
 export interface PublicSettings {
   'gameplay.roulette_enabled': boolean;
@@ -94,10 +95,7 @@ const DEFAULTS: PublicSettings = {
   'brand.social_discord': '',
 };
 
-/**
- * Получить публичные настройки. При сетевой ошибке — безопасные дефолты.
- */
-export async function getPublicSettings(): Promise<PublicSettings> {
+async function loadPublicSettings(): Promise<PublicSettings> {
   try {
     const raw = await apiFetch<Record<string, unknown>>('/settings/public');
     return { ...DEFAULTS, ...(raw as Partial<PublicSettings>) };
@@ -105,3 +103,12 @@ export async function getPublicSettings(): Promise<PublicSettings> {
     return DEFAULTS;
   }
 }
+
+/**
+ * Получить публичные настройки. При сетевой ошибке — безопасные дефолты.
+ *
+ * Ответ держится 15 секунд: настройки читают почти все серверные компоненты
+ * (шапка, меню, hero, плитки игр), и без этого одна страница делала семь
+ * одинаковых запросов. В самом API настройки и так кэшируются на минуту.
+ */
+export const getPublicSettings = memoTtl(loadPublicSettings, 15_000);

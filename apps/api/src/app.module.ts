@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { TerminusModule } from '@nestjs/terminus';
 import * as path from 'path';
 import { HealthController } from './health/health.controller';
@@ -28,6 +28,7 @@ import { ProgressiveModule } from './modules/progressive/progressive.module';
 import { WinnersModule } from './modules/winners/winners.module';
 import { CodeShopModule } from './modules/code-shop/code-shop.module';
 import { LotteryModule } from './modules/lottery/lottery.module';
+import { InternalAwareThrottlerGuard } from './common/internal-throttler.guard';
 
 @Module({
   imports: [
@@ -64,6 +65,6 @@ import { LotteryModule } from './modules/lottery/lottery.module';
     AdminModule,
   ],
   controllers: [HealthController],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: InternalAwareThrottlerGuard }],
 })
 export class AppModule {}

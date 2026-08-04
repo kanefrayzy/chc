@@ -61,6 +61,12 @@ export async function apiFetch<T>(
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      // Серверный рендер ходит в API из контейнера: все посетители приходят с
+      // одного адреса, и общий лимит по IP выбивался почти сразу. Ключ помечает
+      // такие запросы как свои; в браузер он не попадает.
+      ...(typeof window === 'undefined' && process.env.INTERNAL_API_KEY
+        ? { 'x-internal-client': process.env.INTERNAL_API_KEY }
+        : {}),
       ...options.headers,
     } as Record<string, string>,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,

@@ -1,5 +1,6 @@
 import { getRequestConfig } from 'next-intl/server';
 import type { AbstractIntlMessages } from 'next-intl';
+import { memoTtlBy } from '@/lib/api/memo';
 
 export const locales = ['az', 'ru'] as const;
 export type Locale = (typeof locales)[number];
@@ -45,7 +46,7 @@ function apiBaseUrl(): string {
  * поверх него. Иначе устаревший словарь из API затирает новые ключи целиком —
  * и вместо текста на странице появляются сами ключи вида `lottery.buy`.
  */
-async function loadMessages(locale: Locale): Promise<AbstractIntlMessages> {
+async function fetchMessages(locale: Locale): Promise<AbstractIntlMessages> {
   const bundled = ((await import(`./messages/${locale}.json`)).default ?? {}) as Dict;
   try {
     const res = await fetch(`${apiBaseUrl()}/translations/${locale}`, {
@@ -62,6 +63,13 @@ async function loadMessages(locale: Locale): Promise<AbstractIntlMessages> {
   }
   return bundled as AbstractIntlMessages;
 }
+
+/**
+ * Словарь нужен каждому рендеру, а меняется он только правками в админке,
+ * которые и так применяются с минутной задержкой. Без этого кэша сайт тянул
+ * из API все 556 ключей на каждый заход посетителя.
+ */
+const loadMessages = memoTtlBy<Locale, AbstractIntlMessages>(fetchMessages, 60_000);
 
 export default getRequestConfig(async ({ requestLocale }) => {
   let locale = await requestLocale;

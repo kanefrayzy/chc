@@ -26,10 +26,16 @@ export default async function MinesPage({ params }: MinesPageProps): Promise<JSX
       .getAll()
       .map((c) => `${c.name}=${c.value}`)
       .join('; ');
-    const balance = await apiFetch<WalletBalanceDto>('/wallet/balance', {
-      headers: { Cookie: cookieHeader },
-    });
-    balanceMinor = balance.balanceMinor;
+    try {
+      const balance = await apiFetch<WalletBalanceDto>('/wallet/balance', {
+        headers: { Cookie: cookieHeader },
+      });
+      balanceMinor = balance.balanceMinor;
+    } catch {
+      // Баланс не критичен для рендера: клиент подтянет его сокетом.
+      // Раньше отказ здесь превращал всю страницу игры в ошибку.
+      balanceMinor = null;
+    }
   }
 
   // Подтянем лимиты из публичных настроек (с дефолтами на случай отсутствия ключей).
