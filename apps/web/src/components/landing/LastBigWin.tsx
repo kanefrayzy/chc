@@ -11,23 +11,17 @@ import { localePrefix } from '@/lib/i18n/prefix';
 /** Сколько последних записей просматриваем в поисках самой крупной. */
 const SCAN_LIMIT = 15;
 
-function timeAgo(iso: string, now: number): string {
-  const diffSec = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 1000));
-  if (diffSec < 60) return 'только что';
-  const min = Math.floor(diffSec / 60);
-  if (min < 60) return `${min} ${plural(min, 'минуту', 'минуты', 'минут')} назад`;
-  const hours = Math.floor(min / 60);
-  if (hours < 24) return `${hours} ${plural(hours, 'час', 'часа', 'часов')} назад`;
-  const days = Math.floor(hours / 24);
-  return `${days} ${plural(days, 'день', 'дня', 'дней')} назад`;
-}
+type Translate = (key: string, values?: Record<string, string | number>) => string;
 
-function plural(n: number, one: string, few: string, many: string): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return one;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
-  return many;
+/** «только что», «5 мин», «2 ч» — подписи берутся из файлов локализации. */
+function timeAgo(iso: string, now: number, t: Translate): string {
+  const diffSec = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 1000));
+  if (diffSec < 60) return t('justNow');
+  const min = Math.floor(diffSec / 60);
+  if (min < 60) return t('minutes', { n: min });
+  const hours = Math.floor(min / 60);
+  if (hours < 24) return t('hours', { n: hours });
+  return t('days', { n: Math.floor(hours / 24) });
 }
 
 function formatWhole(minor: string): string {
@@ -44,6 +38,7 @@ export interface LastBigWinProps {
  */
 export function LastBigWin({ locale }: LastBigWinProps): JSX.Element | null {
   const t = useTranslations('jackpot');
+  const tt = useTranslations('winnersTable');
   const [winners, setWinners] = useState<RecentWinnerDto[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const prefix = localePrefix(locale);
@@ -109,7 +104,7 @@ export function LastBigWin({ locale }: LastBigWinProps): JSX.Element | null {
 
       <div className="shrink-0 text-right">
         <span className="block text-[11px] text-text-muted" suppressHydrationWarning>
-          {timeAgo(top.createdAt, now)}
+          {timeAgo(top.createdAt, now, tt)}
         </span>
         <ArrowRightIcon className="ml-auto mt-1 h-4 w-4 text-text-muted transition-transform group-hover:translate-x-0.5" />
       </div>

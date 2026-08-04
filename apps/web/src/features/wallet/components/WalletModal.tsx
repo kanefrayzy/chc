@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { createPortal } from 'react-dom';
 import { DepositPanel } from './DepositPanel';
 import { WithdrawPanel } from './WithdrawPanel';
@@ -18,10 +19,7 @@ export interface WalletModalProps {
   onBalanceRefresh?: () => void;
 }
 
-const TABS: { id: WalletTab; label: string }[] = [
-  { id: 'deposit', label: 'Пополнить' },
-  { id: 'withdraw', label: 'Вывести' },
-];
+const TABS: WalletTab[] = ['deposit', 'withdraw'];
 
 /**
  * Модальное окно кошелька: единая шапка с балансом, переключатель
@@ -36,6 +34,7 @@ export function WalletModal({
   balanceMinor,
   onBalanceRefresh,
 }: WalletModalProps): JSX.Element | null {
+  const t = useTranslations('wallet');
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -68,12 +67,12 @@ export function WalletModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Кошелёк"
+      aria-label={t('modal.title')}
       className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
     >
       <button
         type="button"
-        aria-label="Закрыть"
+        aria-label={t('modal.close')}
         onClick={onClose}
         className="absolute inset-0 cursor-default bg-black/75 backdrop-blur-sm"
       />
@@ -84,7 +83,7 @@ export function WalletModal({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-muted">
-                Баланс
+                {t('modal.balance')}
               </p>
               <p className="mt-1 text-3xl font-bold leading-none tabular-nums text-text-primary">
                 {balanceMinor !== null
@@ -98,7 +97,7 @@ export function WalletModal({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Закрыть"
+              aria-label={t('modal.close')}
               className="-mr-1 -mt-1 rounded-lg p-2 text-text-muted transition-colors hover:bg-bg-card hover:text-text-primary"
             >
               <svg viewBox="0 0 20 20" className="h-4.5 w-4.5" width="18" height="18" aria-hidden>
@@ -117,25 +116,25 @@ export function WalletModal({
             role="tablist"
             className="mt-4 flex gap-1 rounded-xl border border-border bg-bg-base/80 p-1"
           >
-            {TABS.map((t) => {
-              const active = t.id === tab;
+            {TABS.map((id) => {
+              const active = id === tab;
               const activeClasses =
-                t.id === 'deposit'
+                id === 'deposit'
                   ? 'bg-brand text-bg-base shadow-[0_0_20px_rgba(0,255,136,0.25)]'
                   : 'bg-accent-purple text-white shadow-[0_0_20px_rgba(162,89,255,0.25)]';
               return (
                 <button
-                  key={t.id}
+                  key={id}
                   role="tab"
                   type="button"
                   aria-selected={active}
-                  onClick={() => onTabChange(t.id)}
+                  onClick={() => onTabChange(id)}
                   className={[
                     'flex-1 rounded-lg py-2.5 text-sm font-semibold transition-all',
                     active ? activeClasses : 'text-text-secondary hover:bg-bg-card hover:text-text-primary',
                   ].join(' ')}
                 >
-                  {t.label}
+                  {t(`modal.${id}`)}
                 </button>
               );
             })}

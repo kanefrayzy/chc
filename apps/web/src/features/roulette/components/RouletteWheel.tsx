@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { RouletteColor } from '@/lib/api/roulette';
 import { ROULETTE_SLOTS } from '../constants';
 import { playTick, playSlow } from '@/lib/sound';
@@ -364,6 +365,7 @@ export interface ColorTotalsBadgeProps {
 }
 
 export function ColorTotalsBadge({ color, amountMinor, betsCount, multiplier }: ColorTotalsBadgeProps): JSX.Element {
+  const t = useTranslations('roulette');
   const fill = COLOR_FILL[color];
   return (
     <div
@@ -374,7 +376,7 @@ export function ColorTotalsBadge({ color, amountMinor, betsCount, multiplier }: 
         <ColorMarker color={color} />
         ×{multiplier}
       </span>
-      <span className="text-text-secondary">{betsCount} ставок</span>
+      <span className="text-text-secondary">{t('round.betsCount', { count: betsCount })}</span>
       <span className="text-text-primary font-mono">{(Number(amountMinor) / 100).toFixed(2)} AZN</span>
     </div>
   );

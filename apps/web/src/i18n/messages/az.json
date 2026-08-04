@@ -7,7 +7,10 @@
     "online": "onlayn",
     "profileMenu": "Profilim",
     "depositMenu": "Balansı artır",
-    "withdrawMenu": "Vasitələri çıxar"
+    "withdrawMenu": "Vasitələri çıxar",
+    "tagline": "Avtomatik oyunlar üçün onlayn platforma",
+    "all": "Hamısı",
+    "close": "Bağla"
   },
   "sidebar": {
     "games": "Oyunlar",
@@ -198,6 +201,28 @@
       },
       "errors": {
         "loadFailed": "Tarixçəni yükləmək alınmadı."
+      },
+      "more": "Daha çox göstər",
+      "filters": {
+        "all": "Hamısı",
+        "deposit": "Artırmalar",
+        "withdrawal": "Çıxarışlar",
+        "code": "Kodlar"
+      },
+      "method": {
+        "card": "Kart",
+        "crypto": "Kriptovalyuta"
+      },
+      "status": {
+        "PENDING": "Ödəniş gözlənilir",
+        "PROCESSING": "Emal olunur",
+        "COMPLETED": "Tamamlandı",
+        "FAILED": "Alınmadı",
+        "EXPIRED": "Vaxtı bitdi",
+        "REJECTED": "İmtina edildi",
+        "CANCELLED": "Ləğv edildi",
+        "AWAITING_MODERATOR": "Moderator gözlənilir",
+        "CODE_ISSUED": "Kod verildi"
       }
     },
     "overview": {
@@ -209,6 +234,17 @@
       "description": "Linki paylaşın və dəvət etdiyiniz oyunçuların itkilərindən % qazanın.",
       "codeLabel": "Sizin kodunuz",
       "linkLabel": "Referal link"
+    },
+    "avatar": {
+      "change": "Dəyiş",
+      "hint": "PNG, JPG, WEBP · maks. 2 MB",
+      "aria": "Avatar yüklə",
+      "errors": {
+        "type": "Yalnız PNG, JPG, WEBP formatları",
+        "size": "Fayl 2 MB-dan böyük olmamalıdır",
+        "upload": "Yükləmə xətası",
+        "network": "Şəbəkə xətası"
+      }
     }
   },
   "wallet": {
@@ -240,6 +276,13 @@
       "JACKPOT_BET": "Cekpot mərci",
       "JACKPOT_WIN": "Cekpot uduşu",
       "JACKPOT_COMMISSION": "Cekpot komissiyası"
+    },
+    "modal": {
+      "title": "Pul kisəsi",
+      "balance": "Balans",
+      "deposit": "Artır",
+      "withdraw": "Çıxar",
+      "close": "Bağla"
     }
   },
   "deposit": {
@@ -262,8 +305,14 @@
         "createFailed": "Doldurma yaratmaq alınmadı",
         "loadMethods": "Ödəniş üsulları yüklənmədi.",
         "noMethods": "Ödəniş üsulları müvəqqəti əlyetişmir.",
-        "selectMethod": "Ödəniş üsulunu seçin"
-      }
+        "selectMethod": "Ödəniş üsulunu seçin",
+        "walletAddress": "Pul kisəsi ünvanı alınmadı"
+      },
+      "amountFieldLabel": "Artırma məbləği",
+      "submittingInvoice": "Hesab yaradılır…",
+      "credited": "Balans artırıldı",
+      "paidPending": "Ödəniş qəbul edildi — balans bir neçə dəqiqəyə artacaq",
+      "notCompleted": "Ödəniş tamamlanmadı"
     },
     "list": {
       "empty": "Hələ doldurma yoxdur.",
@@ -292,7 +341,17 @@
         "COMPLETED": "Hesablandı",
         "FAILED": "Xəta",
         "EXPIRED": "Vaxtı keçib"
-      }
+      },
+      "bank": "Bank",
+      "owner": "Alıcı",
+      "cryptoTitle": "USDT ilə artırma",
+      "anyAmount": "İstənilən məbləğ",
+      "oneTime": "Rekvizitlər yalnız bu ödəniş üçün keçərlidir — onları saxlamayın.",
+      "createdAt": "Yaradılıb",
+      "exactAmount": "dəqiq məbləği",
+      "transferExact": "Köçürün",
+      "transferExactTail": "— əks halda ödəniş avtomatik hesablanmayacaq.",
+      "copyAria": "Kopyala"
     }
   },
   "withdraw": {
@@ -321,8 +380,19 @@
         "createFailed": "Müraciət yaradıla bilmədi",
         "loadMethods": "Çıxarış üsulları yüklənmədi.",
         "noMethods": "Çıxarış üsulları müvəqqəti əlyetişmir.",
-        "selectMethod": "Çıxarış üsulunu seçin"
-      }
+        "selectMethod": "Çıxarış üsulunu seçin",
+        "invalidCard": "Düzgün kart nömrəsi daxil edin",
+        "invalidWallet": "Düzgün pul kisəsi ünvanı daxil edin"
+      },
+      "amountFieldLabel": "Çıxarış məbləği",
+      "withdrawAll": "Hamısını çıxar",
+      "submitLong": "Vəsaiti çıxar",
+      "sending": "Göndərilir…",
+      "created": "Çıxarış sorğusu yaradıldı",
+      "myRequests": "Sorğularım",
+      "optional": "məcburi deyil",
+      "holderLabel": "Kart sahibi",
+      "hint": "Sorğunu moderator emal edir. Vəsait dərhal bloklanır — emala qədər sorğunu tarixçədən ləğv etmək olar."
     },
     "list": {
       "empty": "Hələ çıxarış müraciəti yoxdur.",
@@ -346,6 +416,11 @@
         "FAILED": "Xəta",
         "CANCELLED": "Ləğv edildi"
       }
+    },
+    "method": {
+      "card": "Kart",
+      "crypto": "USDT TRC20",
+      "manual": "Əl ilə"
     }
   },
   "chat": {
@@ -386,7 +461,14 @@
       "CLOSED": "Bağlı"
     },
     "title": "Dəstək",
-    "loginPrompt": "Dəstəyə yazmaq üçün daxil olun"
+    "loginPrompt": "Dəstəyə yazmaq üçün daxil olun",
+    "startChat": "Söhbətə başla",
+    "noTickets": "Aktiv müraciət yoxdur",
+    "writeFirst": "İlk mesajı yazın…",
+    "imageAlt": "Şəkil",
+    "collapse": "Yığ",
+    "openChat": "Söhbəti aç",
+    "closeChat": "Söhbəti bağla"
   },
   "codePurchase": {
     "pageTitle": "Kod alışı",
@@ -423,7 +505,14 @@
         "ROLLING": "Fırlanır",
         "COMPLETED": "Bitdi",
         "CANCELLED": "Ləğv"
-      }
+      },
+      "waiting": "Mərclər gözlənilir",
+      "makeFirst": "birincisini edin",
+      "untilClose": "Bağlanmağa",
+      "spinning": "Fırlanır",
+      "result": "Düşdü",
+      "betsCount": "{count} mərc",
+      "noBets": "Hələ mərc yoxdur"
     },
     "bet": {
       "title": "Yeni mərc",
@@ -439,8 +528,13 @@
         "insufficient": "Vəsait kifayət etmir",
         "noOpenRound": "Açıq raund yoxdur",
         "bettingClosed": "Mərclər bağlandı",
-        "placeFailed": "Mərc qoyula bilmədi"
-      }
+        "placeFailed": "Mərc qoyula bilmədi",
+        "redBlack": "Eyni anda RED və BLACK-a mərc etmək olmaz"
+      },
+      "redBlackFull": "Eyni anda RED və BLACK-a mərc etmək olmaz. Yalnız RED+GREEN və ya BLACK+GREEN mümkündür.",
+      "combosHint": "Mümkün birləşmələr:",
+      "or": "və ya",
+      "placed": "{color} rənginə {amount} AZN mərc qəbul edildi!"
     },
     "bets": {
       "recentTitle": "Son mərclər",
@@ -452,6 +546,17 @@
     },
     "history": {
       "empty": "Raund tarixçəsi ilk raunddan sonra görünəcək."
+    },
+    "toast": {
+      "win": "Qələbə! +{amount} AZN",
+      "lose": "Uğursuz — {amount} AZN getdi",
+      "result": "{color} ×{mult} düşdü"
+    },
+    "sound": {
+      "on": "Səs açıqdır",
+      "off": "Səs bağlıdır",
+      "enable": "Səsi aç",
+      "disable": "Səsi bağla"
     }
   },
   "mines": {
@@ -595,15 +700,76 @@
       "next": "Növbəti ranq",
       "wagered": "Edilmiş mərclər",
       "max": "Maksimum"
-    }
+    },
+    "modalSubtitle": "Nə qədər çox mərc — bir o qədər yüksək rütbə",
+    "next": "Növbəti",
+    "betsLabel": "Mərclər:",
+    "fromAmount": "{amount}-dən",
+    "nowLabel": "İndi"
   },
   "faq": {
     "pageTitle": "Tez-tez verilən suallar",
-    "subtitle": "Ödənişlər, kodlar və bonuslar haqqında əsas cavablar"
+    "subtitle": "Ödənişlər, kodlar və bonuslar haqqında əsas cavablar",
+    "items": {
+      "deposit": {
+        "q": "Balansı necə artırmaq olar?",
+        "a": "Yuxarıdakı «Artır» düyməsini açın, ödəniş üsulunu seçin və məbləği daxil edin. Vəsait köçürmədən sonra 1–5 dəqiqə ərzində avtomatik hesablanır."
+      },
+      "methods": {
+        "q": "Hansı ödəniş üsulları var?",
+        "a": "AZN kartı və USDT (TRC20) kriptovalyutası. Siyahı genişlənə bilər — mövcud variantlar artırma pəncərəsində görünür."
+      },
+      "withdrawTime": {
+        "q": "Çıxarış nə qədər çəkir?",
+        "a": "Karta və kriptovalyutaya avtomatik çıxarışlar — 15 dəqiqəyə qədər. Moderator vasitəsilə əl ilə çıxarış — bir gün ərzində."
+      },
+      "codes": {
+        "q": "Kodu necə almaq olar?",
+        "a": "«Kod al» səhifəsində nominalı seçin — məbləğ balansdan silinir, kod isə operator gözləmədən dərhal verilir."
+      },
+      "enterCode": {
+        "q": "Kodu necə daxil etmək olar?",
+        "a": "«Kodu daxil et» düyməsini basın, 14 rəqəmli kodu yapışdırın və təsdiqləyin. Oyun sessiyası yeni səhifədə açılacaq."
+      },
+      "history": {
+        "q": "Əməliyyat tarixçəsi haradadır?",
+        "a": "Profildəki «Tarixçə» bölməsində — bütün artırmalar, çıxarışlar və kod alışları statusları ilə birlikdə."
+      },
+      "safety": {
+        "q": "Balansda pul saxlamaq təhlükəsizdirmi?",
+        "a": "Balans qəpiklə saxlanılır — AZN-in minor vahidi ilə. Bütün əməliyyatlar jurnallanan tranzaksiyalardan keçir, qəpik itkisi mümkün deyil."
+      },
+      "fair": {
+        "q": "Oyunlar dürüstdürmü?",
+        "a": "Bəli. Raunddan əvvəl server toxumunun heşi verilir, sonra isə toxumun özü. İstənilən nəticəni özünüz yoxlaya bilərsiniz."
+      }
+    }
   },
   "bonuses": {
     "pageTitle": "Bonuslar və aksiyalar",
-    "subtitle": "CHCGreen-in bütün aktual təklifləri bir yerdə"
+    "subtitle": "CHCGreen-in bütün aktual təklifləri bir yerdə",
+    "items": {
+      "firstDeposit": {
+        "title": "İlk artırma bonusu",
+        "subtitle": "İlk depozitə +100%",
+        "text": "Balansı ilk dəfə 20 AZN-dən artırdıqda məbləği ikiqat edirik. Bonus vəsaiti dərhal əlçatandır."
+      },
+      "cashback": {
+        "title": "Həftəsonu keşbeki",
+        "subtitle": "Hər bazar günü 5% qaytarma",
+        "text": "Bazar günü saat 23:59-da həftəlik xərclərinizin 5%-ini birbaşa balansa qaytarırıq. Şərtsiz və limitsiz."
+      },
+      "referral": {
+        "title": "Referal proqramı",
+        "subtitle": "Dostların artırmalarından 10%",
+        "text": "Referal linkinizi paylaşın — dəvət etdiyiniz dostun hər artırmasından 10% bonus alırsınız. Limit yoxdur."
+      },
+      "ranks": {
+        "title": "Rütbələr və imtiyazlar",
+        "subtitle": "Rütbə nə qədər yüksəkdir — imkanlar bir o qədər çoxdur",
+        "text": "Artırılmış keşbek, prioritet dəstək, eksklüziv kodlar və yüksək rütbələrdə fərdi bonuslar."
+      }
+    }
   },
   "classic": {
     "pageTitle": "Klassik",
@@ -780,5 +946,20 @@
     "title": "Telegram qrupumuz",
     "text": "Bonuslar, promokodlar və xəbərlər — hamıdan tez",
     "join": "Qoşul"
+  },
+  "redeem": {
+    "tooShort": "Kod çox qısadır (ən azı 14 rəqəm)",
+    "tooLong": "Kod çox uzundur (ən çox 14 rəqəm)",
+    "accepted": "Kod qəbul edildi. Oyun sessiyası açılır.",
+    "checkFailed": "Kodu yoxlamaq alınmadı. Yenidən cəhd edin.",
+    "checking": "Yoxlanılır…",
+    "noCode": "Kod yoxdur? Söhbətdə al",
+    "title": "Kodu daxil et",
+    "buyTitle": "Kod al",
+    "errors": {
+      "length": "Kod 14 rəqəmdən ibarət olmalıdır",
+      "provider": "Provayderdən gözlənilməz cavab",
+      "connection": "Kazino serveri ilə bağlantı xətası"
+    }
   }
 }

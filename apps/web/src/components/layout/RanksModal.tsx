@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { useEffect, useState } from 'react';
 import { Modal, Spinner } from '@chcgreen/ui';
 import { useUi } from './ui-context';
@@ -55,6 +57,7 @@ function formatThreshold(minor: string): string {
 }
 
 export function RanksModal({ locale, isAuthed }: RanksModalProps): JSX.Element {
+  const t = useTranslations('ranks');
   const { ranksModalOpen, closeRanks } = useUi();
   const [ranks, setRanks] = useState<RankDto[]>([]);
   const [progress, setProgress] = useState<MyRankProgressDto | null>(null);
@@ -106,10 +109,10 @@ export function RanksModal({ locale, isAuthed }: RanksModalProps): JSX.Element {
           >
             <TrophyIcon className="h-4 w-4" />
           </span>
-          <span>Ранги</span>
+          <span>{t('pageTitle')}</span>
         </span>
       }
-      description="Чем больше ставите — выше ранг"
+      description={t('modalSubtitle')}
     >
       {loading ? (
         <div className="flex justify-center py-10">
@@ -127,7 +130,7 @@ export function RanksModal({ locale, isAuthed }: RanksModalProps): JSX.Element {
                   )}
                   <div className="min-w-0">
                     <div className="text-[11px] uppercase tracking-wide text-text-muted">
-                      Текущий
+                      {t('current')}
                     </div>
                     <div className="truncate text-sm font-semibold text-text-primary">
                       {currentName ?? '—'}
@@ -137,7 +140,7 @@ export function RanksModal({ locale, isAuthed }: RanksModalProps): JSX.Element {
                 {nextName ? (
                   <div className="text-right min-w-0">
                     <div className="text-[11px] uppercase tracking-wide text-text-muted">
-                      Следующий
+                      {t('next')}
                     </div>
                     <div className="truncate text-sm font-medium text-text-secondary">
                       {nextName}
@@ -157,7 +160,7 @@ export function RanksModal({ locale, isAuthed }: RanksModalProps): JSX.Element {
               </div>
               <div className="mt-1.5 flex items-center justify-between text-[11px] text-text-muted">
                 <span>
-                  Ставок:{' '}
+                  {t('betsLabel')}{' '}
                   {total !== null ? `${(Number(total) / 100).toFixed(0)} AZN` : '—'}
                 </span>
                 <span>{pct.toFixed(0)}%</span>
@@ -194,13 +197,13 @@ export function RanksModal({ locale, isAuthed }: RanksModalProps): JSX.Element {
                       </span>
                     </div>
                     <div className="text-[11px] text-text-muted">
-                      от {formatThreshold(r.minWageredMinor)}
+                      {t('fromAmount', { amount: formatThreshold(r.minWageredMinor) })}
                     </div>
                   </div>
                   <div className="shrink-0">
                     {isCurrent ? (
                       <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[11px] font-semibold text-brand">
-                        Сейчас
+                        {t('nowLabel')}
                       </span>
                     ) : isReached ? (
                       <CheckCircleIcon className="h-5 w-5 text-emerald-400" />

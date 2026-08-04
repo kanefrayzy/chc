@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useUi } from './ui-context';
@@ -11,6 +12,7 @@ import { useUi } from './ui-context';
  * мы показываем уведомление, открываем кошелёк и убираем параметр из адреса.
  */
 export function PaymentReturnHandler(): null {
+  const t = useTranslations('deposit');
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -23,10 +25,10 @@ export function PaymentReturnHandler(): null {
     handled.current = true;
 
     if (status === 'success') {
-      toast.success('Оплата принята — баланс пополнится в течение пары минут');
+      toast.success(t('form.paidPending'));
       refreshBalance();
     } else {
-      toast.error('Оплата не завершена');
+      toast.error(t('form.notCompleted'));
     }
     openDeposit();
 

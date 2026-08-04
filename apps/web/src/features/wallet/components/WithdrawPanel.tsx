@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { AmountField, parseAmountToMinor } from './AmountField';
 import { MethodPicker } from './MethodPicker';
@@ -65,6 +66,7 @@ export function WithdrawPanel({
   locale = 'ru',
   onSuccess,
 }: WithdrawPanelProps): JSX.Element {
+  const t = useTranslations('withdraw');
   const router = useRouter();
   const [methods, setMethods] = useState<PublicPaymentMethod[]>([]);
   const [methodsLoading, setMethodsLoading] = useState(true);
@@ -114,7 +116,7 @@ export function WithdrawPanel({
       })
       .catch((e) => {
         if (cancelled) return;
-        setMethodsError(e instanceof ApiException ? e.message : 'Не удалось загрузить способы вывода');
+        setMethodsError(e instanceof ApiException ? e.message : t('form.errors.loadMethods'));
       })
       .finally(() => {
         if (!cancelled) setMethodsLoading(false);
@@ -144,24 +146,24 @@ export function WithdrawPanel({
     e.preventDefault();
     setErrorMessage(null);
     if (!selected) {
-      setErrorMessage('Выберите способ вывода');
+      setErrorMessage(t('form.errors.selectMethod'));
       return;
     }
     const minor = parseAmountToMinor(amount);
     if (minor === null) {
-      setErrorMessage('Введите корректную сумму');
+      setErrorMessage(t('form.errors.invalidAmount'));
       return;
     }
     if (minor < minMinor || minor > maxMinor) {
-      setErrorMessage('Сумма вне допустимого диапазона');
+      setErrorMessage(t('form.errors.outOfRange'));
       return;
     }
     if (minor > balance) {
-      setErrorMessage('Недостаточно средств на балансе');
+      setErrorMessage(t('form.errors.insufficient'));
       return;
     }
     if (!isDestinationValid(destination)) {
-      setErrorMessage(isCrypto ? 'Укажите корректный адрес кошелька' : 'Укажите корректный номер карты');
+      setErrorMessage(isCrypto ? t('form.errors.invalidWallet') : t('form.errors.invalidCard'));
       return;
     }
 
@@ -174,11 +176,11 @@ export function WithdrawPanel({
         });
         setAmount('');
         setDestination(defaultDestination(selected.provider));
-        toast.success('Заявка на вывод создана');
+        toast.success(t('form.created'));
         router.refresh();
         if (onSuccess) onSuccess();
       } catch (err) {
-        setErrorMessage(err instanceof ApiException ? err.message : 'Не удалось создать заявку');
+        setErrorMessage(err instanceof ApiException ? err.message : t('form.errors.createFailed'));
       }
     });
   };
@@ -186,7 +188,7 @@ export function WithdrawPanel({
   if (methodsLoading) return <PanelSkeleton />;
   if (methodsError) return <PanelMessage variant="danger">{methodsError}</PanelMessage>;
   if (methods.length === 0)
-    return <PanelMessage variant="warning">Способы вывода временно недоступны</PanelMessage>;
+    return <PanelMessage variant="warning">{t('form.errors.noMethods')}</PanelMessage>;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -199,12 +201,12 @@ export function WithdrawPanel({
           setErrorMessage(null);
         }}
         disabled={isPending}
-        label="Способ вывода"
+        label={t('form.selectMethod')}
         accent="purple"
       />
 
       {isCrypto ? (
-        <Field label="Адрес кошелька" hint="USDT TRC20">
+        <Field label={t('form.walletAddress')} hint="USDT TRC20">
           <input
             className={inputClasses}
             value={destination.kind === 'crypto' ? destination.walletAddress : ''}
@@ -218,7 +220,7 @@ export function WithdrawPanel({
         </Field>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Номер карты">
+          <Field label={t('form.cardNumber')}>
             <input
               className={`${inputClasses} font-mono tracking-wide`}
               value={destination.kind === 'card' ? destination.cardNumber : ''}
@@ -235,7 +237,7 @@ export function WithdrawPanel({
               placeholder="0000 0000 0000 0000"
             />
           </Field>
-          <Field label="Владелец" hint="необязательно">
+          <Field label={t('form.holderLabel')} hint={t('form.optional')}>
             <input
               className={`${inputClasses} uppercase`}
               value={destination.kind === 'card' ? (destination.cardHolder ?? '') : ''}
@@ -254,7 +256,7 @@ export function WithdrawPanel({
       )}
 
       <AmountField
-        label="Сумма вывода"
+        label={t('form.amountFieldLabel')}
         value={amount}
         onChange={setAmount}
         disabled={isPending || !selected}
@@ -262,7 +264,7 @@ export function WithdrawPanel({
         maxMinor={maxMinor}
         presets={[]}
         maxAvailableMinor={balance < maxMinor ? balance : maxMinor}
-        maxAvailableLabel="Вывести всё"
+        maxAvailableLabel={t('form.withdrawAll')}
         accent="purple"
       />
 
@@ -271,21 +273,18 @@ export function WithdrawPanel({
       <div className="rounded-xl bg-bg-base/60 px-3.5 py-3">
         <p className="flex gap-2 text-xs text-text-secondary">
           <span className="mt-[3px] h-1.5 w-1.5 shrink-0 rounded-full bg-accent-purple" />
-          <span>
-            Заявка обрабатывается модератором. Средства резервируются сразу — до обработки заявку можно
-            отменить в истории.
-          </span>
+          <span>{t('form.hint')}</span>
         </p>
       </div>
 
       <SubmitButton loading={isPending} disabled={!selected} accent="purple">
-        {isPending ? 'Отправляем…' : 'Вывести средства'}
+        {isPending ? t('form.sending') : t('form.submitLong')}
       </SubmitButton>
 
       {/* Заявки: статусы и отмена — отдельной страницы вывода больше нет */}
       <div className="border-t border-border pt-4">
         <p className="mb-2 text-xs font-medium uppercase tracking-wider text-text-muted">
-          Мои заявки
+          {t('form.myRequests')}
         </p>
         <WithdrawalsList locale={locale} pageSize={5} />
       </div>

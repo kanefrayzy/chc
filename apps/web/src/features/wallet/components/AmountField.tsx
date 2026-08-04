@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { useMemo } from 'react';
 
 export interface AmountFieldProps {
@@ -40,9 +42,10 @@ export function AmountField({
   maxMinor,
   presets = [10, 25, 50, 100, 250],
   maxAvailableMinor,
-  maxAvailableLabel = 'Всё',
+  maxAvailableLabel,
   accent = 'brand',
 }: AmountFieldProps): JSX.Element {
+  const tc = useTranslations('common');
   const accentText = accent === 'brand' ? 'text-brand' : 'text-accent-purple';
   const accentRing =
     accent === 'brand'
@@ -114,7 +117,7 @@ export function AmountField({
                   : 'border-accent-purple/30 bg-accent-purple/10 text-accent-purple hover:bg-accent-purple/20'
               }`}
             >
-              {maxAvailableLabel}
+              {maxAvailableLabel ?? tc('all')}
             </button>
           )}
         </div>

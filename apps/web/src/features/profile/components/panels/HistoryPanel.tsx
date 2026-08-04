@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Alert, Spinner } from '@chcgreen/ui';
 import { depositsApi, type DepositDto } from '@/lib/api/deposits';
 import { withdrawalsApi, type WithdrawalDto } from '@/lib/api/withdrawals';
@@ -14,52 +15,6 @@ type Row =
   | { kind: 'deposit'; row: DepositDto }
   | { kind: 'withdrawal'; row: WithdrawalDto }
   | { kind: 'code'; row: CodePurchaseDto };
-
-/** Понятные статусы вместо технических кодов вроде COMPLETED / AWAITING_MODERATOR. */
-const STATUS_RU: Record<string, string> = {
-  PENDING: 'Ожидает оплаты',
-  PROCESSING: 'В обработке',
-  COMPLETED: 'Выполнено',
-  FAILED: 'Не удалось',
-  EXPIRED: 'Истёк срок',
-  REJECTED: 'Отклонено',
-  CANCELLED: 'Отменено',
-  AWAITING_MODERATOR: 'Ждёт модератора',
-  CODE_ISSUED: 'Код выдан',
-};
-
-const STATUS_AZ: Record<string, string> = {
-  PENDING: 'Ödəniş gözlənilir',
-  PROCESSING: 'İşlənir',
-  COMPLETED: 'Tamamlandı',
-  FAILED: 'Alınmadı',
-  EXPIRED: 'Vaxtı bitdi',
-  REJECTED: 'İmtina edildi',
-  CANCELLED: 'Ləğv edildi',
-  AWAITING_MODERATOR: 'Moderator gözləyir',
-  CODE_ISSUED: 'Kod verildi',
-};
-
-const LABELS = {
-  ru: {
-    filters: { all: 'Все', deposit: 'Пополнения', withdrawal: 'Выводы', code: 'Коды' },
-    types: { deposit: 'Пополнение', withdrawal: 'Вывод', code: 'Покупка кода' },
-    empty: 'Пока нет операций',
-    error: 'Не удалось загрузить историю',
-    more: 'Показать ещё',
-    card: 'Карта',
-    crypto: 'Криптовалюта',
-  },
-  az: {
-    filters: { all: 'Hamısı', deposit: 'Balans artırma', withdrawal: 'Çıxarışlar', code: 'Kodlar' },
-    types: { deposit: 'Balans artırma', withdrawal: 'Çıxarış', code: 'Kod alışı' },
-    empty: 'Hələ əməliyyat yoxdur',
-    error: 'Tarixçəni yükləmək alınmadı',
-    more: 'Daha çox',
-    card: 'Kart',
-    crypto: 'Kriptovalyuta',
-  },
-} as const;
 
 /** Цвет статуса: успех / в работе / неудача. */
 function statusTone(status: string): string {
@@ -82,9 +37,8 @@ function rowDate(r: Row): number {
 const PAGE = 15;
 
 export function HistoryPanel({ locale }: { locale: string }): JSX.Element {
+  const t = useTranslations('profile.history');
   const lang = locale === 'az' ? 'az' : 'ru';
-  const L = LABELS[lang];
-  const statusMap = lang === 'az' ? STATUS_AZ : STATUS_RU;
 
   const [rows, setRows] = useState<Row[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +64,7 @@ export function HistoryPanel({ locale }: { locale: string }): JSX.Element {
         );
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof ApiException ? e.message : L.error);
+        if (!cancelled) setError(e instanceof ApiException ? e.message : t('errors.loadFailed'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -118,7 +72,7 @@ export function HistoryPanel({ locale }: { locale: string }): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [L.error]);
+  }, [t]);
 
   const counts = useMemo(() => {
     const c = { all: rows.length, deposit: 0, withdrawal: 0, code: 0 };
@@ -149,15 +103,27 @@ export function HistoryPanel({ locale }: { locale: string }): JSX.Element {
     minute: '2-digit',
   });
 
+  /** Известные статусы переводим, неизвестный показываем как есть. */
+  function statusLabel(status: string): string {
+    const known = [
+      'PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'EXPIRED',
+      'REJECTED', 'CANCELLED', 'AWAITING_MODERATOR', 'CODE_ISSUED',
+    ];
+    return known.includes(status) ? t(`status.${status}`) : status;
+  }
+
   /** Способ: банк/карта для пополнений, карта или крипта для выводов. */
   function methodOf(r: Row): string | null {
     if (r.kind === 'deposit') {
       const d = r.row;
-      return d.requisiteDetails?.bank ?? (d.provider === 'WESTWALLET' ? L.crypto : L.card);
+      return d.requisiteDetails?.bank ?? t(d.provider === 'WESTWALLET' ? 'method.crypto' : 'method.card');
     }
     if (r.kind === 'withdrawal') {
       // Название платёжки, а не агрегатора, через который проходит выплата
-      return r.row.methodName ?? (r.row.destination?.kind === 'crypto' ? L.crypto : L.card);
+      return (
+        r.row.methodName ??
+        t(r.row.destination?.kind === 'crypto' ? 'method.crypto' : 'method.card')
+      );
     }
     return null;
   }
@@ -185,7 +151,7 @@ export function HistoryPanel({ locale }: { locale: string }): JSX.Element {
                   : 'border-border bg-bg-card text-text-secondary hover:border-border-strong hover:text-text-primary',
               ].join(' ')}
             >
-              {L.filters[f]}
+              {t(`filters.${f}`)}
               {count > 0 && <span className="ml-1.5 opacity-60">{count}</span>}
             </button>
           );
@@ -193,7 +159,7 @@ export function HistoryPanel({ locale }: { locale: string }): JSX.Element {
       </div>
 
       {visible.length === 0 ? (
-        <p className="py-8 text-center text-sm text-text-muted">{L.empty}</p>
+        <p className="py-8 text-center text-sm text-text-muted">{t('empty')}</p>
       ) : (
         <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-bg-card">
           {visible.map((r) => {
@@ -215,7 +181,7 @@ export function HistoryPanel({ locale }: { locale: string }): JSX.Element {
 
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-text-primary">
-                    {L.types[r.kind]}
+                    {t(`types.${r.kind}`)}
                     {method && <span className="ml-1.5 font-normal text-text-muted">· {method}</span>}
                   </p>
                   <p className="mt-0.5 text-[11px] text-text-muted" suppressHydrationWarning>
@@ -237,7 +203,7 @@ export function HistoryPanel({ locale }: { locale: string }): JSX.Element {
                       r.row.status,
                     )}`}
                   >
-                    {statusMap[r.row.status] ?? r.row.status}
+                    {statusLabel(r.row.status)}
                   </span>
                 </div>
               </li>
@@ -252,7 +218,7 @@ export function HistoryPanel({ locale }: { locale: string }): JSX.Element {
           onClick={() => setShown((s) => s + PAGE)}
           className="w-full rounded-xl border border-border bg-bg-card py-2.5 text-xs font-semibold text-text-secondary transition-colors hover:border-brand/40 hover:text-brand"
         >
-          {L.more}
+          {t('more')}
         </button>
       )}
     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Modal, Button, Alert } from '@chcgreen/ui';
 import { toast } from 'sonner';
 import { useUi } from './ui-context';
@@ -15,6 +16,7 @@ export interface RedeemCodeModalProps {
  * Дизайн вдохновлён формой "Insert Code" из примера: одно крупное поле + кнопка.
  */
 export function RedeemCodeModal({ isAuthed }: RedeemCodeModalProps): JSX.Element {
+  const t = useTranslations('redeem');
   const { redeemCodeModalOpen, closeRedeemCode, openAuth, toggleChat } = useUi();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,22 +40,22 @@ export function RedeemCodeModal({ isAuthed }: RedeemCodeModalProps): JSX.Element
     setError(null);
     const clean = onlyDigits(code);
     if (clean.length < 14) {
-      setError('Код слишком короткий (минимум 14 цифр)');
+      setError(t('tooShort'));
       return;
     }
     if (clean.length > 14) {
-      setError('Код слишком длинный (максимум 14 цифр)');
+      setError(t('tooLong'));
       return;
     }
     setLoading(true);
     // Симулируем проверку. Реальная активация — обычно редирект в стороннее казино.
     try {
       await new Promise((r) => setTimeout(r, 800));
-      toast.success('Код принят. Сейчас откроем игровую сессию.');
+      toast.success(t('accepted'));
       handleClose();
       // TODO: when real API is ready — redirect to external casino URL
     } catch {
-      setError('Ошибка проверки кода. Попробуйте ещё раз.');
+      setError(t('checkFailed'));
     } finally {
       setLoading(false);
     }
@@ -100,7 +102,7 @@ export function RedeemCodeModal({ isAuthed }: RedeemCodeModalProps): JSX.Element
           {error ? <Alert variant="danger">{error}</Alert> : null}
 
           <Button type="submit" variant="primary" size="lg" disabled={loading || code.length !== 14} fullWidth>
-            {loading ? 'Проверяем…' : 'Ok'}
+            {loading ? t('checking') : 'Ok'}
           </Button>
 
           <button
@@ -108,7 +110,7 @@ export function RedeemCodeModal({ isAuthed }: RedeemCodeModalProps): JSX.Element
             onClick={buyNew}
             className="flex w-full items-center justify-center gap-1 text-center text-xs text-text-muted hover:text-brand underline-offset-2 hover:underline transition"
           >
-            <span>Нет кода? Купить в чате</span>
+            <span>{t('noCode')}</span>
             <ArrowRightIcon className="h-3.5 w-3.5" />
           </button>
         </form>

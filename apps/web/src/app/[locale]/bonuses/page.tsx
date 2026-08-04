@@ -16,76 +16,19 @@ export async function generateMetadata({ params }: BonusesPageProps): Promise<Me
 }
 
 interface BonusItem {
-  title: string;
-  subtitle: string;
-  text: string;
+  /** Ключ в файлах локализации: bonuses.items.<key> */
+  key: 'firstDeposit' | 'cashback' | 'referral' | 'ranks';
   badge: string;
   tone: 'brand' | 'purple' | 'success' | 'info';
+  /** Показывать только когда бонус на депозит включён настройкой. */
   depositBonus?: boolean;
 }
 
-const RU_ITEMS: BonusItem[] = [
-  {
-    title: 'Бонус первого пополнения',
-    subtitle: '+100% к первому депозиту',
-    text: 'При первом пополнении баланса от 20 AZN мы удваиваем сумму. Бонусные средства можно использовать сразу для покупки кодов.',
-    badge: '100%',
-    tone: 'brand',
-    depositBonus: true,
-  },
-  {
-    title: 'Кэшбэк выходного дня',
-    subtitle: '5% возврат каждое воскресенье',
-    text: 'В воскресенье в 23:59 мы возвращаем 5% от ваших расходов за неделю прямо на баланс. Без отыгрыша, без ограничений.',
-    badge: '5%',
-    tone: 'purple',
-  },
-  {
-    title: 'Реферальная программа',
-    subtitle: '10% с пополнений друзей',
-    text: 'Делитесь реферальной ссылкой — за каждое пополнение приглашённого друга получаете 10% бонусом. Лимит не ограничен.',
-    badge: '10%',
-    tone: 'success',
-  },
-  {
-    title: 'Ранги и привилегии',
-    subtitle: 'Чем выше ранг — тем больше плюшек',
-    text: 'Повышенный кэшбэк, приоритетная поддержка, эксклюзивные коды и индивидуальные бонусы от модераторов на высоких рангах.',
-    badge: 'VIP',
-    tone: 'info',
-  },
-];
-
-const AZ_ITEMS: BonusItem[] = [
-  {
-    title: 'İlk depozit bonusu',
-    subtitle: 'İlk depozitə +100%',
-    text: '20 AZN-dən başlayan ilk depozitdə məbləği ikiqat artırırıq. Bonus vəsaitləri dərhal kod almaq üçün istifadə oluna bilər.',
-    badge: '100%',
-    tone: 'brand',
-    depositBonus: true,
-  },
-  {
-    title: 'Həftəsonu keş-bek',
-    subtitle: 'Hər bazar 5% geri qaytarma',
-    text: 'Bazar günü 23:59-da həftəlik xərclərinizin 5%-ni birbaşa balansa qaytarırıq. İddiasız, məhdudiyyətsiz.',
-    badge: '5%',
-    tone: 'purple',
-  },
-  {
-    title: 'Referal proqramı',
-    subtitle: 'Dostların depozitindən 10%',
-    text: 'Referal linkinizi paylaşın — dəvət etdiyiniz hər dostun depoziti üçün 10% bonus alın. Limit yoxdur.',
-    badge: '10%',
-    tone: 'success',
-  },
-  {
-    title: 'Ranqlar və imtiyazlar',
-    subtitle: 'Ranq nə qədər yüksəkdirsə, bonus o qədər çox',
-    text: 'Artırılmış keş-bek, prioritet dəstək, eksklüziv kodlar və yüksək ranqlarda moderatorların fərdi bonusları.',
-    badge: 'VIP',
-    tone: 'info',
-  },
+const ITEMS: BonusItem[] = [
+  { key: 'firstDeposit', badge: '100%', tone: 'brand', depositBonus: true },
+  { key: 'cashback', badge: '5%', tone: 'purple' },
+  { key: 'referral', badge: '10%', tone: 'success' },
+  { key: 'ranks', badge: 'VIP', tone: 'info' },
 ];
 
 const toneBg: Record<BonusItem['tone'], string> = {
@@ -101,8 +44,7 @@ export default async function BonusesPage({ params }: BonusesPageProps): Promise
     getPublicSettings(),
   ]);
   const bonusBps = settings['deposit.bonus_bps'];
-  const allItems = params.locale === 'az' ? AZ_ITEMS : RU_ITEMS;
-  const items = bonusBps > 0 ? allItems : allItems.filter((it) => !it.depositBonus);
+  const items = bonusBps > 0 ? ITEMS : ITEMS.filter((it) => !it.depositBonus);
 
   return (
     <AppShell locale={params.locale}>
@@ -110,8 +52,8 @@ export default async function BonusesPage({ params }: BonusesPageProps): Promise
         <h1 className="text-3xl font-bold text-text-primary">{t('pageTitle')}</h1>
         <p className="mt-2 text-text-secondary">{t('subtitle')}</p>
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          {items.map((it, idx) => (
-            <Card key={idx} variant="elevated" padding="lg">
+          {items.map((it) => (
+            <Card key={it.key} variant="elevated" padding="lg">
               <div className="flex items-start gap-4">
                 <span
                   className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border text-sm font-bold ${toneBg[it.tone]}`}
@@ -119,9 +61,15 @@ export default async function BonusesPage({ params }: BonusesPageProps): Promise
                   {it.badge}
                 </span>
                 <div className="min-w-0">
-                  <h3 className="text-lg font-semibold text-text-primary">{it.title}</h3>
-                  <p className="mt-0.5 text-sm text-text-secondary">{it.subtitle}</p>
-                  <p className="mt-3 text-sm leading-relaxed text-text-secondary">{it.text}</p>
+                  <h3 className="text-lg font-semibold text-text-primary">
+                    {t(`items.${it.key}.title`)}
+                  </h3>
+                  <p className="mt-0.5 text-sm text-text-secondary">
+                    {t(`items.${it.key}.subtitle`)}
+                  </p>
+                  <p className="mt-3 text-sm leading-relaxed text-text-secondary">
+                    {t(`items.${it.key}.text`)}
+                  </p>
                 </div>
               </div>
             </Card>

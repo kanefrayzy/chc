@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { AmountField, parseAmountToMinor } from './AmountField';
 import { MethodPicker } from './MethodPicker';
@@ -21,6 +22,7 @@ export interface DepositPanelProps {
 }
 
 export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Element {
+  const t = useTranslations('deposit');
   const router = useRouter();
   const [methods, setMethods] = useState<PublicPaymentMethod[]>([]);
   const [methodsLoading, setMethodsLoading] = useState(true);
@@ -59,7 +61,7 @@ export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Elem
       if (data.status !== 'COMPLETED') return;
       setActiveDeposit((prev) => (prev && prev.id === data.depositId ? null : prev));
       setWalletDeposit((prev) => (prev && prev.id === data.depositId ? null : prev));
-      toast.success('Баланс пополнен');
+      toast.success(t('form.credited'));
       if (onSuccess) onSuccess();
       router.refresh();
     };
@@ -67,7 +69,7 @@ export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Elem
     return () => {
       socket.off('deposit:updated', handler);
     };
-  }, [onSuccess, router]);
+  }, [onSuccess, router, t]);
 
   useEffect(() => {
     if (activeDeposit !== null) return;
@@ -83,7 +85,7 @@ export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Elem
       .catch((e) => {
         if (cancelled) return;
         setMethodsError(
-          e instanceof ApiException ? e.message : 'Не удалось загрузить способы оплаты',
+          e instanceof ApiException ? e.message : t('form.errors.loadMethods'),
         );
       })
       .finally(() => {
@@ -92,7 +94,7 @@ export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Elem
     return () => {
       cancelled = true;
     };
-  }, [activeDeposit]);
+  }, [activeDeposit, t]);
 
   const handleExpire = useCallback((): void => {
     setActiveDeposit(null);
@@ -111,11 +113,11 @@ export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Elem
       .then(setWalletDeposit)
       .catch((err) => {
         setErrorMessage(
-          err instanceof ApiException ? err.message : 'Не удалось получить адрес кошелька',
+          err instanceof ApiException ? err.message : t('form.errors.walletAddress'),
         );
       })
       .finally(() => setWalletCreating(false));
-  }, []);
+  }, [t]);
 
   const selected = methods.find((m) => m.id === selectedId) ?? null;
   const isCrypto = selected?.provider === 'WESTWALLET';
@@ -128,18 +130,18 @@ export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Elem
     e.preventDefault();
     setErrorMessage(null);
     if (!selected) {
-      setErrorMessage('Выберите способ оплаты');
+      setErrorMessage(t('form.errors.selectMethod'));
       return;
     }
     if (isCrypto) return;
 
     const minor = parseAmountToMinor(amount);
     if (minor === null) {
-      setErrorMessage('Введите корректную сумму');
+      setErrorMessage(t('form.errors.invalidAmount'));
       return;
     }
     if (minor < minMinor || minor > maxMinor) {
-      setErrorMessage('Сумма вне допустимого диапазона');
+      setErrorMessage(t('form.errors.outOfRange'));
       return;
     }
 
@@ -160,7 +162,7 @@ export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Elem
         router.refresh();
       } catch (err) {
         setErrorMessage(
-          err instanceof ApiException ? err.message : 'Не удалось создать пополнение',
+          err instanceof ApiException ? err.message : t('form.errors.createFailed'),
         );
       }
     });
@@ -174,7 +176,7 @@ export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Elem
       <div className="space-y-3">
         <RequisiteCard deposit={activeDeposit} locale={locale} onExpire={handleExpire} />
         <p className="text-center text-xs text-text-muted">
-          Новое пополнение можно создать после оплаты этого счёта или по истечении таймера.
+          {t('form.activeDepositHint')}
         </p>
       </div>
     );
@@ -187,7 +189,7 @@ export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Elem
       ) : methodsError ? (
         <PanelMessage variant="danger">{methodsError}</PanelMessage>
       ) : methods.length === 0 ? (
-        <PanelMessage variant="warning">Способы оплаты временно недоступны</PanelMessage>
+        <PanelMessage variant="warning">{t('form.errors.noMethods')}</PanelMessage>
       ) : (
         <>
           <MethodPicker
@@ -195,12 +197,12 @@ export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Elem
             selectedId={selectedId}
             onSelect={handleSelect}
             disabled={isPending || walletCreating}
-            label="Способ оплаты"
+            label={t('form.selectProvider')}
           />
 
           {!isCrypto && (
             <AmountField
-              label="Сумма пополнения"
+              label={t('form.amountFieldLabel')}
               value={amount}
               onChange={setAmount}
               disabled={isPending || !selected}
@@ -222,7 +224,7 @@ export function DepositPanel({ locale, onSuccess }: DepositPanelProps): JSX.Elem
 
           {!isCrypto && (
             <SubmitButton loading={isPending} disabled={!selected}>
-              {isPending ? 'Создаём счёт…' : 'Пополнить'}
+              {isPending ? t('form.submittingInvoice') : t('form.submit')}
             </SubmitButton>
           )}
         </>

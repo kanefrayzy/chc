@@ -14,7 +14,7 @@ export interface ChatWidgetProps {
 }
 
 export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
-  const tChat = useTranslations('chat');
+  const t = useTranslations('chat');
   const { chatOpen, toggleChat, closeChat } = useUi();
   const [tickets, setTickets] = useState<TicketDto[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -104,11 +104,11 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
     e.target.value = ''; // сброс — чтобы повторно выбрать тот же файл
     if (!file || !activeId) return;
     if (!file.type.startsWith('image/')) {
-      setUploadError('Только изображения');
+      setUploadError(t('composer.imageOnly'));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setUploadError('Файл слишком большой (макс. 5 МБ)');
+      setUploadError(t('composer.imageTooLarge'));
       return;
     }
     setUploadError(null);
@@ -119,7 +119,7 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
       setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
     } catch {
-      setUploadError('Не удалось загрузить изображение');
+      setUploadError(t('composer.uploadFailed'));
     } finally {
       setUploading(false);
     }
@@ -127,7 +127,7 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
 
   const createTicket = async (): Promise<void> => {
     try {
-      const tk = await ticketsApi.create({ subject: 'Поддержка' });
+      const tk = await ticketsApi.create({ subject: t('title') });
       setActiveId(tk.id);
       setTickets((prev) => [tk, ...prev]);
     } catch { /* */ }
@@ -147,7 +147,7 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
             : 'bg-brand text-black shadow-brand/40 hover:scale-110',
         )}
         style={{ boxShadow: chatOpen ? '0 4px 20px rgba(255,59,92,0.5)' : '0 4px 20px rgba(0,255,136,0.4)' }}
-        aria-label={chatOpen ? 'Закрыть чат' : 'Открыть чат'}
+        aria-label={chatOpen ? t('closeChat') : t('openChat')}
         aria-expanded={chatOpen}
       >
         {chatOpen ? <CloseIcon className="h-5 w-5" /> : <ChatIcon className="h-5 w-5" />}
@@ -168,11 +168,11 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg-elevated">
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-brand animate-pulse" />
-              <span className="text-sm font-semibold text-text-primary">{tChat('title')}</span>
+              <span className="text-sm font-semibold text-text-primary">{t('title')}</span>
             </div>
             <button
               onClick={closeChat}
-              aria-label="Свернуть"
+              aria-label={t('collapse')}
               className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-bg-card hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
             >
               <CloseIcon className="h-4 w-4" />
@@ -181,7 +181,7 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
 
           {!viewerId ? (
             <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-text-muted">
-              {tChat('loginPrompt')}
+              {t('loginPrompt')}
             </div>
           ) : (
             <>
@@ -210,17 +210,17 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
                 {messages.length === 0 && tickets.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
                     <ChatIcon className="h-10 w-10 text-text-muted opacity-60" />
-                    <p className="text-sm text-text-muted">Нет активных обращений</p>
+                    <p className="text-sm text-text-muted">{t('noTickets')}</p>
                     <button
                       onClick={createTicket}
                       className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-black hover:brightness-110"
                     >
-                      Начать чат
+                      {t('startChat')}
                     </button>
                   </div>
                 ) : messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center text-sm text-text-muted">
-                    Написать первое сообщение…
+                    {t('writeFirst')}
                   </div>
                 ) : (
                   messages.map((m) => {
@@ -239,7 +239,7 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
                             <a href={m.body} target="_blank" rel="noopener noreferrer">
                               <img
                                 src={m.body}
-                                alt="Изображение"
+                                alt={t('imageAlt')}
                                 className="max-w-[200px] max-h-[200px] rounded-lg cursor-pointer object-contain"
                               />
                             </a>
@@ -271,8 +271,8 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
                     <button
                       onClick={handlePickImage}
                       disabled={uploading || !activeId}
-                      aria-label="Прикрепить изображение"
-                      title="Прикрепить изображение"
+                      aria-label={t('composer.attachImage')}
+                      title={t('composer.attachImage')}
                       className="h-8 w-8 shrink-0 rounded-lg border border-border bg-bg-elevated text-text-muted flex items-center justify-center transition-colors hover:text-text-primary disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
                     >
                       {uploading ? (
@@ -290,13 +290,13 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
-                      placeholder="Написать…"
+                      placeholder={t('composer.placeholder')}
                       className="flex-1 rounded-lg border border-border bg-bg-elevated px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand focus:outline-none"
                     />
                     <button
                       onClick={() => void handleSend()}
                       disabled={sending || !input.trim()}
-                      aria-label="Отправить"
+                      aria-label={t('composer.send')}
                       className="h-8 w-8 shrink-0 rounded-lg bg-brand text-black flex items-center justify-center disabled:opacity-40 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
                     >
                       <SendIcon className="h-4 w-4" />

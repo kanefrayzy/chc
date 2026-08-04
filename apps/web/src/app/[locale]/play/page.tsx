@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
 import { PlayPage } from '@/features/code-purchases/components/PlayPage';
@@ -10,9 +11,10 @@ interface PlayRouteProps {
   params: { locale: string };
 }
 
-export const metadata: Metadata = {
-  title: 'Ввести код',
-};
+export async function generateMetadata({ params }: PlayRouteProps): Promise<Metadata> {
+  const t = await getTranslations({ locale: params.locale, namespace: 'redeem' });
+  return { title: t('title') };
+}
 
 export default async function PlayRoute({ params }: PlayRouteProps): Promise<JSX.Element> {
   const user = await getServerUser();

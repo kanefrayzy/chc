@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import QRCode from 'react-qr-code';
 import type { DepositDto } from '@/lib/api/deposits';
 
@@ -57,6 +58,7 @@ function useCountdown(expiresAt: string | null, onExpire?: () => void): number |
 
 /** Кнопка «скопировать» с состоянием подтверждения. */
 function CopyButton({ value, className = '' }: { value: string; className?: string }): JSX.Element {
+  const tt = useTranslations('deposit');
   const [copied, setCopied] = useState(false);
   const copy = useCallback((): void => {
     void navigator.clipboard.writeText(value).then(() => {
@@ -69,7 +71,7 @@ function CopyButton({ value, className = '' }: { value: string; className?: stri
     <button
       type="button"
       onClick={copy}
-      aria-label="Скопировать"
+      aria-label={tt('card.copyAria')}
       className={[
         'flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all',
         copied
@@ -90,7 +92,7 @@ function CopyButton({ value, className = '' }: { value: string; className?: stri
               strokeLinejoin="round"
             />
           </svg>
-          Скопировано
+          {tt('card.copied')}
         </>
       ) : (
         <>
@@ -98,7 +100,7 @@ function CopyButton({ value, className = '' }: { value: string; className?: stri
             <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
             <path d="M10.5 3.5h-7a1 1 0 00-1 1v7" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
           </svg>
-          Копировать
+          {tt('card.copy')}
         </>
       )}
     </button>
@@ -110,6 +112,7 @@ function CopyButton({ value, className = '' }: { value: string; className?: stri
  * Для крипты — QR-код и адрес, для карты — форматированный номер, банк и владелец.
  */
 export function RequisiteCard({ deposit, locale, onExpire }: RequisiteCardProps): JSX.Element {
+  const tt = useTranslations('deposit');
   const isCrypto = deposit.provider === 'WESTWALLET';
   const isActive = deposit.status === 'PENDING' || deposit.status === 'PROCESSING';
   const secondsLeft = useCountdown(isActive && !isCrypto ? deposit.expiresAt : null, onExpire);
@@ -142,16 +145,16 @@ export function RequisiteCard({ deposit, locale, onExpire }: RequisiteCardProps)
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[10px] font-medium uppercase tracking-wider text-text-muted">
-              {isCrypto ? 'Пополнение USDT' : 'Переведите ровно'}
+              {isCrypto ? tt('card.cryptoTitle') : tt('card.transferAmount')}
             </p>
             <p className="mt-1 text-[28px] font-bold leading-none tabular-nums text-text-primary">
-              {isCrypto ? 'Любая сумма' : amountLabel}
+              {isCrypto ? tt('card.anyAmount') : amountLabel}
             </p>
           </div>
           {!isCrypto && secondsLeft !== null && (
             <div className="text-right">
               <p className="text-[10px] font-medium uppercase tracking-wider text-text-muted">
-                Осталось
+                {tt('card.timeLeft')}
               </p>
               <p
                 className={`mt-1 font-mono text-xl font-bold leading-none tabular-nums ${
@@ -188,7 +191,7 @@ export function RequisiteCard({ deposit, locale, onExpire }: RequisiteCardProps)
 
           <div>
             <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-text-muted">
-              {isCrypto ? 'Адрес кошелька' : 'Номер карты'}
+              {isCrypto ? tt('card.address') : tt('card.cardTitle')}
             </p>
             <div className="flex items-center gap-2 rounded-xl border border-border bg-bg-base p-2 pl-3.5">
               <span
@@ -207,14 +210,14 @@ export function RequisiteCard({ deposit, locale, onExpire }: RequisiteCardProps)
             <div className="grid gap-2 sm:grid-cols-2">
               {details.bank && (
                 <div className="rounded-xl border border-border bg-bg-base px-3.5 py-2.5">
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-text-muted">Банк</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-text-muted">{tt('card.bank')}</p>
                   <p className="mt-0.5 truncate text-sm font-semibold text-text-primary">{details.bank}</p>
                 </div>
               )}
               {details.owner && (
                 <div className="rounded-xl border border-border bg-bg-base px-3.5 py-2.5">
                   <p className="text-[10px] font-medium uppercase tracking-wider text-text-muted">
-                    Получатель
+                    {tt('card.owner')}
                   </p>
                   <p className="mt-0.5 truncate text-sm font-semibold text-text-primary">{details.owner}</p>
                 </div>
@@ -228,19 +231,20 @@ export function RequisiteCard({ deposit, locale, onExpire }: RequisiteCardProps)
               <li className="flex gap-2 text-xs text-text-secondary">
                 <span className="mt-[3px] h-1.5 w-1.5 shrink-0 rounded-full bg-warning" />
                 <span>
-                  Переведите <span className="font-semibold text-text-primary">точную сумму</span> — иначе
-                  платёж не будет зачислен автоматически.
+                  {tt('card.transferExact')}{' '}
+                  <span className="font-semibold text-text-primary">{tt('card.exactAmount')}</span>{' '}
+                  {tt('card.transferExactTail')}
                 </span>
               </li>
             )}
             <li className="flex gap-2 text-xs text-text-secondary">
               <span className="mt-[3px] h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-              <span>Баланс пополнится автоматически в течение 1–5 минут после перевода.</span>
+              <span>{tt('card.autoCredit')}</span>
             </li>
             {!isCrypto && (
               <li className="flex gap-2 text-xs text-text-secondary">
                 <span className="mt-[3px] h-1.5 w-1.5 shrink-0 rounded-full bg-text-muted" />
-                <span>Реквизиты действуют только для этого платежа — не сохраняйте их.</span>
+                <span>{tt('card.oneTime')}</span>
               </li>
             )}
           </ul>
@@ -254,7 +258,7 @@ export function RequisiteCard({ deposit, locale, onExpire }: RequisiteCardProps)
             href={deposit.paymentUrl}
             className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand py-3 text-sm font-bold text-bg-base transition-all hover:bg-brand-dim hover:shadow-[0_0_28px_rgba(0,255,136,0.35)]"
           >
-            Продолжить оплату
+            {tt('card.payNow')}
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden>
               <path
                 d="M4 8h8m-3.5-3.5L12 8l-3.5 3.5"
@@ -270,7 +274,8 @@ export function RequisiteCard({ deposit, locale, onExpire }: RequisiteCardProps)
       )}
 
       <p className="border-t border-border px-5 py-3 text-[11px] text-text-muted" suppressHydrationWarning>
-        Создан {new Date(deposit.createdAt).toLocaleString(locale === 'az' ? 'az-AZ' : 'ru-RU')}
+        {tt('card.createdAt')}{' '}
+        {new Date(deposit.createdAt).toLocaleString(locale === 'az' ? 'az-AZ' : 'ru-RU')}
       </p>
     </div>
   );

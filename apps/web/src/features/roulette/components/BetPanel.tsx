@@ -74,7 +74,7 @@ export function BetPanel({
 
   const handleBet = (color: RouletteColor): void => {
     if (isColorBlocked(color)) {
-      toast.error('Нельзя ставить на RED и BLACK одновременно. Разрешено только RED+GREEN или BLACK+GREEN.');
+      toast.error(t('redBlackFull'));
       return;
     }
     const minor = parseAmountToMinor(amount);
@@ -96,7 +96,12 @@ export function BetPanel({
       try {
         await rouletteApi.placeBet({ color, amountMinor: minor.toString() });
         playClick();
-        toast.success(`Ставка ${(Number(minor) / 100).toFixed(2)} AZN на ${COLOR_LABELS[color]} принята!`);
+        toast.success(
+          t('placed', {
+            amount: (Number(minor) / 100).toFixed(2),
+            color: t(`color.${color}`),
+          }),
+        );
         // Поле НЕ сбрасываем — удобно повторить ставку.
         if (onBetPlaced) onBetPlaced(color, minor.toString());
       } catch (err) {
@@ -106,7 +111,7 @@ export function BetPanel({
           else if (err.message === 'BETTING_CLOSED') msg = t('errors.bettingClosed');
           else if (err.message === 'INSUFFICIENT_FUNDS') msg = t('errors.insufficient');
           else if (err.message === 'INVALID_BET_COMBINATION')
-            msg = 'Нельзя ставить на RED и BLACK одновременно';
+            msg = t('errors.redBlack');
           else msg = err.message || msg;
         }
         toast.error(msg);
@@ -199,7 +204,7 @@ export function BetPanel({
               type="button"
               onClick={() => handleBet(color)}
               disabled={disabled || isLoading || blocked}
-              title={blocked ? 'Нельзя ставить на RED и BLACK одновременно' : undefined}
+              title={blocked ? t('errors.redBlack') : undefined}
               className={cn(
                 'relative flex flex-col items-center justify-center gap-1 rounded-xl py-4 sm:py-3 font-bold transition',
                 'border-2 min-h-[72px] sm:min-h-[60px] disabled:opacity-30 disabled:cursor-not-allowed active:scale-95',
@@ -236,7 +241,8 @@ export function BetPanel({
 
       {/* Подсказка о правиле */}
       <p className="text-[11px] text-text-muted text-center">
-        Доступны комбинации: <span className="text-text-secondary font-semibold">RED + GREEN</span> или{' '}
+        {t('combosHint')}{' '}
+        <span className="text-text-secondary font-semibold">RED + GREEN</span> {t('or')}{' '}
         <span className="text-text-secondary font-semibold">BLACK + GREEN</span>
       </p>
     </div>

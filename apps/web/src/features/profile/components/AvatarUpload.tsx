@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 
 interface AvatarUploadProps {
@@ -10,6 +11,7 @@ interface AvatarUploadProps {
 }
 
 export function AvatarUpload({ username, currentAvatarUrl, onUploaded }: AvatarUploadProps): JSX.Element {
+  const t = useTranslations('profile');
   const [preview, setPreview] = useState<string | null>(currentAvatarUrl ?? null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -17,11 +19,11 @@ export function AvatarUpload({ username, currentAvatarUrl, onUploaded }: AvatarU
 
   const handleFile = (file: File) => {
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
-      setError('Разрешены только PNG, JPG, WEBP');
+      setError(t('avatar.errors.type'));
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setError('Файл не должен превышать 2 МБ');
+      setError(t('avatar.errors.size'));
       return;
     }
     setError(null);
@@ -43,14 +45,14 @@ export function AvatarUpload({ username, currentAvatarUrl, onUploaded }: AvatarU
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({})) as { message?: string };
-          setError(body.message ?? 'Ошибка загрузки');
+          setError(body.message ?? t('avatar.errors.upload'));
           return;
         }
         const data = await res.json() as { avatarUrl: string };
         setPreview(data.avatarUrl);
         onUploaded?.(data.avatarUrl);
       } catch {
-        setError('Ошибка сети');
+        setError(t('avatar.errors.network'));
       }
     });
   };
@@ -62,7 +64,7 @@ export function AvatarUpload({ username, currentAvatarUrl, onUploaded }: AvatarU
         onClick={() => inputRef.current?.click()}
         className="relative group cursor-pointer"
         disabled={isPending}
-        aria-label="Загрузить аватарку"
+        aria-label={t('avatar.aria')}
       >
         <div className="h-24 w-24 overflow-hidden rounded-full border-2 border-brand/40 bg-bg-muted">
           {preview ? (
@@ -82,7 +84,7 @@ export function AvatarUpload({ username, currentAvatarUrl, onUploaded }: AvatarU
         </div>
         <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
           <span className="text-xs font-semibold text-white">
-            {isPending ? '...' : 'Изменить'}
+            {isPending ? '...' : t('avatar.change')}
           </span>
         </div>
       </button>
@@ -98,7 +100,7 @@ export function AvatarUpload({ username, currentAvatarUrl, onUploaded }: AvatarU
         }}
       />
       {error && <p className="text-xs text-red-400">{error}</p>}
-      <p className="text-xs text-text-secondary">PNG, JPG, WEBP · макс. 2 МБ</p>
+      <p className="text-xs text-text-secondary">{t('avatar.hint')}</p>
     </div>
   );
 }

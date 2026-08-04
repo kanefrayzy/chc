@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { getRealtimeSocket } from '@/lib/realtime/socket';
 
 /** Базовое смещение, если в настройках ничего не задано. */
@@ -12,6 +13,7 @@ export interface OnlineCounterProps {
 }
 
 export function OnlineCounter({ base = DEFAULT_BASE }: OnlineCounterProps): JSX.Element {
+  const t = useTranslations('common');
   const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -43,7 +45,9 @@ export function OnlineCounter({ base = DEFAULT_BASE }: OnlineCounterProps): JSX.
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
         <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
       </span>
-      <span>{count} онлайн</span>
+      <span>
+        {count} {t('online')}
+      </span>
     </span>
   );
 }

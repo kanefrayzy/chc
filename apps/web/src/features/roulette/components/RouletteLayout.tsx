@@ -129,7 +129,7 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance, minBetM
               .reduce((s, b) => s + BigInt(b.amountMinor) * BigInt(mul), 0n);
             const net = totalWin - totalBet;
             if (totalWin > 0n) {
-              toast.success(`Победа! +${(Number(totalWin) / 100).toFixed(2)} AZN`, {
+              toast.success(t('toast.win', { amount: (Number(totalWin) / 100).toFixed(2) }), {
                 duration: 6000,
                 style: {
                   background: COLOR_FILL[c],
@@ -140,19 +140,21 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance, minBetM
               });
               playWin();
             } else {
-              toast.error(`Не повезло — ${(Number(totalBet) / 100).toFixed(2)} AZN ушло`, { duration: 5000 });
+              toast.error(t('toast.lose', { amount: (Number(totalBet) / 100).toFixed(2) }), {
+          duration: 5000,
+        });
               playLose();
             }
             return;
           }
         } catch { /* */ }
-        toast(`Выпал ${c} ×${mul}`, {
+        toast(t('toast.result', { color: c, mult: mul }), {
           duration: 4000,
           style: { background: COLOR_FILL[c], color: COLOR_TEXT[c], fontWeight: 700 },
         });
       })();
     } else {
-      toast(`Выпал ${c} ×${mul}`, {
+      toast(t('toast.result', { color: c, mult: mul }), {
         duration: 4000,
         style: { background: COLOR_FILL[c], color: COLOR_TEXT[c], fontWeight: 700 },
       });
@@ -308,20 +310,28 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance, minBetM
     <div className="flex flex-col items-center justify-center text-center px-2">
       {round.status === 'BETTING' && totalBetsInRound === 0 ? (
         <>
-          <span className="text-[10px] uppercase tracking-[0.25em] text-text-muted">Раунд</span>
-          <span className="mt-1 text-sm font-bold text-text-secondary">Ожидание ставок</span>
-          <span className="mt-0.5 text-[10px] text-text-muted">сделайте первую</span>
+          <span className="text-[10px] uppercase tracking-[0.25em] text-text-muted">
+                  {t('round.title')}
+                </span>
+          <span className="mt-1 text-sm font-bold text-text-secondary">
+                  {t('round.waiting')}
+                </span>
+          <span className="mt-0.5 text-[10px] text-text-muted">{t('round.makeFirst')}</span>
         </>
       ) : round.status === 'BETTING' && round.bettingEndsAt ? (
         <>
-          <span className="text-[10px] uppercase tracking-[0.25em] text-text-muted">До закрытия</span>
+          <span className="text-[10px] uppercase tracking-[0.25em] text-text-muted">
+                  {t('round.untilClose')}
+                </span>
           <span className="mt-1 font-black text-4xl sm:text-5xl tabular-nums text-brand drop-shadow-[0_0_12px_rgba(0,255,136,0.5)]">
             <CountdownTimer endsAt={round.bettingEndsAt} />
           </span>
         </>
       ) : round.status === 'ROLLING' ? (
         <>
-          <span className="text-[10px] uppercase tracking-[0.25em] text-text-muted">Крутим</span>
+          <span className="text-[10px] uppercase tracking-[0.25em] text-text-muted">
+                  {t('round.spinning')}
+                </span>
           <span className="mt-1 text-3xl font-bold text-brand animate-pulse">…</span>
         </>
       ) : result && highlightWinner ? (
@@ -333,7 +343,7 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance, minBetM
           }}
         >
           <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: COLOR_FILL[result.color] }}>
-            Выпал
+            {t('round.result')}
           </span>
           <span className="text-xl font-black" style={{ color: COLOR_FILL[result.color] }}>
             {result.color} ×{result.multiplier}
@@ -414,14 +424,14 @@ export function RouletteLayout({ isAuthed, balanceMinor: initialBalance, minBetM
                 <span className="font-mono text-xs opacity-90">×{mul}</span>
               </div>
               <div className="px-3 py-2 flex items-center justify-between text-xs">
-                <span className="text-text-muted">{totals.betsCount} ставок</span>
+                <span className="text-text-muted">{t('round.betsCount', { count: totals.betsCount })}</span>
                 <span className="font-mono font-semibold text-text-primary">
                   {(Number(totals.amountMinor) / 100).toFixed(2)} AZN
                 </span>
               </div>
               <div className="px-3 pb-3 max-h-32 overflow-y-auto space-y-1">
                 {bets.length === 0 ? (
-                  <div className="text-[11px] text-text-muted italic">Ставок пока нет</div>
+                  <div className="text-[11px] text-text-muted italic">{t('round.noBets')}</div>
                 ) : (
                   bets.slice(0, 8).map((a) => (
                     <div key={a.key} className="flex items-center justify-between text-[11px]">

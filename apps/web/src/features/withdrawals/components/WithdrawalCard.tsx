@@ -21,10 +21,11 @@ const STATUS_VARIANT: Record<WithdrawalDto['status'], 'warning' | 'info' | 'succ
  * Запасные названия, если у заявки не сохранился платёжный метод.
  * Игроку показываем платёжку, а не агрегатора, через который она проходит.
  */
-const METHOD_LABEL: Record<WithdrawalDto['method'], string> = {
-  AUTO_BETATRANSFER: 'Карта',
-  AUTO_WESTWALLET: 'USDT TRC20',
-  MANUAL_MODERATOR: 'Вручную',
+/** Запасная подпись, если у заявки не сохранился способ оплаты. */
+const METHOD_KEY: Record<WithdrawalDto['method'], string> = {
+  AUTO_BETATRANSFER: 'method.card',
+  AUTO_WESTWALLET: 'method.crypto',
+  MANUAL_MODERATOR: 'method.manual',
 };
 
 export interface WithdrawalCardProps {
@@ -34,6 +35,7 @@ export interface WithdrawalCardProps {
 
 export function WithdrawalCard({ withdrawal, locale }: WithdrawalCardProps): JSX.Element {
   const t = useTranslations('withdraw.card');
+  const tw = useTranslations('withdraw');
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -53,7 +55,7 @@ export function WithdrawalCard({ withdrawal, locale }: WithdrawalCardProps): JSX
       <CardHeader className="flex items-center justify-between">
         <div>
           <div className="text-xs uppercase tracking-wide text-text-muted">
-            {t('method')}: {withdrawal.methodName ?? METHOD_LABEL[withdrawal.method]}
+            {t('method')}: {withdrawal.methodName ?? tw(METHOD_KEY[withdrawal.method])}
           </div>
           <div className="text-lg font-semibold text-text-primary">
             {formatMinorAmount(withdrawal.amountMinor, { locale: locale as 'ru' | 'az' })}

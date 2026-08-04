@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages, getLocale } from 'next-intl/server';
+import { getMessages, getLocale, getTranslations } from 'next-intl/server';
 import { Toaster } from 'sonner';
 import { getPublicSettings } from '@/lib/api/settings';
 import '../globals.css';
@@ -8,12 +8,15 @@ import '../globals.css';
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getPublicSettings();
+  const [settings, t] = await Promise.all([
+    getPublicSettings(),
+    getTranslations('common'),
+  ]);
   const siteName =
     settings['brand.site_name'] || process.env.NEXT_PUBLIC_SITE_NAME || 'CHCGREEN';
   const logoUrl = settings['brand.logo_url'] || '';
   const description =
-    settings['brand.tagline'] || 'Онлайн-платформа автоматических игр';
+    settings['brand.tagline'] || t('tagline');
 
   return {
     title: { default: siteName, template: `%s · ${siteName}` },
