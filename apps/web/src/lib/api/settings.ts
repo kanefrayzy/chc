@@ -38,6 +38,8 @@ export interface PublicSettings {
   'landing.game_image_url.mines': string;
   'landing.game_image_url.classic': string;
   'landing.game_image_url.cases': string;
+  'landing.game_image_url.lottery': string;
+  'landing.game_image_url.codes': string;
   'brand.social_telegram': string;
   'brand.social_telegram_label': string;
   'brand.social_instagram': string;
@@ -82,6 +84,8 @@ const DEFAULTS: PublicSettings = {
   'landing.game_image_url.mines': '',
   'landing.game_image_url.classic': '',
   'landing.game_image_url.cases': '',
+  'landing.game_image_url.lottery': '',
+  'landing.game_image_url.codes': '',
   'brand.social_telegram': '',
   'brand.social_telegram_label': '',
   'brand.social_instagram': '',

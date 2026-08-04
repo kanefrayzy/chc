@@ -417,6 +417,20 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     isPublic: true,
     description: 'Картинка плитки игры «Кейсы» на главной.',
   },
+  {
+    key: 'landing.game_image_url.lottery',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'Картинка плитки «Лотерея» на главной.',
+  },
+  {
+    key: 'landing.game_image_url.codes',
+    type: 'string',
+    defaultValue: '',
+    isPublic: true,
+    description: 'Картинка плитки «Купить код» на главной.',
+  },
   // ─── Переводы (переопределение встроенных) ────────────────────────────
   {
     key: 'translations.ru',

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@chcgreen/ui';
 import { walletApi } from '@/lib/api/wallet';
+import { getRealtimeSocket } from '@/lib/realtime/socket';
 import { formatMinorAmount } from '@/lib/format/money';
 import { useUi } from './ui-context';
 import { PlusIcon, ArrowUpIcon } from '@/components/icons';
@@ -11,7 +12,7 @@ import { PlusIcon, ArrowUpIcon } from '@/components/icons';
 export interface BalancePillProps {
   locale: 'ru' | 'az' | 'en';
   /** initial balance (минор) — берётся из SSR, чтобы не было прыжка */
-  initialBalanceMinor: string | null;
+  initialBalanceMinor: string | null;
 }
 
 export function BalancePill({
@@ -38,9 +39,20 @@ export function BalancePill({
     };
     const onFocus = (): void => { void refetch(); };
     window.addEventListener('focus', onFocus);
+
+    // Живое обновление: сервер шлёт новый баланс сразу после списания или
+    // выплаты, поэтому цифра меняется без перезагрузки и без опроса.
+    const socket = getRealtimeSocket();
+    const onBalance = (payload: { balanceMinor?: string }): void => {
+      if (cancelled || typeof payload?.balanceMinor !== 'string') return;
+      setBalance(payload.balanceMinor);
+    };
+    socket.on('wallet:balance', onBalance);
+
     return () => {
       cancelled = true;
       window.removeEventListener('focus', onFocus);
+      socket.off('wallet:balance', onBalance);
     };
   }, []);
 

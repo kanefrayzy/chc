@@ -194,6 +194,28 @@ export function TicketIcon(props: IconProps): JSX.Element {
   );
 }
 
+/** Скретч-карта: сетка «три в ряд» с отогнутым уголком покрытия. */
+export function ScratchCardIcon(props: IconProps): JSX.Element {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M7 9h3M14 9h3M7 13h3M14 13h3M7 17h10" />
+      <path d="M17 4l4 4" />
+    </svg>
+  );
+}
+
+/** Пачка кодов: карточка с ключом-номиналом. */
+export function CodeCardIcon(props: IconProps): JSX.Element {
+  return (
+    <svg {...base(props)}>
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <path d="M6 12h4M14 12h4" />
+      <circle cx="12" cy="12" r="1.6" />
+    </svg>
+  );
+}
+
 export function ArrowRightIcon(props: IconProps): JSX.Element {
   return (
     <svg {...base(props)}>

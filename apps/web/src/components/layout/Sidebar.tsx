@@ -17,6 +17,8 @@ import {
   TicketIcon,
   ArrowDownIcon,
   ArrowUpIcon,
+  ScratchCardIcon,
+  CodeCardIcon,
 } from '@/components/icons';
 import { getServerUser } from '@/lib/api/server';
 import { getPublicSettings } from '@/lib/api/settings';
@@ -66,7 +68,7 @@ async function buildSections(locale: string): Promise<SidebarSection[]> {
     games.push({
       href: '/lottery',
       label: tNav('lottery'),
-      icon: <GiftIcon className={ICON_CLS} />,
+      icon: <ScratchCardIcon className={ICON_CLS} />,
       badge: 'NEW',
     });
   }
@@ -80,7 +82,7 @@ async function buildSections(locale: string): Promise<SidebarSection[]> {
   games.push({
     href: '/codes',
     label: tNav('buyCode'),
-    icon: <TicketIcon className={ICON_CLS} />,
+    icon: <CodeCardIcon className={ICON_CLS} />,
     badge: 'NEW',
   });
   games.push({

@@ -74,23 +74,20 @@ export class ProgressiveService {
   async contribute(betMinor: bigint): Promise<void> {
     if (betMinor <= 0n) return;
     try {
-      const pools = await this.prisma.progressiveJackpot.findMany({
-        where: { enabled: true, contributionBps: { gt: 0 } },
-      });
-      if (pools.length === 0) return;
-
-      let changed = false;
-      for (const pool of pools) {
-        // Округление вниз: копилка никогда не растёт быстрее, чем реально отчислено
-        const add = (betMinor * BigInt(pool.contributionBps)) / 10_000n;
-        if (add <= 0n) continue;
-        await this.prisma.progressiveJackpot.update({
-          where: { tier: pool.tier },
-          data: { currentMinor: { increment: add } },
-        });
-        changed = true;
-      }
-      if (changed) void this.emitState();
+      // Одним запросом на все копилки: и без гонок между параллельными
+      // ставками, и без потери дробной части. `contributionCarry` хранит
+      // недобор меньше qəpik — иначе ставка 0.5 AZN при 50 bps давала
+      // 0.25 qəpik, округлялась вниз до нуля и копилка не росла никогда.
+      const updated = await this.prisma.$executeRaw`
+        UPDATE "ProgressiveJackpot"
+        SET "currentMinor" = "currentMinor"
+              + (("contributionCarry" + ${betMinor}::bigint * "contributionBps") / 10000),
+            "contributionCarry" =
+              ("contributionCarry" + ${betMinor}::bigint * "contributionBps") % 10000,
+            "updatedAt" = NOW()
+        WHERE "enabled" = true AND "contributionBps" > 0
+      `;
+      if (updated > 0) void this.emitState();
     } catch (e) {
       this.logger.warn(`Не удалось пополнить джекпот со ставки ${betMinor}: ${String(e)}`);
     }

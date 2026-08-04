@@ -3,10 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { ArrowRightIcon, StarIcon, TrophyIcon } from '@/components/icons';
+import { ArrowRightIcon, TrophyIcon } from '@/components/icons';
 import { rouletteApi, type RecentWinnerDto } from '@/lib/api/roulette';
 import { getRealtimeSocket } from '@/lib/realtime/socket';
-import { formatMinorAmount } from '@/lib/format/money';
 
 export interface RecentWinnersProps {
   locale: string;
@@ -14,9 +13,16 @@ export interface RecentWinnersProps {
 
 type Filter = 'all' | 'big';
 
-/** Ставки с множителем от ×5 считаем «крупными» — они и есть самое интересное в ленте. */
+/** Ставки с множителем от ×5 считаем «крупными». */
 const BIG_MULTIPLIER_BPS = 50_000;
 const FEED_LIMIT = 15;
+
+const GAME_LABEL: Record<RecentWinnerDto['game'], { label: string; cls: string }> = {
+  roulette: { label: 'Рулетка', cls: 'bg-brand/15 text-brand' },
+  mines: { label: 'Mines', cls: 'bg-accent-purple/15 text-accent-purple' },
+  classic: { label: 'Классика', cls: 'bg-warning/15 text-warning' },
+  lottery: { label: 'Лотерея', cls: 'bg-info/15 text-info' },
+};
 
 function initials(name: string): string {
   const cleaned = name.replace(/[^a-zA-Zа-яА-Я0-9]/g, '');
@@ -31,19 +37,12 @@ const AVATAR_GRADIENTS = [
   'from-danger/40 to-warning/30',
 ];
 
-const GAME_BADGE: Record<RecentWinnerDto['game'], { label: string; cls: string }> = {
-  roulette: { label: 'Roulette', cls: 'bg-brand/15 text-brand' },
-  mines: { label: 'Mines', cls: 'bg-accent-purple/15 text-accent-purple' },
-  classic: { label: 'Classic', cls: 'bg-warning/15 text-warning' },
-  lottery: { label: 'Лотерея', cls: 'bg-info/15 text-info' },
-};
-
-/** Чем больше множитель, тем ярче подсветка — крупные выигрыши видно сразу. */
+/** Чем больше множитель, тем ярче — крупные выигрыши видно сразу. */
 function multiplierStyle(bps: number | undefined): string {
-  if (!bps) return 'bg-bg-elevated text-text-secondary';
-  if (bps >= 200_000) return 'bg-danger/20 text-danger ring-1 ring-danger/30';
-  if (bps >= BIG_MULTIPLIER_BPS) return 'bg-warning/20 text-warning ring-1 ring-warning/30';
-  return 'bg-bg-elevated text-text-secondary';
+  if (!bps) return 'text-text-muted';
+  if (bps >= 200_000) return 'text-danger';
+  if (bps >= BIG_MULTIPLIER_BPS) return 'text-warning';
+  return 'text-text-secondary';
 }
 
 function formatMultiplier(bps: number): string {
@@ -51,7 +50,13 @@ function formatMultiplier(bps: number): string {
   return value >= 100 ? `×${Math.round(value)}` : `×${value.toFixed(2)}`;
 }
 
-/** «только что» / «5 мин» / «2 ч» — без внешних зависимостей. */
+function formatAzn(minor: string): string {
+  const value = BigInt(minor);
+  const major = value / 100n;
+  const frac = (value % 100n).toString().padStart(2, '0');
+  return `${major.toLocaleString('ru-RU')},${frac}`;
+}
+
 function timeAgo(iso: string, now: number): string {
   const diffSec = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 1000));
   if (diffSec < 45) return 'только что';
@@ -66,12 +71,21 @@ function keyOf(w: RecentWinnerDto): string {
   return `${w.username}-${w.createdAt}-${w.game}-${w.amountMinor}`;
 }
 
+/** Подробности раунда: количество мин, цвет рулетки. */
+function detailsOf(w: RecentWinnerDto): string {
+  if (w.game === 'mines' && typeof w.mineCount === 'number') return `${w.mineCount} мин`;
+  if (w.game === 'roulette' && w.color) {
+    const map: Record<string, string> = { RED: 'красное', BLACK: 'чёрное', GREEN: 'зелёное' };
+    return map[w.color] ?? w.color;
+  }
+  return '';
+}
+
 export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
   const t = useTranslations('winners');
   const [winners, setWinners] = useState<RecentWinnerDto[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
   const [now, setNow] = useState(() => Date.now());
-  /** Ключи только что прилетевших записей — подсвечиваем их на пару секунд. */
   const [freshKeys, setFreshKeys] = useState<Set<string>>(new Set());
   const seenKeys = useRef<Set<string> | null>(null);
   const localePrefix = locale === 'ru' ? '' : `/${locale}`;
@@ -96,12 +110,14 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
       setWinners(next);
     };
 
-    rouletteApi
-      .recentWinners(FEED_LIMIT)
-      .then((res) => apply(res.items))
-      .catch(() => {
-        if (!cancelled) setWinners([]);
-      });
+    const load = (): void => {
+      rouletteApi
+        .recentWinners(FEED_LIMIT)
+        .then((res) => apply(res.items))
+        .catch(() => undefined);
+    };
+
+    load();
 
     const socket = getRealtimeSocket();
     const handler = (payload: { items: RecentWinnerDto[] }): void => {
@@ -109,15 +125,7 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
     };
     socket.on('roulette:winners', handler);
 
-    // Лента живёт и без ставок (боты появляются по времени) — периодически обновляем
-    const poll = setInterval(() => {
-      rouletteApi
-        .recentWinners(FEED_LIMIT)
-        .then((res) => apply(res.items))
-        .catch(() => undefined);
-    }, 30_000);
-
-    // Пересчёт «сколько времени назад» без перезапроса данных
+    const poll = setInterval(load, 30_000);
     const timer = setInterval(() => setNow(Date.now()), 30_000);
 
     return () => {
@@ -127,9 +135,6 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
       clearInterval(timer);
     };
   }, []);
-
-  const fmtLocale: 'ru' | 'az' | 'en' =
-    locale === 'az' ? 'az' : locale === 'en' ? 'en' : 'ru';
 
   const bigCount = useMemo(
     () => winners.filter((w) => (w.multiplierBps ?? 0) >= BIG_MULTIPLIER_BPS).length,
@@ -144,7 +149,6 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
     [winners, filter],
   );
 
-  /** Самый крупный выигрыш в ленте — отмечаем короной. */
   const topKey = useMemo(() => {
     let best: RecentWinnerDto | null = null;
     for (const w of winners) {
@@ -156,9 +160,9 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
   return (
     <section
       aria-labelledby="recent-winners-title"
-      className="mt-8 rounded-2xl border border-border bg-bg-card p-4 sm:mt-10 sm:p-5"
+      className="mt-8 overflow-hidden rounded-2xl border border-border bg-bg-card sm:mt-10"
     >
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
         <div className="flex items-center gap-2.5">
           <h2
             id="recent-winners-title"
@@ -176,7 +180,6 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
           </span>
         </div>
 
-        {/* Фильтр: вся лента или только крупные множители */}
         <div className="flex gap-1 rounded-lg border border-border bg-bg-base/70 p-0.5">
           {([
             { id: 'all' as const, label: 'Все' },
@@ -201,109 +204,117 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
       </div>
 
       {visible.length === 0 ? (
-        <div className="py-10 text-center text-sm text-text-muted">
+        <p className="px-4 py-12 text-center text-sm text-text-muted">
           {filter === 'big' ? 'Пока нет крупных выигрышей' : t('empty')}
-        </div>
+        </p>
       ) : (
-        <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-          {visible.map((w, idx) => {
-            const k = keyOf(w);
-            const isFresh = freshKeys.has(k);
-            const isTop = k === topKey;
-            const badge = GAME_BADGE[w.game] ?? GAME_BADGE.roulette;
-            return (
-              <li
-                key={k}
-                className={[
-                  'flex items-center gap-2.5 rounded-lg border px-2 py-2 transition-all duration-500',
-                  isFresh
-                    ? 'border-brand/30 bg-brand/10'
-                    : 'border-transparent bg-bg-base/40 hover:bg-bg-card-hover',
-                ].join(' ')}
-              >
-                <div className="relative shrink-0">
-                  {w.avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={w.avatarUrl}
-                      alt={w.username}
-                      className="h-9 w-9 rounded-full object-cover ring-1 ring-border"
-                    />
-                  ) : (
-                    <span
-                      aria-hidden
-                      className={`flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br ${
-                        AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length]
-                      } text-[11px] font-bold text-text-primary ring-1 ring-border`}
-                    >
-                      {initials(w.username)}
-                    </span>
-                  )}
-                  {isTop && (
-                    <span
-                      aria-label="Крупнейший выигрыш"
-                      title="Крупнейший выигрыш"
-                      className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-warning text-bg-base ring-2 ring-bg-card"
-                    >
-                      <StarIcon className="h-2.5 w-2.5" />
-                    </span>
-                  )}
-                </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead>
+              <tr className="border-b border-border text-[11px] uppercase tracking-wider text-text-muted">
+                <th className="px-4 py-2.5 text-left font-semibold sm:px-5">Игрок</th>
+                <th className="px-4 py-2.5 text-left font-semibold">Игра</th>
+                <th className="px-4 py-2.5 text-right font-semibold">Множитель</th>
+                <th className="px-4 py-2.5 text-right font-semibold sm:px-5">Выигрыш</th>
+                <th className="px-4 py-2.5 text-right font-semibold sm:px-5">Когда</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {visible.map((w, idx) => {
+                const k = keyOf(w);
+                const isFresh = freshKeys.has(k);
+                const isTop = k === topKey;
+                const game = GAME_LABEL[w.game] ?? GAME_LABEL.roulette;
+                const details = detailsOf(w);
+                return (
+                  <tr
+                    key={k}
+                    className={[
+                      'transition-colors duration-500',
+                      isFresh ? 'bg-brand/10' : 'hover:bg-bg-card-hover',
+                    ].join(' ')}
+                  >
+                    <td className="px-4 py-2.5 sm:px-5">
+                      <div className="flex items-center gap-2.5">
+                        {w.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={w.avatarUrl}
+                            alt=""
+                            className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-border"
+                          />
+                        ) : (
+                          <span
+                            aria-hidden
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${
+                              AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length]
+                            } text-[10px] font-bold text-text-primary ring-1 ring-border`}
+                          >
+                            {initials(w.username)}
+                          </span>
+                        )}
+                        <span className="truncate font-medium text-text-primary">
+                          {w.username}
+                        </span>
+                        {isTop && (
+                          <span
+                            title="Крупнейший выигрыш"
+                            className="shrink-0 rounded bg-warning/15 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-warning"
+                          >
+                            топ
+                          </span>
+                        )}
+                      </div>
+                    </td>
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="truncate text-sm font-semibold text-text-primary">
-                      {w.username}
-                    </span>
-                    <span className="shrink-0 text-[10px] text-text-muted" suppressHydrationWarning>
-                      {timeAgo(w.createdAt, now)}
-                    </span>
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-1.5">
-                    <span
-                      className={`rounded px-1.5 py-px text-[9px] font-bold uppercase tracking-wide ${badge.cls}`}
-                    >
-                      {badge.label}
-                    </span>
-                    {w.game === 'mines' && typeof w.mineCount === 'number' && (
-                      <span className="text-[10px] text-text-muted">мин: {w.mineCount}</span>
-                    )}
-                    {w.game === 'roulette' && w.color && (
-                      <span className="text-[10px] text-text-muted">{w.color}</span>
-                    )}
-                  </div>
-                </div>
+                    <td className="px-4 py-2.5">
+                      <span
+                        className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${game.cls}`}
+                      >
+                        {game.label}
+                      </span>
+                      {details && (
+                        <span className="ml-2 text-[11px] text-text-muted">{details}</span>
+                      )}
+                    </td>
 
-                <div className="shrink-0 text-right">
-                  <div className="font-mono text-sm font-bold tabular-nums text-brand">
-                    {formatMinorAmount(w.amountMinor, {
-                      locale: fmtLocale,
-                      showPositiveSign: false,
-                    })}
-                  </div>
-                  {typeof w.multiplierBps === 'number' && w.multiplierBps > 0 && (
-                    <div
-                      className={`mt-0.5 inline-block rounded px-1.5 py-px font-mono text-[10px] font-bold ${multiplierStyle(
+                    <td
+                      className={`px-4 py-2.5 text-right font-mono text-xs font-bold tabular-nums ${multiplierStyle(
                         w.multiplierBps,
                       )}`}
                     >
-                      {formatMultiplier(w.multiplierBps)}
-                    </div>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                      {typeof w.multiplierBps === 'number' && w.multiplierBps > 0
+                        ? formatMultiplier(w.multiplierBps)
+                        : '—'}
+                    </td>
+
+                    <td className="px-4 py-2.5 text-right font-mono font-bold tabular-nums text-brand sm:px-5">
+                      {formatAzn(w.amountMinor)}
+                    </td>
+
+                    <td
+                      className="px-4 py-2.5 text-right text-xs text-text-muted sm:px-5"
+                      suppressHydrationWarning
+                    >
+                      {timeAgo(w.createdAt, now)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      <Link
-        href={`${localePrefix}/roulette`}
-        className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-elevated px-3 py-2.5 text-xs font-semibold text-text-secondary transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
-      >
-        {t('viewAll')}
-        <ArrowRightIcon className="h-3.5 w-3.5" />
-      </Link>
+      <div className="border-t border-border p-3 sm:px-5">
+        <Link
+          href={`${localePrefix}/roulette`}
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-elevated px-3 py-2.5 text-xs font-semibold text-text-secondary transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+        >
+          {t('viewAll')}
+          <ArrowRightIcon className="h-3.5 w-3.5" />
+        </Link>
+      </div>
     </section>
   );
 }

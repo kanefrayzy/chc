@@ -155,27 +155,32 @@ export function ScratchCell({
     scratchAt(e.clientX, e.clientY);
   }
 
+  /**
+   * Стираем и без нажатия: на мыши достаточно провести курсором, на телефоне
+   * события всё равно приходят только во время касания.
+   */
   function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>): void {
-    if (!drawing.current || locked || open) return;
+    if (locked || open) return;
     scratchAt(e.clientX, e.clientY);
   }
 
   function stop(e: React.PointerEvent<HTMLCanvasElement>): void {
-    if (!drawing.current) return;
-    drawing.current = false;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     // На отпускании проверяем ещё раз — иначе ячейка может «залипнуть» стёртой
     if (canvas && ctx && !open && clearedRatio(canvas, ctx) >= REVEAL_THRESHOLD) finish();
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
+    if (drawing.current) {
+      drawing.current = false;
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
     }
   }
 
   return (
     <div
       className={[
-        'relative aspect-square overflow-hidden rounded-lg transition-all duration-300',
+        'relative aspect-square select-none overflow-hidden rounded-lg transition-all duration-300',
         open && highlight
           ? 'bg-brand/15 ring-2 ring-brand'
           : 'bg-bg-base ring-1 ring-border',

@@ -649,6 +649,9 @@ model ProgressiveJackpot {
   seedMinor       BigInt          @default(0)  // стартовая сумма после срыва
   currentMinor    BigInt          @default(0)
   contributionBps Int             @default(0)  // доля ставки в этот пул
+  /// Недобор меньше одного qəpik: копится в сотых долях, чтобы мелкие
+  /// ставки не терялись на округлении вниз.
+  contributionCarry BigInt        @default(0)
   enabled         Boolean         @default(true)
   lastWonAt       DateTime?
   lastWinnerName  String?

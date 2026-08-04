@@ -68,6 +68,22 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
   const allRevealed = ticket !== null && revealed.size === ticket.symbols.length;
   const won = ticket !== null && BigInt(ticket.prizeMinor) > 0n;
 
+  /** Ячейки выигрышной тройки. */
+  const winningIndices = useMemo(() => {
+    if (!ticket || ticket.winningSymbol === null) return [];
+    return ticket.symbols.reduce<number[]>((acc, symbol, i) => {
+      if (symbol === ticket.winningSymbol) acc.push(i);
+      return acc;
+    }, []);
+  }, [ticket]);
+
+  /**
+   * Выигрыш засчитан только когда открыты все три ячейки тройки. Иначе
+   * первая же открытая ячейка подсвечивалась бы и заранее выдавала результат.
+   */
+  const winRevealed =
+    won && winningIndices.length > 0 && winningIndices.every((i) => revealed.has(i));
+
   const onCellReveal = useCallback((index: number) => {
     setRevealed((prev) => {
       if (prev.has(index)) return prev;
@@ -125,7 +141,7 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
     <div className="grid gap-5 lg:grid-cols-[minmax(0,430px)_1fr]">
       {/* ── Билет ───────────────────────────────────────────────── */}
       <div>
-        <div className="overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-bg-elevated to-bg-card">
+        <div className="select-none overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-bg-elevated to-bg-card">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <span className="text-xs font-black uppercase tracking-[0.2em] text-brand">
               Лотерея
@@ -145,7 +161,6 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
             <div className="mt-3 grid grid-cols-3 gap-2">
               {(ticket ? cells : Array.from({ length: 9 }, () => -1)).map((symbol, i) => {
                 const prize = prizeBySymbol.get(symbol);
-                const isWinning = ticket?.winningSymbol === symbol && won;
                 return (
                   <ScratchCell
                     key={`${ticket?.id ?? 'empty'}-${i}`}
@@ -153,7 +168,7 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
                     index={i}
                     label={prize ? formatCell(prize.minor) : '—'}
                     tone={prize ? toneFor(prize.multiplierBps) : 'text-text-muted'}
-                    highlight={Boolean(isWinning)}
+                    highlight={winRevealed && winningIndices.includes(i)}
                     locked={!ticket || autoLeft > 0}
                     forceReveal={revealAll}
                     onReveal={onCellReveal}
@@ -166,11 +181,7 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
             <div className="mt-3 flex min-h-[64px] flex-col items-center justify-center rounded-xl border border-border bg-bg-base px-3 py-2 text-center">
               {!ticket ? (
                 <span className="text-sm text-text-muted">Билет не куплен</span>
-              ) : !allRevealed ? (
-                <span className="text-sm text-text-secondary">
-                  Открыто {revealed.size} из 9
-                </span>
-              ) : won ? (
+              ) : winRevealed ? (
                 <>
                   <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand">
                     Выигрыш
@@ -179,6 +190,10 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
                     +{formatAzn(ticket.prizeMinor)} AZN
                   </span>
                 </>
+              ) : !allRevealed ? (
+                <span className="text-sm text-text-secondary">
+                  Открыто {revealed.size} из 9
+                </span>
               ) : (
                 <span className="text-sm font-semibold text-text-muted">
                   Не повезло — попробуйте ещё раз

@@ -1,14 +1,22 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { getPublicSettings } from '@/lib/api/settings';
-import { RouletteIcon, DiceIcon, CaseIcon, BoltIcon, ArrowRightIcon } from '@/components/icons';
+import {
+  RouletteIcon,
+  DiceIcon,
+  CaseIcon,
+  BoltIcon,
+  ArrowRightIcon,
+  ScratchCardIcon,
+  CodeCardIcon,
+} from '@/components/icons';
 
 export interface GameTilesProps {
   locale: string;
 }
 
 interface Tile {
-  key: 'roulette' | 'mines' | 'classic' | 'cases';
+  key: 'roulette' | 'mines' | 'classic' | 'lottery' | 'codes' | 'cases';
   href: string;
   enabled: boolean;
   comingSoon?: boolean;
@@ -17,6 +25,9 @@ interface Tile {
   gradient: string;
   accent: string;
   imageUrl?: string;
+  /** Заголовок и подпись, если их нет в файлах локализации. */
+  title?: string;
+  subtitle?: string;
 }
 
 export async function GameTiles({ locale }: GameTilesProps): Promise<JSX.Element | null> {
@@ -56,6 +67,36 @@ export async function GameTiles({ locale }: GameTilesProps): Promise<JSX.Element
       imageUrl: settings['landing.game_image_url.classic'] || '',
     },
     {
+      key: 'lottery',
+      href: '/lottery',
+      enabled: settings['gameplay.lottery_enabled'] ?? true,
+      badge: 'live',
+      icon: <ScratchCardIcon className="h-12 w-12" />,
+      gradient: 'from-warning/25 via-bg-card to-bg-card-hover',
+      accent: 'text-warning',
+      imageUrl: settings['landing.game_image_url.lottery'] || '',
+      title: locale === 'az' ? 'Lotereya' : 'Лотерея',
+      subtitle:
+        locale === 'az'
+          ? 'Üç eyni məbləğ — 50 000 AZN-ə qədər'
+          : 'Три одинаковые суммы — до 50 000 AZN',
+    },
+    {
+      key: 'codes',
+      href: '/codes',
+      enabled: true,
+      badge: 'live',
+      icon: <CodeCardIcon className="h-12 w-12" />,
+      gradient: 'from-brand/25 via-bg-card to-bg-card-hover',
+      accent: 'text-brand',
+      imageUrl: settings['landing.game_image_url.codes'] || '',
+      title: locale === 'az' ? 'Kod al' : 'Купить код',
+      subtitle:
+        locale === 'az'
+          ? 'Kod dərhal verilir, operator gözlənilmir'
+          : 'Код выдаётся сразу, без ожидания оператора',
+    },
+    {
       key: 'cases',
       href: '/cases',
       enabled: false,
@@ -82,8 +123,8 @@ export async function GameTiles({ locale }: GameTilesProps): Promise<JSX.Element
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {tiles.map((tile) => {
-          const title = t(`games.${tile.key}.title`);
-          const subtitle = t(`games.${tile.key}.subtitle`);
+          const title = tile.title ?? t(`games.${tile.key}.title`);
+          const subtitle = tile.subtitle ?? t(`games.${tile.key}.subtitle`);
           const badgeText = tile.badge === 'live' ? t('badges.live') : t('badges.soon');
           const badgeClass =
             tile.badge === 'live'
