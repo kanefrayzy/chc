@@ -45,7 +45,7 @@ export default async function HomePage({
 
       <RecentWinners locale={params.locale} />
 
-      <TelegramBanner href={telegramUrl} label={telegramLabel} />
+      <TelegramBanner href={telegramUrl} label={telegramLabel} locale={params.locale} />
 
       <FeaturesFooter items={FEATURES} />
     </AppShell>

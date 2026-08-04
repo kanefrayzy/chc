@@ -1,18 +1,25 @@
+import { getTranslations } from 'next-intl/server';
 import { TelegramIcon } from '@/components/icons';
 
 export interface TelegramBannerProps {
   /** Ссылка на группу из настроек (brand.social_telegram). Пусто — блок не выводится. */
   href: string;
-  /** Подпись из настроек (brand.social_telegram_label). */
+  /** Подпись из настроек (brand.social_telegram_label). Пусто — берём перевод. */
   label?: string;
+  locale: string;
 }
 
 /**
  * Баннер-приглашение в Telegram-группу. Ссылка и подпись задаются
  * в админке (Настройки → brand.social_telegram / brand.social_telegram_label).
  */
-export function TelegramBanner({ href, label }: TelegramBannerProps): JSX.Element | null {
+export async function TelegramBanner({
+  href,
+  label,
+  locale,
+}: TelegramBannerProps): Promise<JSX.Element | null> {
   if (!href) return null;
+  const t = await getTranslations({ locale, namespace: 'telegram' });
 
   return (
     <a
@@ -37,15 +44,15 @@ export function TelegramBanner({ href, label }: TelegramBannerProps): JSX.Elemen
 
         <div className="min-w-0 flex-1">
           <p className="text-base font-bold text-text-primary sm:text-lg">
-            Наша группа в Telegram
+            {t('title')}
           </p>
           <p className="mt-0.5 text-xs text-text-secondary sm:text-sm">
-            {label || 'Бонусы, промокоды и новости — раньше всех'}
+            {label || t('text')}
           </p>
         </div>
 
         <span className="hidden shrink-0 items-center gap-1.5 rounded-xl bg-[#229ED9] px-4 py-2.5 text-sm font-semibold text-white transition-transform group-hover:translate-x-0.5 sm:inline-flex">
-          Вступить
+          {t('join')}
           <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden>
             <path
               d="M4 8h8m-3.5-3.5L12 8l-3.5 3.5"

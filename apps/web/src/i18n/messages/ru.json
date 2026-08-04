@@ -376,7 +376,9 @@
       "WAITING_USER": "Ждём ваш ответ",
       "WAITING_MODERATOR": "У модератора",
       "CLOSED": "Закрыт"
-    }
+    },
+    "title": "Поддержка",
+    "loginPrompt": "Войдите, чтобы написать в поддержку"
   },
   "codePurchase": {
     "pageTitle": "Покупка кода",
@@ -765,5 +767,10 @@
     "black": "чёрное",
     "green": "зелёное",
     "gameMines": "Mines"
+  },
+  "telegram": {
+    "title": "Наша группа в Telegram",
+    "text": "Бонусы, промокоды и новости — раньше всех",
+    "join": "Вступить"
   }
 }

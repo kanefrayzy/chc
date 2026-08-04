@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@chcgreen/ui';
 import { useUi } from './ui-context';
 import { ChatIcon, CloseIcon, SendIcon } from '@/components/icons';
@@ -13,6 +14,7 @@ export interface ChatWidgetProps {
 }
 
 export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
+  const tChat = useTranslations('chat');
   const { chatOpen, toggleChat, closeChat } = useUi();
   const [tickets, setTickets] = useState<TicketDto[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -166,7 +168,7 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg-elevated">
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-brand animate-pulse" />
-              <span className="text-sm font-semibold text-text-primary">Поддержка</span>
+              <span className="text-sm font-semibold text-text-primary">{tChat('title')}</span>
             </div>
             <button
               onClick={closeChat}
@@ -179,7 +181,7 @@ export function ChatWidget({ viewerId }: ChatWidgetProps): JSX.Element {
 
           {!viewerId ? (
             <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-text-muted">
-              Войдите, чтобы написать в поддержку
+              {tChat('loginPrompt')}
             </div>
           ) : (
             <>

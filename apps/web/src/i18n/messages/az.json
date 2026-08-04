@@ -376,7 +376,9 @@
       "WAITING_USER": "Cavabınız gözlənilir",
       "WAITING_MODERATOR": "Moderatorda",
       "CLOSED": "Bağlı"
-    }
+    },
+    "title": "Dəstək",
+    "loginPrompt": "Dəstəyə yazmaq üçün daxil olun"
   },
   "codePurchase": {
     "pageTitle": "Kod alışı",
@@ -765,5 +767,10 @@
     "black": "qara",
     "green": "yaşıl",
     "gameMines": "Mines"
+  },
+  "telegram": {
+    "title": "Telegram qrupumuz",
+    "text": "Bonuslar, promokodlar və xəbərlər — hamıdan tez",
+    "join": "Qoşul"
   }
 }
