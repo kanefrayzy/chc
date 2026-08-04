@@ -76,11 +76,6 @@ export async function GameTiles({ locale }: GameTilesProps): Promise<JSX.Element
       gradient: 'from-warning/25 via-bg-card to-bg-card-hover',
       accent: 'text-warning',
       imageUrl: settings['landing.game_image_url.lottery'] || '',
-      title: locale === 'az' ? 'Poz Qazan' : 'Лотерея',
-      subtitle:
-        locale === 'az'
-          ? 'Üç eyni məbləğ — 50 000 AZN-ə qədər'
-          : 'Три одинаковые суммы — до 50 000 AZN',
     },
     {
       key: 'codes',
@@ -91,11 +86,6 @@ export async function GameTiles({ locale }: GameTilesProps): Promise<JSX.Element
       gradient: 'from-brand/25 via-bg-card to-bg-card-hover',
       accent: 'text-brand',
       imageUrl: settings['landing.game_image_url.codes'] || '',
-      title: locale === 'az' ? 'Kod al' : 'Купить код',
-      subtitle:
-        locale === 'az'
-          ? 'Kod dərhal verilir, operator gözlənilmir'
-          : 'Код выдаётся сразу, без ожидания оператора',
     },
     {
       key: 'cases',

@@ -48,6 +48,14 @@
         "title": "Klassik",
         "subtitle": "Klassik zər oyunu — tezliklə başlayır"
       },
+      "lottery": {
+        "title": "Poz Qazan",
+        "subtitle": "Üç eyni məbləğ — 50 000 AZN-ə qədər"
+      },
+      "codes": {
+        "title": "Kod al",
+        "subtitle": "Kod dərhal verilir, operator gözlənilmir"
+      },
       "cases": {
         "title": "Keyslər",
         "subtitle": "Keysləri aç və mükafatları qazan"

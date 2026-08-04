@@ -10,19 +10,57 @@ export type Locale = (typeof locales)[number];
  */
 export const defaultLocale: Locale = 'az';
 
+type Dict = Record<string, unknown>;
+
+/**
+ * Накладывает override на base. Побеждает override, но только там, где у него
+ * есть значение: ключи, которых в нём нет, остаются из base.
+ */
+function deepMerge(base: Dict, override: Dict): Dict {
+  const result: Dict = { ...base };
+  for (const key of Object.keys(override)) {
+    const bv = base[key];
+    const ov = override[key];
+    const bothObjects =
+      ov !== null &&
+      typeof ov === 'object' &&
+      !Array.isArray(ov) &&
+      bv !== null &&
+      typeof bv === 'object' &&
+      !Array.isArray(bv);
+    result[key] = bothObjects ? deepMerge(bv as Dict, ov as Dict) : ov;
+  }
+  return result;
+}
+
+/** Внутренний адрес API: конфиг грузится только на сервере. */
+function apiBaseUrl(): string {
+  return (
+    process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://api:4000'
+  );
+}
+
+/**
+ * Базой всегда служит встроенный файл, а ответ API (правки из админки) идёт
+ * поверх него. Иначе устаревший словарь из API затирает новые ключи целиком —
+ * и вместо текста на странице появляются сами ключи вида `lottery.buy`.
+ */
 async function loadMessages(locale: Locale): Promise<AbstractIntlMessages> {
-  // Try to load custom translations from API (DB override).
-  // Falls back to bundled static file if not set or on network error.
+  const bundled = ((await import(`./messages/${locale}.json`)).default ?? {}) as Dict;
   try {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
-    const res = await fetch(`${apiBase}/translations/${locale}`, { cache: 'no-store' });
+    const res = await fetch(`${apiBaseUrl()}/translations/${locale}`, {
+      cache: 'no-store',
+    });
     if (res.ok) {
-      return (await res.json()) as AbstractIntlMessages;
+      const override = (await res.json()) as Dict;
+      if (override && typeof override === 'object') {
+        return deepMerge(bundled, override) as AbstractIntlMessages;
+      }
     }
   } catch {
-    // network error — fall through to static import
+    // API недоступен — работаем на встроенном словаре
   }
-  return (await import(`./messages/${locale}.json`)).default as AbstractIntlMessages;
+  return bundled as AbstractIntlMessages;
 }
 
 export default getRequestConfig(async ({ requestLocale }) => {
