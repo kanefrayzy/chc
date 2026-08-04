@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { ArrowRightIcon, TrophyIcon } from '@/components/icons';
 import { rouletteApi, type RecentWinnerDto } from '@/lib/api/roulette';
 import { getRealtimeSocket } from '@/lib/realtime/socket';
+import { localePrefix } from '@/lib/i18n/prefix';
 
 export interface RecentWinnersProps {
   locale: string;
@@ -88,7 +89,7 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
   const [now, setNow] = useState(() => Date.now());
   const [freshKeys, setFreshKeys] = useState<Set<string>>(new Set());
   const seenKeys = useRef<Set<string> | null>(null);
-  const localePrefix = locale === 'ru' ? '' : `/${locale}`;
+  const prefix = localePrefix(locale);
 
   useEffect(() => {
     let cancelled = false;
@@ -308,7 +309,7 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
 
       <div className="border-t border-border p-3 sm:px-5">
         <Link
-          href={`${localePrefix}/roulette`}
+          href={`${prefix}/roulette`}
           className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-elevated px-3 py-2.5 text-xs font-semibold text-text-secondary transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
         >
           {t('viewAll')}

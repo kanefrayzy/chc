@@ -156,7 +156,8 @@ export function HistoryPanel({ locale }: { locale: string }): JSX.Element {
       return d.requisiteDetails?.bank ?? (d.provider === 'WESTWALLET' ? L.crypto : L.card);
     }
     if (r.kind === 'withdrawal') {
-      return r.row.destination?.kind === 'crypto' ? L.crypto : L.card;
+      // Название платёжки, а не агрегатора, через который проходит выплата
+      return r.row.methodName ?? (r.row.destination?.kind === 'crypto' ? L.crypto : L.card);
     }
     return null;
   }

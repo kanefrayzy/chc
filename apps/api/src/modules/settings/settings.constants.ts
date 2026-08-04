@@ -88,6 +88,13 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     description: 'Цена лотерейного билета в qəpik (50 = 0.50 AZN). Призы масштабируются автоматически',
   },
   {
+    key: 'online.base_count',
+    type: 'number',
+    defaultValue: 120,
+    isPublic: true,
+    description: 'База счётчика онлайна: показывается «база + реально подключённые»',
+  },
+  {
     key: 'winners.bots_enabled',
     type: 'boolean',
     defaultValue: true,

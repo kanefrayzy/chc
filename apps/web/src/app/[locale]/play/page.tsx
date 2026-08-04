@@ -4,6 +4,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { PlayPage } from '@/features/code-purchases/components/PlayPage';
 import { getServerUser } from '@/lib/api/server';
 import { getPublicSettings } from '@/lib/api/settings';
+import { localePrefix } from '@/lib/i18n/prefix';
 
 interface PlayRouteProps {
   params: { locale: string };
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
 export default async function PlayRoute({ params }: PlayRouteProps): Promise<JSX.Element> {
   const user = await getServerUser();
   if (!user) {
-    const prefix = params.locale === 'ru' ? '' : `/${params.locale}`;
+    const prefix = localePrefix(params.locale);
     redirect(`${prefix}/login`);
   }
 

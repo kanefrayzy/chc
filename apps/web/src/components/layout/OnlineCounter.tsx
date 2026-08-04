@@ -3,17 +3,22 @@
 import { useState, useEffect } from 'react';
 import { getRealtimeSocket } from '@/lib/realtime/socket';
 
-/** Базовое смещение: онлайн = 50 + реальное число WS-клиентов */
-const BASE_OFFSET = 50;
+/** Базовое смещение, если в настройках ничего не задано. */
+const DEFAULT_BASE = 120;
 
-export function OnlineCounter(): JSX.Element {
+export interface OnlineCounterProps {
+  /** Настройка `online.base_count`: онлайн = база + реальные WS-клиенты. */
+  base?: number;
+}
+
+export function OnlineCounter({ base = DEFAULT_BASE }: OnlineCounterProps): JSX.Element {
   const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {
     const socket = getRealtimeSocket();
 
     const onCount = (data: { count: number }) => {
-      setCount(BASE_OFFSET + Math.max(0, data.count));
+      setCount(base + Math.max(0, data.count));
     };
 
     socket.on('online:count', onCount);
@@ -28,7 +33,7 @@ export function OnlineCounter(): JSX.Element {
     return () => {
       socket.off('online:count', onCount);
     };
-  }, []);
+  }, [base]);
 
   if (count === null) return <></>;
 

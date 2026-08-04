@@ -26,6 +26,8 @@ export interface PublicWithdrawalDestination {
 export interface PublicWithdrawalDto {
   id: string;
   method: Withdrawal['method'];
+  /** Название платёжного метода — его и показываем игроку вместо агрегатора. */
+  methodName: string | null;
   paymentMethodId: string | null;
   status: Withdrawal['status'];
   amountMinor: string;
@@ -53,10 +55,13 @@ export function toPublicDestination(raw: unknown): PublicWithdrawalDestination {
   }
 }
 
-export function toPublicWithdrawal(w: Withdrawal): PublicWithdrawalDto {
+export function toPublicWithdrawal(
+  w: Withdrawal & { paymentMethod?: { name: string } | null },
+): PublicWithdrawalDto {
   return {
     id: w.id,
     method: w.method,
+    methodName: w.paymentMethod?.name ?? null,
     paymentMethodId: w.paymentMethodId,
     status: w.status,
     amountMinor: minorToJson(w.amountMinor),

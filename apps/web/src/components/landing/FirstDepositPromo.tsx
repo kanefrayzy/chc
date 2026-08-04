@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { GiftIcon, ArrowRightIcon } from '@/components/icons';
+import { localePrefix } from '@/lib/i18n/prefix';
 
 export interface FirstDepositPromoProps {
   locale: string;
@@ -12,8 +13,8 @@ export async function FirstDepositPromo({
   isAuthed,
 }: FirstDepositPromoProps): Promise<JSX.Element> {
   const t = await getTranslations({ locale, namespace: 'promo' });
-  const localePrefix = locale === 'ru' ? '' : `/${locale}`;
-  const href = isAuthed ? `${localePrefix}/deposit` : `${localePrefix}/register`;
+  const prefix = localePrefix(locale);
+  const href = isAuthed ? `${prefix}/deposit` : `${prefix}/register`;
 
   return (
     <Link

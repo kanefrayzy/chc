@@ -1,9 +1,14 @@
 import { getRequestConfig } from 'next-intl/server';
 import type { AbstractIntlMessages } from 'next-intl';
 
-export const locales = ['ru', 'az'] as const;
+export const locales = ['az', 'ru'] as const;
 export type Locale = (typeof locales)[number];
-export const defaultLocale: Locale = 'ru';
+/**
+ * Основной язык сайта. Живёт без префикса в URL, остальные — с префиксом.
+ * Ссылки собирайте через `localePrefix()` из `@/lib/i18n/prefix`, иначе
+ * смена этого значения тихо ломает навигацию.
+ */
+export const defaultLocale: Locale = 'az';
 
 async function loadMessages(locale: Locale): Promise<AbstractIntlMessages> {
   // Try to load custom translations from API (DB override).

@@ -330,15 +330,20 @@ export class WithdrawalsService {
     userId: string;
     limit: number;
     cursor?: string | undefined;
-  }): Promise<{ items: Withdrawal[]; nextCursor: string | null }> {
+  }): Promise<{
+    items: (Withdrawal & { paymentMethod: { name: string } | null })[];
+    nextCursor: string | null;
+  }> {
     const { userId, limit, cursor } = params;
     const take = Math.min(Math.max(limit, 1), 100);
 
+    // Метод нужен, чтобы показать игроку название платёжки, а не агрегатора
     const items = await this.prisma.withdrawal.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: take + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      include: { paymentMethod: { select: { name: true } } },
     });
 
     let nextCursor: string | null = null;

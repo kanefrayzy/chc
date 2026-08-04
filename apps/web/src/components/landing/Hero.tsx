@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { BoltIcon } from '@/components/icons';
 import { getPublicSettings } from '@/lib/api/settings';
 import { HeroCta } from './HeroCta';
+import { localePrefix } from '@/lib/i18n/prefix';
 
 export interface HeroProps {
   locale: string;
@@ -12,7 +13,7 @@ export async function Hero({ locale, isAuthed }: HeroProps): Promise<JSX.Element
   const t = await getTranslations({ locale, namespace: 'hero' });
   const settings = await getPublicSettings();
   const heroImageUrl = settings['brand.hero_image_url'] || '';
-  const localePrefix = locale === 'ru' ? '' : `/${locale}`;
+  const prefix = localePrefix(locale);
 
   return (
     <section
@@ -40,14 +41,16 @@ export async function Hero({ locale, isAuthed }: HeroProps): Promise<JSX.Element
           <p className="max-w-md text-sm text-text-secondary sm:text-base">{t('subtitle')}</p>
           <HeroCta
             showRegister={!isAuthed}
-            registerHref={`${localePrefix}/register`}
-            rouletteHref={`${localePrefix}/roulette`}
+            registerHref={`${prefix}/register`}
+            rouletteHref={`${prefix}/roulette`}
           />
         </div>
 
         {heroImageUrl ? (
-          <div className="relative hidden md:block" aria-hidden>
-            <div className="relative aspect-[16/9] w-full">
+          // На телефоне картинка идёт первой и пониже — иначе она уезжала
+          // под экран, и hero выглядел пустым
+          <div className="relative order-first lg:order-none" aria-hidden>
+            <div className="relative aspect-[16/10] max-h-52 w-full sm:max-h-72 lg:aspect-[16/9] lg:max-h-none">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={heroImageUrl}

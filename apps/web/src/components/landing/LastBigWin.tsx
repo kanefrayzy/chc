@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowRightIcon, TrophyIcon } from '@/components/icons';
 import { rouletteApi, type RecentWinnerDto } from '@/lib/api/roulette';
 import { getRealtimeSocket } from '@/lib/realtime/socket';
+import { localePrefix } from '@/lib/i18n/prefix';
 
 /** Сколько последних записей просматриваем в поисках самой крупной. */
 const SCAN_LIMIT = 15;
@@ -43,7 +44,7 @@ export interface LastBigWinProps {
 export function LastBigWin({ locale }: LastBigWinProps): JSX.Element | null {
   const [winners, setWinners] = useState<RecentWinnerDto[]>([]);
   const [now, setNow] = useState(() => Date.now());
-  const localePrefix = locale === 'ru' ? '' : `/${locale}`;
+  const prefix = localePrefix(locale);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,7 +82,7 @@ export function LastBigWin({ locale }: LastBigWinProps): JSX.Element | null {
 
   return (
     <Link
-      href={`${localePrefix}/roulette`}
+      href={`${prefix}/roulette`}
       className="group mt-4 flex items-center gap-3 rounded-2xl border border-warning/25 bg-gradient-to-r from-warning/10 via-bg-card to-bg-card px-4 py-3 transition-colors hover:border-warning/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/40"
     >
       <span

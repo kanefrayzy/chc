@@ -10,6 +10,7 @@ import {
   ScratchCardIcon,
   CodeCardIcon,
 } from '@/components/icons';
+import { localePrefix } from '@/lib/i18n/prefix';
 
 export interface GameTilesProps {
   locale: string;
@@ -31,7 +32,7 @@ interface Tile {
 }
 
 export async function GameTiles({ locale }: GameTilesProps): Promise<JSX.Element | null> {
-  const localePrefix = locale === 'ru' ? '' : `/${locale}`;
+  const prefix = localePrefix(locale);
   const t = await getTranslations({ locale, namespace: 'landing' });
   const settings = await getPublicSettings();
 
@@ -75,7 +76,7 @@ export async function GameTiles({ locale }: GameTilesProps): Promise<JSX.Element
       gradient: 'from-warning/25 via-bg-card to-bg-card-hover',
       accent: 'text-warning',
       imageUrl: settings['landing.game_image_url.lottery'] || '',
-      title: locale === 'az' ? 'Lotereya' : 'Лотерея',
+      title: locale === 'az' ? 'Poz Qazan' : 'Лотерея',
       subtitle:
         locale === 'az'
           ? 'Üç eyni məbləğ — 50 000 AZN-ə qədər'
@@ -171,7 +172,7 @@ export async function GameTiles({ locale }: GameTilesProps): Promise<JSX.Element
             return (
               <Link
                 key={tile.key}
-                href={`${localePrefix}${tile.href}`}
+                href={`${prefix}${tile.href}`}
                 className={`${baseCls} hover:border-brand/40 hover:shadow-glow hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40`}
               >
                 {tileBody}

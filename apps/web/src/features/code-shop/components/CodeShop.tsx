@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { codeShopApi, type CodeProductDto, type PurchasedCodeDto } from '@/lib/api/code-shop';
 import { ApiException } from '@/lib/api/client';
 import { CloseIcon, TicketIcon } from '@/components/icons';
+import { localePrefix } from '@/lib/i18n/prefix';
 
 function formatAzn(minor: string): string {
   const value = BigInt(minor);
@@ -41,7 +42,7 @@ export function CodeShop({
   const [justBought, setJustBought] = useState<PurchasedCodeDto | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const localePrefix = locale === 'ru' ? '' : `/${locale}`;
+  const prefix = localePrefix(locale);
 
   async function refresh(): Promise<void> {
     const [p, h] = await Promise.all([
@@ -206,7 +207,7 @@ export function CodeShop({
                       </button>
                     ) : (
                       <a
-                        href={`${localePrefix}/login`}
+                        href={`${prefix}/login`}
                         className="mt-3 block w-full rounded-xl border border-brand/40 py-3 text-center text-sm font-bold text-brand transition-colors hover:bg-brand/10"
                       >
                         Войти, чтобы купить

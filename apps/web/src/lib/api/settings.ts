@@ -4,6 +4,7 @@ export interface PublicSettings {
   'gameplay.roulette_enabled': boolean;
   'gameplay.mines_enabled': boolean;
   'gameplay.lottery_enabled': boolean;
+  'online.base_count': number;
   'gameplay.referrals_enabled': boolean;
   'gameplay.chat_enabled': boolean;
   'gameplay.ranks_enabled': boolean;
@@ -50,6 +51,7 @@ const DEFAULTS: PublicSettings = {
   'gameplay.roulette_enabled': true,
   'gameplay.mines_enabled': true,
   'gameplay.lottery_enabled': true,
+  'online.base_count': 120,
   'gameplay.referrals_enabled': true,
   'gameplay.chat_enabled': true,
   'gameplay.ranks_enabled': true,

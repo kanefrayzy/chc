@@ -4,10 +4,12 @@ import { usePathname, useRouter, useParams } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '@chcgreen/ui';
 import { ChevronDownIcon, GlobeIcon } from '@/components/icons';
+import { defaultLocale } from '@/i18n/request';
+import { localePrefix } from '@/lib/i18n/prefix';
 
 const LOCALES = [
-  { code: 'ru', label: 'RU' },
   { code: 'az', label: 'AZ' },
+  { code: 'ru', label: 'RU' },
 ] as const;
 
 type LocaleCode = (typeof LOCALES)[number]['code'];
@@ -20,7 +22,7 @@ export function LanguageSwitcher({ variant = 'sidebar' }: LanguageSwitcherProps)
   const router = useRouter();
   const pathname = usePathname() ?? '/';
   const params = useParams<{ locale?: string }>();
-  const currentLocale = (params?.locale as LocaleCode) ?? 'ru';
+  const currentLocale = (params?.locale as LocaleCode) ?? (defaultLocale as LocaleCode);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -45,7 +47,9 @@ export function LanguageSwitcher({ variant = 'sidebar' }: LanguageSwitcherProps)
     if (next === currentLocale) return;
     const segments = pathname.split('/').filter(Boolean);
     if (LOCALES.some((l) => l.code === segments[0])) segments.shift();
-    const target = `/${next}${segments.length ? '/' + segments.join('/') : ''}`;
+    // Основной язык живёт без префикса — иначе middleware будет редиректить
+    const rest = segments.length ? `/${segments.join('/')}` : '';
+    const target = `${localePrefix(next)}${rest}` || '/';
     router.push(target);
     router.refresh();
   }

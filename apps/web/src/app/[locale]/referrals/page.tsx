@@ -8,6 +8,7 @@ import { ReferralDashboard } from '@/features/referrals/components/ReferralDashb
 import { EarningsSection } from '@/features/referrals/components/EarningsSection';
 import { getServerUser } from '@/lib/api/server';
 import { referralsApi } from '@/lib/api/referrals';
+import { localePrefix } from '@/lib/i18n/prefix';
 
 interface ReferralsPageProps {
   params: { locale: string };
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: ReferralsPageProps): Promise<
 export default async function ReferralsPage({ params }: ReferralsPageProps): Promise<JSX.Element> {
   const user = await getServerUser();
   if (!user) {
-    const prefix = params.locale === 'ru' ? '' : `/${params.locale}`;
+    const prefix = localePrefix(params.locale);
     redirect(`${prefix}/login`);
   }
 
@@ -39,7 +40,7 @@ export default async function ReferralsPage({ params }: ReferralsPageProps): Pro
   const h = headers();
   const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'localhost:3000';
   const proto = h.get('x-forwarded-proto') ?? 'http';
-  const prefix = params.locale === 'ru' ? '' : `/${params.locale}`;
+  const prefix = localePrefix(params.locale);
   const shareUrl = `${proto}://${host}${prefix}/register?ref=${summary.referralCode}`;
 
   const t = await getTranslations({ locale: params.locale, namespace: 'referrals' });

@@ -27,6 +27,7 @@ import { SidebarDrawer } from './SidebarDrawer';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { SocialLinks } from './SocialLinks';
 import { OnlineCounter } from './OnlineCounter';
+import { localePrefix } from '@/lib/i18n/prefix';
 
 export interface SidebarProps {
   locale: string;
@@ -100,6 +101,16 @@ async function buildSections(locale: string): Promise<SidebarSection[]> {
     });
   }
 
+  // Live-игры идут первыми: сперва главная, затем всё, что играется прямо сейчас.
+  const rank = (item: SidebarItem): number => {
+    if (item.href === '/') return 0;
+    if (item.badge === 'LIVE') return 1;
+    if (item.disabled) return 4;
+    if (item.badge === 'NEW') return 2;
+    return 3;
+  };
+  games.sort((a, b) => rank(a) - rank(b));
+
   const sections: SidebarSection[] = [{ title: tSidebar('games'), items: games }];
 
   const more: SidebarItem[] = [];
@@ -154,7 +165,7 @@ async function buildSections(locale: string): Promise<SidebarSection[]> {
 }
 
 export async function Sidebar({ locale }: SidebarProps): Promise<JSX.Element> {
-  const localePrefix = locale === 'ru' ? '' : `/${locale}`;
+  const prefix = localePrefix(locale);
   const settings = await getPublicSettings();
   const siteName = settings['brand.site_name'] || process.env.NEXT_PUBLIC_SITE_NAME || 'CHCGREEN';
   const logoUrl = settings['brand.logo_url'] || '';
@@ -168,7 +179,7 @@ export async function Sidebar({ locale }: SidebarProps): Promise<JSX.Element> {
   const inner = (
     <div className="flex h-full flex-col">
       <Link
-        href={`${localePrefix}/`}
+        href={`${prefix}/`}
         className="flex items-center gap-2.5 rounded-lg px-3 pb-5 pt-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
         aria-label={siteName}
       >
@@ -187,12 +198,12 @@ export async function Sidebar({ locale }: SidebarProps): Promise<JSX.Element> {
           <span className="text-base font-extrabold tracking-wide text-text-primary">
             {siteName}
           </span>
-          <OnlineCounter />
+          <OnlineCounter base={settings['online.base_count'] ?? 120} />
         </div>
       </Link>
 
       <div className="flex-1 overflow-y-auto pr-1">
-        <SidebarNav sections={sections} localePrefix={localePrefix} />
+        <SidebarNav sections={sections} localePrefix={prefix} />
       </div>
 
       <div className="mt-4 space-y-3 border-t border-border pt-4">

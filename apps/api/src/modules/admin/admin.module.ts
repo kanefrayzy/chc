@@ -22,6 +22,7 @@ import { AdminMinesController } from './admin-mines.controller';
 import { AdminTranslationsController } from './admin-translations.controller';
 import { AdminExchangeRatesController } from './admin-exchange-rates.controller';
 import { AdminProgressiveController } from './admin-progressive.controller';
+import { AdminDepositsController } from './admin-deposits.controller';
 
 @Module({
   imports: [AuthModule, RanksModule, PaymentMethodsModule, WithdrawalsModule],
@@ -40,6 +41,7 @@ import { AdminProgressiveController } from './admin-progressive.controller';
     AdminTranslationsController,
     AdminExchangeRatesController,
     AdminProgressiveController,
+    AdminDepositsController,
   ],
   providers: [
     AdminAuditService,

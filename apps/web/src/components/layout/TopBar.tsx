@@ -12,13 +12,14 @@ import { AuthButtons } from './AuthButtons';
 import { UserMenu } from './UserMenu';
 import { RedeemCodeButton } from './RedeemCodeButton';
 import { OnlineCounter } from './OnlineCounter';
+import { localePrefix } from '@/lib/i18n/prefix';
 
 export interface TopBarProps {
   locale: string;
 }
 
 export async function TopBar({ locale }: TopBarProps): Promise<JSX.Element> {
-  const localePrefix = locale === 'ru' ? '' : `/${locale}`;
+  const prefix = localePrefix(locale);
   const user = await getServerUser();
   const settings = await getPublicSettings();
   const siteName = settings['brand.site_name'] || process.env.NEXT_PUBLIC_SITE_NAME || 'CHCGREEN';
@@ -45,7 +46,7 @@ export async function TopBar({ locale }: TopBarProps): Promise<JSX.Element> {
       <div className="flex h-16 items-center gap-2 px-3 sm:gap-3 sm:px-6">
         <SidebarToggleButton />
         <Link
-          href={`${localePrefix}/`}
+          href={`${prefix}/`}
           className="flex items-center gap-2 lg:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 rounded-lg"
           aria-label={siteName}
         >
@@ -64,7 +65,7 @@ export async function TopBar({ locale }: TopBarProps): Promise<JSX.Element> {
           </span>
         </Link>
         <div className="lg:hidden">
-          <OnlineCounter />
+          <OnlineCounter base={settings['online.base_count'] ?? 120} />
         </div>
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
@@ -73,9 +74,9 @@ export async function TopBar({ locale }: TopBarProps): Promise<JSX.Element> {
               <RedeemCodeButton />
               <BalancePill
                 locale={locale as 'ru' | 'az' | 'en'}
-                initialBalanceMinor={initialBalance}
+                initialBalanceMinor={initialBalance}
               />
-              <UserMenu username={user.username} avatarUrl={user.avatarUrl ?? null} localePrefix={localePrefix} />
+              <UserMenu username={user.username} avatarUrl={user.avatarUrl ?? null} localePrefix={prefix} />
             </>
           ) : (
             <AuthButtons />

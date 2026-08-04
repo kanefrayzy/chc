@@ -17,10 +17,14 @@ const STATUS_VARIANT: Record<WithdrawalDto['status'], 'warning' | 'info' | 'succ
   CANCELLED: 'neutral',
 };
 
+/**
+ * Запасные названия, если у заявки не сохранился платёжный метод.
+ * Игроку показываем платёжку, а не агрегатора, через который она проходит.
+ */
 const METHOD_LABEL: Record<WithdrawalDto['method'], string> = {
-  AUTO_BETATRANSFER: 'Betatransfer',
+  AUTO_BETATRANSFER: 'Карта',
   AUTO_WESTWALLET: 'USDT TRC20',
-  MANUAL_MODERATOR: 'Manual',
+  MANUAL_MODERATOR: 'Вручную',
 };
 
 export interface WithdrawalCardProps {
@@ -49,7 +53,7 @@ export function WithdrawalCard({ withdrawal, locale }: WithdrawalCardProps): JSX
       <CardHeader className="flex items-center justify-between">
         <div>
           <div className="text-xs uppercase tracking-wide text-text-muted">
-            {t('method')}: {METHOD_LABEL[withdrawal.method]}
+            {t('method')}: {withdrawal.methodName ?? METHOD_LABEL[withdrawal.method]}
           </div>
           <div className="text-lg font-semibold text-text-primary">
             {formatMinorAmount(withdrawal.amountMinor, { locale: locale as 'ru' | 'az' })}

@@ -22,6 +22,7 @@ import {
 import { getServerUser } from '@/lib/api/server';
 import { getPublicSettings } from '@/lib/api/settings';
 import { walletApi } from '@/lib/api/wallet';
+import { localePrefix } from '@/lib/i18n/prefix';
 
 export interface AppShellProps {
   locale: string;
@@ -31,7 +32,7 @@ export interface AppShellProps {
 const BN_ICON = 'h-5 w-5';
 
 export async function AppShell({ locale, children }: AppShellProps): Promise<JSX.Element> {
-  const localePrefix = locale === 'ru' ? '' : `/${locale}`;
+  const prefix = localePrefix(locale);
   const tNav = await getTranslations({ locale, namespace: 'nav' });
   const [user, settings] = await Promise.all([getServerUser(), getPublicSettings()]);
 
@@ -92,7 +93,7 @@ export async function AppShell({ locale, children }: AppShellProps): Promise<JSX
             {children}
           </main>
         </div>
-        <MobileBottomNav items={bottomItems} localePrefix={localePrefix} />
+        <MobileBottomNav items={bottomItems} localePrefix={prefix} />
         <AuthModal />
         <WalletModalHost locale={locale} initialBalanceMinor={balanceMinor} />
         {user && (

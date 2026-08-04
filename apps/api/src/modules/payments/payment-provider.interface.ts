@@ -33,7 +33,8 @@ export interface CreateDepositResult {
   /** Реквизит для перевода: номер карты / адрес кошелька */
   externalAddress?: string;
   /** Доп. данные реквизита для показа пользователю: банк, владелец, тип. */
-  requisiteDetails?: { type?: string; bank?: string; owner?: string };
+  /** `providerId` — номер заказа у провайдера, по нему платёж ищется в их панели. */
+  requisiteDetails?: { type?: string; bank?: string; owner?: string; providerId?: string };
   /** Оригинальная сумма (для крипты — конвертация AZN→USDT) */
   originalAmount?: string;
   originalCurrency?: string;

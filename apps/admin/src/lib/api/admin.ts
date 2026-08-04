@@ -199,6 +199,42 @@ export interface PayoutStatusInfo {
   updatedAt: string | null;
 }
 
+// ─── Deposits / transactions ─────────────────────────────────────────────
+
+export type DepositStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'EXPIRED'
+  | 'CANCELLED';
+
+export interface AdminDepositRow {
+  id: string;
+  username: string | null;
+  methodName: string | null;
+  provider: 'BETATRANSFER' | 'WESTWALLET';
+  status: DepositStatus;
+  amountMinor: string;
+  originalAmount: string | null;
+  originalCurrency: string | null;
+  /** Номер заказа на стороне провайдера. */
+  providerId: string | null;
+  requisite: string | null;
+  requisiteBank: string | null;
+  requisiteOwner: string | null;
+  paymentUrl: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  expiresAt: string | null;
+}
+
+export interface AdminDepositStat {
+  status: DepositStatus;
+  count: number;
+  totalMinor: string;
+}
+
 // ─── Code shop ───────────────────────────────────────────────────────────
 
 export interface AdminCodeProduct {
@@ -481,6 +517,26 @@ export const adminApi = {
         ...withCookie(opts),
       });
     },
+  },
+
+  deposits: {
+    list: (
+      params: { status?: string; provider?: string; search?: string; limit?: number; cursor?: string },
+      opts?: FetchOptions,
+    ) => {
+      const qs = new URLSearchParams();
+      if (params.status) qs.set('status', params.status);
+      if (params.provider) qs.set('provider', params.provider);
+      if (params.search) qs.set('search', params.search);
+      if (params.limit) qs.set('limit', String(params.limit));
+      if (params.cursor) qs.set('cursor', params.cursor);
+      const q = qs.toString();
+      return apiFetch<Page<AdminDepositRow>>(`/admin/deposits${q ? `?${q}` : ''}`, {
+        ...withCookie(opts),
+      });
+    },
+    stats: (opts?: FetchOptions) =>
+      apiFetch<{ items: AdminDepositStat[] }>('/admin/deposits/stats', { ...withCookie(opts) }),
   },
 
   progressive: {

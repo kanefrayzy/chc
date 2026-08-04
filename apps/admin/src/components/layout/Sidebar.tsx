@@ -41,6 +41,11 @@ const NAV: NavItem[] = [
     moderatorHidden: true,
   },
   {
+    href: '/transactions',
+    label: 'Транзакции',
+    icon: <Icon d="M3 12h18M7 8l-4 4 4 4M17 16l4-4-4-4" />,
+  },
+  {
     href: '/code-shop',
     label: 'Магазин кодов',
     icon: <Icon d="M4 7h16l-1 12H5L4 7zM9 7V5a3 3 0 016 0v2M9 12h6" />,

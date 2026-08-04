@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lotteryApi, type LotteryInfoDto, type LotteryTicketDto } from '@/lib/api/lottery';
 import { ApiException } from '@/lib/api/client';
 import { ScratchCell } from './ScratchCell';
+import { localePrefix } from '@/lib/i18n/prefix';
 
 const ERRORS: Record<string, string> = {
   INSUFFICIENT_FUNDS: 'Недостаточно средств — пополните баланс',
@@ -54,7 +55,7 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
   const [autoLeft, setAutoLeft] = useState(0);
   const [showRules, setShowRules] = useState(false);
   const autoRef = useRef(0);
-  const localePrefix = locale === 'ru' ? '' : `/${locale}`;
+  const prefix = localePrefix(locale);
 
   /** symbol → приз и множитель. */
   const prizeBySymbol = useMemo(() => {
@@ -263,7 +264,7 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
           </div>
         ) : (
           <a
-            href={`${localePrefix}/login`}
+            href={`${prefix}/login`}
             className="mt-3 block rounded-xl border border-brand/40 py-3.5 text-center text-sm font-bold text-brand transition-colors hover:bg-brand/10"
           >
             Войти, чтобы играть

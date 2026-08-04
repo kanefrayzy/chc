@@ -207,10 +207,17 @@ export class BetatransferProvider implements PaymentProvider {
         `bank=${reqData['bank_name'] ?? '—'}`,
     );
 
-    const requisiteDetails: { type?: string; bank?: string; owner?: string } = {};
+    const requisiteDetails: {
+      type?: string;
+      bank?: string;
+      owner?: string;
+      providerId?: string;
+    } = {};
     if (json.requisite?.type) requisiteDetails.type = json.requisite.type;
     if (reqData['bank_name']) requisiteDetails.bank = reqData['bank_name'] as string;
     if (reqData['card_owner']) requisiteDetails.owner = reqData['card_owner'] as string;
+    // Номер заказа на стороне Betatransfer — по нему ищут платёж в их панели
+    requisiteDetails.providerId = btId;
 
     return {
       // externalId = наш depositId: именно его Betatransfer присылает в колбэке как orderId
@@ -287,6 +294,10 @@ export class BetatransferProvider implements PaymentProvider {
     return {
       // externalId = наш depositId (orderId): его Betatransfer вернёт в webhook как orderId
       externalId: req.depositId,
+      // Номер заказа на стороне провайдера — для поиска платежа в их панели
+      ...(json.id !== undefined
+        ? { requisiteDetails: { providerId: String(json.id) } }
+        : {}),
       paymentUrl,
       originalAmount: amount,
       originalCurrency: currency,

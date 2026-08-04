@@ -10,7 +10,9 @@ import { lotteryApi } from '@/lib/api/lottery';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = { title: 'Лотерея' };
+export function generateMetadata({ params }: { params: { locale: string } }): Metadata {
+  return { title: params.locale === 'az' ? 'Poz Qazan' : 'Лотерея' };
+}
 
 export default async function LotteryPage({
   params,
@@ -40,9 +42,13 @@ export default async function LotteryPage({
           <TicketIcon className="h-5 w-5" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Лотерея</h1>
+          <h1 className="text-2xl font-bold text-text-primary">
+            {params.locale === 'az' ? 'Poz Qazan' : 'Лотерея'}
+          </h1>
           <p className="text-sm text-text-secondary">
-            Соберите три одинаковых символа и заберите приз
+            {params.locale === 'az'
+              ? 'Üç eyni məbləği toplayın və mükafatı götürün'
+              : 'Соберите три одинаковые суммы и заберите приз'}
           </p>
         </div>
       </div>

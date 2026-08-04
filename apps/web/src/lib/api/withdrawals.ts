@@ -19,6 +19,8 @@ export interface WithdrawalDestinationDto {
 export interface WithdrawalDto {
   id: string;
   method: WithdrawalMethod;
+  /** Название платёжного метода — показываем его вместо агрегатора. */
+  methodName: string | null;
   paymentMethodId: string | null;
   status: WithdrawalStatus;
   amountMinor: string;

@@ -19,10 +19,15 @@ const TIER_STYLE: Record<ProgressiveTier, { label: string; text: string; glow: s
 
 const ORDER: ProgressiveTier[] = ['GRAND', 'MAJOR', 'MINOR', 'MINI'];
 
-/** Целая часть суммы с разделителями разрядов — копейки в витрине лишние. */
-function formatWhole(minor: bigint): string {
+/**
+ * Сумма с копейками. Отчисление с одной ставки — доли копейки, поэтому без
+ * дробной части витрина выглядела бы застывшей: чтобы целое число AZN
+ * сдвинулось, нужны сотни ставок.
+ */
+function formatAmount(minor: bigint): string {
   const major = minor / 100n;
-  return major.toLocaleString('ru-RU');
+  const frac = (minor % 100n).toString().padStart(2, '0');
+  return `${major.toLocaleString('ru-RU')},${frac}`;
 }
 
 /**
@@ -79,8 +84,8 @@ function TierCell({ tier, minor }: { tier: ProgressiveTier; minor: bigint }): JS
       <span className={`text-[11px] font-extrabold uppercase tracking-[0.15em] ${style.text}`}>
         {style.label}
       </span>
-      <span className="mt-1 font-mono text-lg font-black tabular-nums text-text-primary sm:text-xl">
-        {formatWhole(shown)}
+      <span className="mt-1 font-mono text-base font-black tabular-nums text-text-primary sm:text-xl">
+        {formatAmount(shown)}
       </span>
       <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">AZN</span>
     </div>
