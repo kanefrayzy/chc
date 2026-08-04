@@ -40,7 +40,8 @@ export async function Hero({ locale, isAuthed }: HeroProps): Promise<JSX.Element
 
       <div className="relative">
         <div className="max-w-xl space-y-5 sm:space-y-6 lg:flex lg:min-h-[26rem] lg:max-w-[48%] lg:flex-col lg:justify-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-brand">
+          {/* self-start: в колонке-флексе inline-flex растягивался на всю ширину */}
+          <span className="inline-flex items-center gap-1.5 self-start rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-brand">
             <BoltIcon className="h-3.5 w-3.5" />
             {t('badge')}
           </span>

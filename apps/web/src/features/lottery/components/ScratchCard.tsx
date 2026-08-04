@@ -203,7 +203,7 @@ export function ScratchCard({ info, isAuthed, locale }: ScratchCardProps): JSX.E
               поэтому ограничение ширины ограничивает и высоту — кнопки покупки
               и «стереть всё» остаются видны на любом экране.
             */}
-            <div className="mx-auto mt-2 grid w-full max-w-[min(100%,max(180px,calc(100dvh_-_25rem)))] grid-cols-3 gap-2 sm:mt-3 lg:max-w-none">
+            <div className="mx-auto mt-2 grid w-full max-w-[min(100%,max(180px,calc(100dvh_-_26rem)))] grid-cols-3 gap-2 sm:mt-3 lg:max-w-none">
               {(ticket ? cells : Array.from({ length: 9 }, () => -1)).map((symbol, i) => {
                 const prize = prizeBySymbol.get(symbol);
                 return (
