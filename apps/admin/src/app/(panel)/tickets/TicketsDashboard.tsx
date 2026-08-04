@@ -301,7 +301,6 @@ export function TicketsDashboard({ initialTickets }: TicketsDashboardProps) {
       <div className="flex-1 overflow-hidden flex flex-col min-w-0">
         {!selectedId ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-ink-400">
-            <div className="text-4xl">💬</div>
             <p className="text-sm">Выберите диалог слева</p>
           </div>
         ) : panelLoading || !panelData ? (
@@ -353,19 +352,19 @@ export function TicketsDashboard({ initialTickets }: TicketsDashboardProps) {
                         onClick={() => handleAction('credit')}
                         className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-success/10 text-success hover:bg-success/20 transition-colors"
                       >
-                        ＋ Начислить
+                        + Начислить
                       </button>
                       <button
                         onClick={() => handleAction('debit')}
                         className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
                       >
-                        － Списать
+                        − Списать
                       </button>
                       <button
                         onClick={() => handleAction('block')}
                         className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-100 text-zinc-600 hover:bg-zinc-200 transition-colors"
                       >
-                        🚫 Бан
+                        Бан
                       </button>
                     </div>
                   )}

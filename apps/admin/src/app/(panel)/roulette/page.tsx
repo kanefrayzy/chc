@@ -76,7 +76,7 @@ export default async function RoulettePage() {
       {belowTarget && (
         <div className="mb-6 rounded-2xl border border-orange-200 bg-orange-50 px-5 py-4">
           <p className="text-sm font-semibold text-orange-700">
-            ⚠ GGR% за сегодня ({todayGgrPct.toFixed(1)}%) ниже целевого показателя ({currentHouseEdgePct}%).
+            Внимание: GGR% за сегодня ({todayGgrPct.toFixed(1)}%) ниже целевого показателя ({currentHouseEdgePct}%).
             Используйте принудительный цвет для управления балансом раундов.
           </p>
         </div>

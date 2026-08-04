@@ -6,8 +6,8 @@ import { cn } from '@chcgreen/ui';
 import { ChevronDownIcon, GlobeIcon } from '@/components/icons';
 
 const LOCALES = [
-  { code: 'ru', label: 'RU', flag: '🇷🇺' },
-  { code: 'az', label: 'AZ', flag: '🇦🇿' },
+  { code: 'ru', label: 'RU' },
+  { code: 'az', label: 'AZ' },
 ] as const;
 
 type LocaleCode = (typeof LOCALES)[number]['code'];

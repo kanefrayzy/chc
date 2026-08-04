@@ -26,7 +26,6 @@ interface StatProps {
   unit?: string;
   hint?: string;
   accent?: 'brand' | 'info' | 'warning' | 'default';
-  icon: string;
 }
 
 const ACCENT: Record<NonNullable<StatProps['accent']>, string> = {
@@ -36,11 +35,10 @@ const ACCENT: Record<NonNullable<StatProps['accent']>, string> = {
   default: 'text-text-primary',
 };
 
-function StatCard({ label, value, unit, hint, accent = 'default', icon }: StatProps): JSX.Element {
+function StatCard({ label, value, unit, hint, accent = 'default' }: StatProps): JSX.Element {
   return (
     <div className="rounded-xl border border-border bg-bg-card p-4 transition-colors hover:border-border-strong">
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
-        <span aria-hidden>{icon}</span>
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
         {label}
       </div>
       <div className={`mt-2 font-mono text-2xl font-black tabular-nums ${ACCENT[accent]}`}>
@@ -124,20 +122,17 @@ export function ReferralDashboard({
       {/* Показатели */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard
-          icon="👥"
           label="Рефералов"
           value={String(summary.referralsCount)}
           hint="Всего по вашей ссылке"
         />
         <StatCard
-          icon="💳"
           label="С депозитом"
           value={String(summary.ftdCount)}
           hint={`Конверсия ${conversion}%`}
           accent="info"
         />
         <StatCard
-          icon="📈"
           label="Заработано"
           value={formatAzn(summary.totalEarningsMinor)}
           unit="AZN"
@@ -145,21 +140,18 @@ export function ReferralDashboard({
           accent="brand"
         />
         <StatCard
-          icon="💰"
           label="Их депозиты"
           value={formatWhole(summary.depositsMinor)}
           unit="AZN"
           hint={`${summary.depositsCount} ${summary.depositsCount === 1 ? 'пополнение' : 'пополнений'}`}
         />
         <StatCard
-          icon="🎲"
           label="Их оборот"
           value={formatWhole(summary.wageredMinor)}
           unit="AZN"
           hint="Сумма всех ставок"
         />
         <StatCard
-          icon="%"
           label="Ваша ставка"
           value={pct(summary.rates.fromDepositBps)}
           hint={`и ${pct(summary.rates.fromLossBps)} от проигрыша`}
@@ -189,7 +181,7 @@ export function ReferralDashboard({
             onClick={() => void copyLink()}
             className="shrink-0 rounded-lg bg-brand px-5 py-2.5 text-sm font-bold text-bg-base transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
           >
-            {copied ? '✓ Скопировано' : 'Копировать'}
+            {copied ? 'Скопировано' : 'Копировать'}
           </button>
         </div>
         <div className="mt-2 text-[11px] text-text-muted">

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
+import { TicketIcon } from '@/components/icons';
 import { ScratchCard } from '@/features/lottery/components/ScratchCard';
 import { getServerUser } from '@/lib/api/server';
 import { getPublicSettings } from '@/lib/api/settings';
@@ -34,9 +35,9 @@ export default async function LotteryPage({
       <div className="flex items-center gap-3">
         <span
           aria-hidden
-          className="flex h-11 w-11 items-center justify-center rounded-xl bg-warning/10 text-xl ring-1 ring-warning/25"
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-warning/10 text-warning ring-1 ring-warning/25"
         >
-          🎫
+          <TicketIcon className="h-5 w-5" />
         </span>
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Лотерея</h1>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRightIcon } from '@/components/icons';
+import { ArrowRightIcon, TrophyIcon } from '@/components/icons';
 import { rouletteApi, type RecentWinnerDto } from '@/lib/api/roulette';
 import { getRealtimeSocket } from '@/lib/realtime/socket';
 
@@ -86,9 +86,9 @@ export function LastBigWin({ locale }: LastBigWinProps): JSX.Element | null {
     >
       <span
         aria-hidden
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-warning/15 text-xl ring-1 ring-warning/30"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning ring-1 ring-warning/30"
       >
-        🎁
+        <TrophyIcon className="h-5 w-5" />
       </span>
 
       <div className="min-w-0 flex-1">

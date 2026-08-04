@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { AppShell } from '@/components/layout/AppShell';
+import { TicketIcon } from '@/components/icons';
 import { CodeShop } from '@/features/code-shop/components/CodeShop';
 import { getServerUser } from '@/lib/api/server';
 import { codeShopApi, type PurchasedCodeDto } from '@/lib/api/code-shop';
@@ -34,9 +35,9 @@ export default async function CodesPage({
       <div className="flex items-center gap-3">
         <span
           aria-hidden
-          className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-xl ring-1 ring-brand/25"
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-brand ring-1 ring-brand/25"
         >
-          🎟️
+          <TicketIcon className="h-5 w-5" />
         </span>
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Покупка кода</h1>

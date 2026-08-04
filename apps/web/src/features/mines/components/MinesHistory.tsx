@@ -29,7 +29,7 @@ export function MinesHistory({ items }: MinesHistoryProps): JSX.Element {
             <li key={g.id} className="flex items-center justify-between gap-2 px-4 py-2.5 text-sm">
               <div className="flex items-center gap-2">
                 <span className={won ? 'text-brand' : g.status === 'BUSTED' ? 'text-danger' : 'text-text-muted'}>
-                  {g.status === 'BUSTED' ? '💥' : won ? '💎' : '·'}
+                  {g.status === 'BUSTED' ? '−' : won ? '+' : '·'}
                 </span>
                 <span className="font-mono text-xs text-text-muted">{g.mineCount} {t('minesShort')}</span>
               </div>

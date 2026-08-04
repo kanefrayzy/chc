@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
+import { UsersIcon } from '@/components/icons';
 import { ReferralDashboard } from '@/features/referrals/components/ReferralDashboard';
 import { EarningsSection } from '@/features/referrals/components/EarningsSection';
 import { getServerUser } from '@/lib/api/server';
@@ -48,9 +49,9 @@ export default async function ReferralsPage({ params }: ReferralsPageProps): Pro
       <div className="flex items-center gap-3">
         <span
           aria-hidden
-          className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-xl ring-1 ring-brand/25"
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-brand ring-1 ring-brand/25"
         >
-          👥
+          <UsersIcon className="h-5 w-5" />
         </span>
         <div>
           <h1 className="text-2xl font-bold text-text-primary">{t('pageTitle')}</h1>

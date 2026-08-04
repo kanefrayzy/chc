@@ -13,7 +13,7 @@ import { cn } from '../../../lib/cn';
 const GROUPS: { id: string; label: string; description: string; keys: string[] }[] = [
   {
     id: 'gameplay',
-    label: '🎮 Геймплей',
+    label: 'Геймплей',
     description: 'Включение и отключение разделов сайта',
     keys: [
       'gameplay.roulette_enabled',
@@ -28,31 +28,31 @@ const GROUPS: { id: string; label: string; description: string; keys: string[] }
   },
   {
     id: 'roulette',
-    label: '🎡 Рулетка',
+    label: 'Рулетка',
     description: 'Минимальная и максимальная ставки',
     keys: ['roulette.min_bet_minor', 'roulette.max_bet_minor'],
   },
   {
     id: 'deposit',
-    label: '💳 Депозиты',
+    label: 'Депозиты',
     description: 'Лимиты пополнения и бонус',
     keys: ['deposit.min_amount_minor', 'deposit.max_amount_minor', 'deposit.bonus_bps'],
   },
   {
     id: 'withdrawal',
-    label: '💸 Выводы',
+    label: 'Выводы',
     description: 'Лимиты на вывод средств',
     keys: ['withdrawal.min_amount_minor', 'withdrawal.manual_threshold_minor'],
   },
   {
     id: 'referral',
-    label: '🤝 Рефералы',
+    label: 'Рефералы',
     description: 'Комиссии реферальной программы',
     keys: ['referral.from_loss_bps', 'referral.from_deposit_bps', 'referral.from_win_bps'],
   },
   {
     id: 'brand',
-    label: '🏷️ Бренд',
+    label: 'Бренд',
     description: 'Название сайта, логотип и контакты',
     keys: [
       'brand.site_name',
@@ -64,7 +64,7 @@ const GROUPS: { id: string; label: string; description: string; keys: string[] }
   },
   {
     id: 'landing',
-    label: '🖼️ Лендинг',
+    label: 'Лендинг',
     description: 'Изображения плиток игр на главной странице',
     keys: [
       'landing.game_image_url.roulette',

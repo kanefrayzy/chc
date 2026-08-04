@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { codeShopApi, type CodeProductDto, type PurchasedCodeDto } from '@/lib/api/code-shop';
 import { ApiException } from '@/lib/api/client';
+import { CloseIcon, TicketIcon } from '@/components/icons';
 
 function formatAzn(minor: string): string {
   const value = BigInt(minor);
@@ -97,7 +98,7 @@ export function CodeShop({
               aria-label="Скрыть"
               className="text-text-muted transition-colors hover:text-text-primary"
             >
-              ✕
+              <CloseIcon className="h-4 w-4" />
             </button>
           </div>
           <div className="p-4">
@@ -116,7 +117,7 @@ export function CodeShop({
                 onClick={() => void copy(justBought.code, justBought.id)}
                 className="shrink-0 rounded-lg bg-brand px-5 py-3 text-sm font-bold text-bg-base transition-opacity hover:opacity-90"
               >
-                {copiedId === justBought.id ? '✓ Скопировано' : 'Копировать'}
+                {copiedId === justBought.id ? 'Скопировано' : 'Копировать'}
               </button>
             </div>
             <p className="mt-3 text-xs text-text-muted">
@@ -135,7 +136,6 @@ export function CodeShop({
 
         {products.length === 0 ? (
           <div className="mt-4 rounded-xl border border-border bg-bg-card px-4 py-12 text-center">
-            <div className="text-3xl">📭</div>
             <p className="mt-2 text-sm text-text-muted">
               Сейчас нет кодов в продаже. Загляните позже или напишите в поддержку.
             </p>
@@ -159,9 +159,9 @@ export function CodeShop({
                   <div className="flex items-start justify-between gap-2">
                     <span
                       aria-hidden
-                      className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-xl ring-1 ring-brand/25"
+                      className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-brand ring-1 ring-brand/25"
                     >
-                      🎟️
+                      <TicketIcon className="h-5 w-5" />
                     </span>
                     {out ? (
                       <span className="rounded-full bg-bg-elevated px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-text-muted ring-1 ring-border">
@@ -258,7 +258,7 @@ export function CodeShop({
                     onClick={() => void copy(h.code, h.id)}
                     className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-text-secondary transition-colors hover:border-brand/40 hover:text-brand"
                   >
-                    {copiedId === h.id ? '✓' : 'Копировать'}
+                    {copiedId === h.id ? 'Готово' : 'Копировать'}
                   </button>
                 </li>
               ))}

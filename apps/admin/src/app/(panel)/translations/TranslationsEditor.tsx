@@ -102,7 +102,7 @@ export function TranslationsEditor({ locale, initial, isCustom: initialIsCustom 
         <p className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>
       )}
       {success && (
-        <p className="rounded-lg bg-green-50 px-4 py-2 text-sm text-green-700">Сохранено ✓</p>
+        <p className="rounded-lg bg-green-50 px-4 py-2 text-sm text-green-700">Сохранено</p>
       )}
 
       <button

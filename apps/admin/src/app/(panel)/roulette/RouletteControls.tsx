@@ -173,7 +173,7 @@ export function RouletteControls({
         </div>
         {forcedColor && (
           <p className="mt-2 text-xs font-medium text-orange-500">
-            ⚠ Следующий раунд будет принудительно: {forcedColor}
+            Внимание: следующий раунд будет принудительно {forcedColor}
           </p>
         )}
       </div>
@@ -233,7 +233,7 @@ export function RouletteControls({
 
       {saved && (
         <div className="md:col-span-2 rounded-xl bg-success/10 border border-success/30 px-4 py-2 text-sm text-success font-medium">
-          ✓ {saved}
+          {saved}
         </div>
       )}
     </div>

@@ -4,8 +4,8 @@ import { useRef, useState, useTransition } from 'react';
 import { adminApi } from '../../../lib/api/admin';
 
 const ICON_CONFIGS = [
-  { key: 'mines.icon_url.gem', label: 'Кристалл', emoji: '💎' },
-  { key: 'mines.icon_url.bomb', label: 'Бомба', emoji: '💣' },
+  { key: 'mines.icon_url.gem', label: 'Кристалл' },
+  { key: 'mines.icon_url.bomb', label: 'Бомба' },
 ] as const;
 
 function IconUploadItem({
@@ -43,7 +43,6 @@ function IconUploadItem({
 
   return (
     <div className="flex items-center gap-4 py-3 border-b border-border last:border-b-0">
-      <span className="w-6 shrink-0 text-center text-xl leading-none">{config.emoji}</span>
       <span className="w-24 shrink-0 text-sm font-medium text-ink-700">{config.label}</span>
 
       <div className="h-10 w-10 shrink-0 rounded-lg border border-border bg-ink-50 overflow-hidden flex items-center justify-center">
@@ -260,7 +259,7 @@ export function MinesControls({
 
       {saved && (
         <div className="md:col-span-2 rounded-xl bg-success/10 border border-success/30 px-4 py-2 text-sm text-success font-medium">
-          ✓ {saved}
+          {saved}
         </div>
       )}
     </div>

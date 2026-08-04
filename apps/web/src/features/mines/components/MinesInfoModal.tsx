@@ -35,7 +35,7 @@ export function MinesInfoModal({ open, onClose, maxBetAzn, minBetAzn }: MinesInf
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-base font-semibold text-text-primary">
-            <span aria-hidden="true">📑</span> {t('title')}
+            {t('title')}
           </h2>
           <button
             type="button"

@@ -369,7 +369,7 @@ export function TicketConversation({
       {balanceForm && (
         <form onSubmit={submitBalanceAdjust} className="rounded-xl border border-border bg-elevated p-4 space-y-2">
           <div className="text-sm font-semibold text-ink-700">
-            {balanceForm === 'credit' ? '＋ Начислить баланс' : '－ Списать баланс'}
+            {balanceForm === 'credit' ? 'Начислить баланс' : 'Списать баланс'}
           </div>
           <input
             type="number" min="0.01" step="0.01" value={balanceAmount}
@@ -422,7 +422,7 @@ export function TicketConversation({
                 disabled={imageUploading}
                 title="Прикрепить изображение"
               >
-                {imageUploading ? '⏳' : '📎'} Изображение
+                {imageUploading ? 'Загрузка…' : 'Изображение'}
               </Button>
               {!panelMode && (
                 <>
@@ -432,7 +432,7 @@ export function TicketConversation({
                     disabled={loading || blockSuccess}
                     className="text-danger hover:text-danger"
                   >
-                    🚫 Заблокировать
+                    Заблокировать
                   </Button>
                   <Button
                     type="button" variant="ghost" size="sm"
@@ -440,7 +440,7 @@ export function TicketConversation({
                     disabled={loading}
                     className="text-success hover:text-success"
                   >
-                    ＋ Начислить
+                    Начислить
                   </Button>
                   <Button
                     type="button" variant="ghost" size="sm"
@@ -448,7 +448,7 @@ export function TicketConversation({
                     disabled={loading}
                     className="text-danger hover:text-danger"
                   >
-                    － Списать
+                    Списать
                   </Button>
                 </>
               )}

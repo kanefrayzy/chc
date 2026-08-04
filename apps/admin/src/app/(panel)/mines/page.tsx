@@ -105,7 +105,7 @@ export default async function MinesPage() {
       {belowTarget && (
         <div className="mb-6 rounded-2xl border border-orange-200 bg-orange-50 px-5 py-4">
           <p className="text-sm font-semibold text-orange-700">
-            ⚠ GGR% за сегодня ({stats.todayGgrPct.toFixed(2)}%) ниже целевого house edge
+            Внимание: GGR% за сегодня ({stats.todayGgrPct.toFixed(2)}%) ниже целевого house edge
             ({targetPct.toFixed(2)}%). Повысьте house edge или уменьшите макс. ставку.
           </p>
         </div>

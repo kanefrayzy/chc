@@ -26,7 +26,6 @@ export function DataTable<T extends { id: string }>({
   if (rows.length === 0) {
     return (
       <div className="py-16 text-center">
-        <div className="text-3xl mb-2">📭</div>
         <div className="text-sm text-ink-400 font-medium">{empty ?? 'Нет записей'}</div>
       </div>
     );

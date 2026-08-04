@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { ArrowRightIcon, TrophyIcon } from '@/components/icons';
+import { ArrowRightIcon, StarIcon, TrophyIcon } from '@/components/icons';
 import { rouletteApi, type RecentWinnerDto } from '@/lib/api/roulette';
 import { getRealtimeSocket } from '@/lib/realtime/socket';
 import { formatMinorAmount } from '@/lib/format/money';
@@ -243,9 +243,9 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
                     <span
                       aria-label="Крупнейший выигрыш"
                       title="Крупнейший выигрыш"
-                      className="absolute -right-1 -top-1 text-[11px] leading-none"
+                      className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-warning text-bg-base ring-2 ring-bg-card"
                     >
-                      👑
+                      <StarIcon className="h-2.5 w-2.5" />
                     </span>
                   )}
                 </div>
@@ -266,7 +266,7 @@ export function RecentWinners({ locale }: RecentWinnersProps): JSX.Element {
                       {badge.label}
                     </span>
                     {w.game === 'mines' && typeof w.mineCount === 'number' && (
-                      <span className="text-[10px] text-text-muted">{w.mineCount} 💣</span>
+                      <span className="text-[10px] text-text-muted">мин: {w.mineCount}</span>
                     )}
                     {w.game === 'roulette' && w.color && (
                       <span className="text-[10px] text-text-muted">{w.color}</span>

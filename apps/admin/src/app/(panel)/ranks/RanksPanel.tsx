@@ -360,21 +360,21 @@ export function RanksPanel({ initialItems }: { initialItems: AdminRankRow[] }) {
                       title="Загрузить иконку"
                       className="px-2 py-1 text-xs rounded bg-ink-100 hover:bg-ink-200 text-ink-700 disabled:opacity-50"
                     >
-                      {iconLoading && iconUploadId === r.id ? '…' : '🖼'}
+                      {iconLoading && iconUploadId === r.id ? '…' : 'Иконка'}
                     </button>
                     <button
                       onClick={() => openEdit(r)}
                       title="Редактировать"
                       className="px-2 py-1 text-xs rounded bg-ink-100 hover:bg-ink-200 text-ink-700"
                     >
-                      ✏️
+                      Изменить
                     </button>
                     <button
                       onClick={() => setDeleteId(r.id)}
                       title="Удалить"
                       className="px-2 py-1 text-xs rounded bg-red-50 hover:bg-red-100 text-red-600"
                     >
-                      🗑
+                      Удалить
                     </button>
                   </div>
                 </td>
