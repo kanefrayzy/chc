@@ -1,6 +1,6 @@
 import type { CodePurchase, Message, Ticket, User, Withdrawal, AuditLog } from '@prisma/client';
 import { minorToJson } from '@chcgreen/shared';
-import { toPublicDestination, type PublicWithdrawalDestination } from '../withdrawals/withdrawals.mapper';
+import type { PublicWithdrawalDestination } from '../withdrawals/withdrawals.mapper';
 
 export interface AdminUserRowDto {
   id: string;
@@ -38,6 +38,47 @@ export function toAdminUser(u: User): AdminUserRowDto {
   };
 }
 
+/**
+ * Реквизиты для админки — без маскировки: по ним модератор проводит выплату
+ * вручную, а по `**** 1234` заплатить нельзя. Ручки админки закрыты ролью.
+ */
+export interface AdminWithdrawalDestination extends PublicWithdrawalDestination {
+  /** Имя держателя карты, если игрок его указал. */
+  cardHolder?: string;
+}
+
+function toAdminDestination(raw: unknown): AdminWithdrawalDestination {
+  const d = raw as {
+    kind?: string;
+    cardNumber?: string;
+    cardHolder?: string;
+    walletAddress?: string;
+    network?: string;
+    details?: string;
+  };
+  switch (d?.kind) {
+    case 'card': {
+      const digits = (d.cardNumber ?? '').replace(/\D/g, '');
+      const grouped = digits.match(/.{1,4}/g)?.join(' ') ?? d.cardNumber ?? '—';
+      return {
+        kind: 'card',
+        display: grouped,
+        ...(d.cardHolder ? { cardHolder: d.cardHolder } : {}),
+      };
+    }
+    case 'crypto':
+      return {
+        kind: 'crypto',
+        display: d.walletAddress ?? '—',
+        network: d.network ?? 'TRC20',
+      };
+    case 'manual':
+      return { kind: 'manual', display: d.details ?? '—' };
+    default:
+      return { kind: 'manual', display: '—' };
+  }
+}
+
 export interface AdminWithdrawalRowDto {
   id: string;
   userId: string;
@@ -45,7 +86,7 @@ export interface AdminWithdrawalRowDto {
   method: Withdrawal['method'];
   status: Withdrawal['status'];
   amountMinor: string;
-  destination: PublicWithdrawalDestination;
+  destination: AdminWithdrawalDestination;
   reason: string | null;
   externalId: string | null;
   processedByModeratorId: string | null;
@@ -63,7 +104,7 @@ export function toAdminWithdrawal(
     method: w.method,
     status: w.status,
     amountMinor: minorToJson(w.amountMinor),
-    destination: toPublicDestination(w.destination),
+    destination: toAdminDestination(w.destination),
     reason: w.reason,
     externalId: w.externalId,
     processedByModeratorId: w.processedByModeratorId,

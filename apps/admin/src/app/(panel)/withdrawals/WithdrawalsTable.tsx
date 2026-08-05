@@ -58,6 +58,29 @@ const providerStatusLabel: Record<string, string> = {
   not_paid_timeout: 'Истёк срок обработки',
 };
 
+/** Реквизиты с кнопкой копирования — их переносят в платёжку руками. */
+function CopyableValue({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigator.clipboard.writeText(value.replace(/\s/g, '')).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        });
+      }}
+      title="Скопировать"
+      className="inline-flex items-center gap-1.5 rounded px-1 -mx-1 font-mono text-sm text-ink-900 hover:bg-ink-50"
+    >
+      {value}
+      <span className={copied ? 'text-xs text-success' : 'text-xs text-ink-400'}>
+        {copied ? '✓' : '⧉'}
+      </span>
+    </button>
+  );
+}
+
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -194,7 +217,10 @@ export function WithdrawalsTable({
             cell: (r) => (
               <div>
                 <div className="text-sm text-ink-700">{methodLabel[r.method]}</div>
-                <div className="text-xs text-ink-400 font-mono">{r.destination.display}</div>
+                <div className="font-mono text-xs text-ink-600">{r.destination.display}</div>
+                {r.destination.cardHolder && (
+                  <div className="text-xs text-ink-400">{r.destination.cardHolder}</div>
+                )}
               </div>
             ),
           },
@@ -257,7 +283,15 @@ export function WithdrawalsTable({
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <InfoRow label="Заявка" value={r.id} />
                 <InfoRow label="ID у провайдера" value={r.externalId ?? 'ещё не присвоен'} />
-                <InfoRow label="Карта получателя" value={r.destination.display} />
+                <div>
+                  <div className="text-[11px] uppercase tracking-wide text-ink-400">
+                    {r.destination.kind === 'crypto' ? 'Кошелёк получателя' : 'Карта получателя'}
+                  </div>
+                  <CopyableValue value={r.destination.display} />
+                  {r.destination.cardHolder && (
+                    <div className="text-xs text-ink-500">{r.destination.cardHolder}</div>
+                  )}
+                </div>
                 <InfoRow label="Сумма к зачислению" value={`${minorToAzn(r.amountMinor)} AZN`} />
 
                 {info && (

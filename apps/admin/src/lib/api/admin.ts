@@ -177,7 +177,13 @@ export interface AdminWithdrawalRow {
   method: 'AUTO_BETATRANSFER' | 'AUTO_WESTWALLET' | 'MANUAL_MODERATOR';
   status: WithdrawalStatus;
   amountMinor: string;
-  destination: { kind: 'card' | 'crypto' | 'manual'; display: string; network?: string };
+  /** Реквизиты приходят без маскировки — по ним модератор проводит выплату. */
+  destination: {
+    kind: 'card' | 'crypto' | 'manual';
+    display: string;
+    cardHolder?: string;
+    network?: string;
+  };
   reason: string | null;
   externalId: string | null;
   processedByModeratorId: string | null;

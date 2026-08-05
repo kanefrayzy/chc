@@ -270,6 +270,24 @@ function MethodForm({ data, onChange, error, loading, onSubmit, onCancel, submit
 
 // ── panel ───────────────────────────────────────────────────────────────
 
+/**
+ * Минимум, ниже которого Betatransfer отклоняет платёж на своей стороне
+ * (проверено запросом к их API: «Min amount is 50 AZN»). Держим как подсказку,
+ * а не как жёсткую валидацию: договорённость с провайдером может измениться.
+ */
+const BETATRANSFER_MIN_MINOR = 5000;
+
+function belowProviderFloor(m: {
+  provider: string;
+  kind: string;
+  minAmountMinor: string;
+}): boolean {
+  if (m.provider !== 'BETATRANSFER') return false;
+  if (m.kind !== 'DEPOSIT' && m.kind !== 'BOTH') return false;
+  const min = Number(m.minAmountMinor);
+  return min > 0 && min < BETATRANSFER_MIN_MINOR;
+}
+
 export function PaymentMethodsPanel({ initialItems }: { initialItems: AdminPaymentMethodRow[] }) {
   const [items, setItems] = useState<AdminPaymentMethodRow[]>(initialItems);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -441,6 +459,14 @@ export function PaymentMethodsPanel({ initialItems }: { initialItems: AdminPayme
                 <td className="px-4 py-3 text-xs text-ink-700 font-mono">{m.currency}</td>
                 <td className="px-4 py-3 text-xs text-ink-600">
                   {minorToDisplay(m.minAmountMinor)} – {m.maxAmountMinor === '0' ? '∞' : minorToDisplay(m.maxAmountMinor)}
+                  {belowProviderFloor(m) && (
+                    <div
+                      className="mt-0.5 text-[11px] text-danger"
+                      title="Betatransfer отклонит такой платёж на своей стороне"
+                    >
+                      провайдер примет только от {minorToDisplay(String(BETATRANSFER_MIN_MINOR))}
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-xs">
                   <span

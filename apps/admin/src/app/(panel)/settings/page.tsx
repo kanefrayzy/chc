@@ -22,6 +22,15 @@ export default async function SettingsPage() {
         title="Настройки"
         subtitle="Фиче-флаги, лимиты и параметры реферальной программы"
       />
+      <Alert tone="warning" className="mb-4">
+        Лимиты <code>deposit.min_amount_minor</code> и <code>deposit.max_amount_minor</code>{' '}
+        применяются только к способам оплаты без собственных лимитов. Если у способа на странице{' '}
+        <a href="/vkadm/payment-methods" className="underline">
+          «Платёжные методы»
+        </a>{' '}
+        задан свой минимум — главнее он. Betatransfer при этом не принимает платежи меньше 50 AZN:
+        сумму ниже он отклонит на своей стороне, даже если сайт её пропустит.
+      </Alert>
       <Alert tone="info" className="mb-4">
         Изменения применяются ко всем инстансам после ~1 минуты (TTL кэша). Каждое изменение
         фиксируется в audit-log.

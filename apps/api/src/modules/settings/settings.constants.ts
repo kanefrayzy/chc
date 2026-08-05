@@ -107,14 +107,17 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     type: 'string',
     defaultValue: '500',
     isPublic: true,
-    description: 'Минимальный депозит в qəpik (например, 500 = 5.00 AZN)',
+    description:
+      'Минимальный депозит в qəpik (500 = 5.00 AZN). Работает только для способов оплаты, ' +
+      'у которых свой лимит не задан: лимит способа на странице «Платёжные методы» главнее',
   },
   {
     key: 'deposit.max_amount_minor',
     type: 'string',
     defaultValue: '100000000',
     isPublic: true,
-    description: 'Максимальный депозит в qəpik',
+    description:
+      'Максимальный депозит в qəpik. Как и минимум, перебивается лимитом способа оплаты',
   },
   {
     key: 'withdrawal.min_amount_minor',
