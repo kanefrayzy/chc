@@ -25,7 +25,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AccessTokenPayload } from '../auth/auth.service';
 import { AdminTicketsService } from './admin-tickets.service';
-import { TicketMessageDto, BalanceAdjustDto } from './admin.dto';
+import { TicketMessageDto, BalanceAdjustDto, TicketStatusDto } from './admin.dto';
 import {
   toAdminTicket,
   toAdminMessage,
@@ -89,6 +89,25 @@ export class AdminTicketsController {
       userAgent: meta.userAgent,
     });
     return toAdminMessage(msg);
+  }
+
+  /** Смена статуса: открыт / в работе / ждём ответа / закрыт. */
+  @Post(':id/status')
+  async setStatus(
+    @CurrentUser() actor: AccessTokenPayload,
+    @Param('id') id: string,
+    @Body() body: TicketStatusDto,
+    @Req() req: Request,
+  ): Promise<AdminTicketRowDto> {
+    const meta = clientMeta(req);
+    const t = await this.service.setStatus({
+      actorId: actor.sub,
+      ticketId: id,
+      status: body.status,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+    return toAdminTicket(t as never);
   }
 
   @Post(':id/close')

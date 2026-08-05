@@ -610,6 +610,11 @@ export const adminApi = {
     },
     close: (id: string) =>
       apiFetch<AdminTicketRow>(`/admin/tickets/${id}/close`, { method: 'POST' }),
+    setStatus: (id: string, status: TicketStatus) =>
+      apiFetch<AdminTicketRow>(`/admin/tickets/${id}/status`, {
+        method: 'POST',
+        body: { status },
+      }),
     balanceAdjust: (id: string, body: { amountMinor: string; reason: string }) =>
       apiFetch<{ balanceAfterMinor: string }>(`/admin/tickets/${id}/balance-adjust`, { method: 'POST', body }),
   },

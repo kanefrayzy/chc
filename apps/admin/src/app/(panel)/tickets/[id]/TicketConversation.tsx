@@ -22,7 +22,25 @@ interface TicketConversationProps {
   externalAction?: { type: 'block' | 'credit' | 'debit'; key: number } | null;
   /** Колбэк после успешной корректировки баланса */
   onBalanceUpdated?: (newBalanceMinor: string) => void;
+  /** Колбэк после смены статуса — чтобы список и шапка обновились */
+  onStatusChanged?: (status: TicketStatus) => void;
 }
+
+/** Статусы в порядке жизненного цикла тикета. */
+const STATUS_OPTIONS: { value: TicketStatus; label: string; activeClass: string }[] = [
+  { value: 'OPEN', label: 'Открыт', activeClass: 'border-info bg-info/10 text-info' },
+  {
+    value: 'WAITING_MODERATOR',
+    label: 'В работе',
+    activeClass: 'border-danger bg-danger/10 text-danger',
+  },
+  {
+    value: 'WAITING_USER',
+    label: 'Ждём ответа',
+    activeClass: 'border-accent bg-accent/10 text-accent-dark',
+  },
+  { value: 'CLOSED', label: 'Закрыт', activeClass: 'border-ink-400 bg-ink-100 text-ink-700' },
+];
 
 export function TicketConversation({
   ticketId,
@@ -33,6 +51,7 @@ export function TicketConversation({
   panelMode = false,
   externalAction,
   onBalanceUpdated,
+  onStatusChanged,
 }: TicketConversationProps) {
   const [messages, setMessages] = useState(initialMessages);
   const [body, setBody] = useState('');
@@ -56,6 +75,10 @@ export function TicketConversation({
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [balanceSuccess, setBalanceSuccess] = useState<string | null>(null);
+
+  // Смена статуса тикета
+  const [statusSaving, setStatusSaving] = useState<TicketStatus | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   // Загрузка изображения
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -297,8 +320,54 @@ export function TicketConversation({
     }
   }
 
+  async function changeStatus(next: TicketStatus): Promise<void> {
+    if (next === status || statusSaving) return;
+    setStatusSaving(next);
+    setStatusError(null);
+    try {
+      const updated = await adminApi.tickets.setStatus(ticketId, next);
+      setStatus(updated.status);
+      onStatusChanged?.(updated.status);
+    } catch (e) {
+      setStatusError(e instanceof ApiException ? e.message : 'Не удалось сменить статус');
+    } finally {
+      setStatusSaving(null);
+    }
+  }
+
   return (
     <div className={panelMode ? 'flex flex-col h-full' : 'flex flex-col gap-3'}>
+      {/* Статус тикета: переключается в один клик, закрытый можно вернуть в работу */}
+      <div
+        className={cn(
+          'flex flex-wrap items-center gap-1.5',
+          panelMode ? 'flex-shrink-0 border-b border-border px-4 py-2' : 'pb-1',
+        )}
+      >
+        <span className="mr-1 text-xs font-medium text-ink-500">Статус:</span>
+        {STATUS_OPTIONS.map((opt) => {
+          const active = status === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => void changeStatus(opt.value)}
+              disabled={statusSaving !== null}
+              aria-pressed={active}
+              className={cn(
+                'rounded-lg border px-2.5 py-1 text-xs font-semibold transition disabled:opacity-50',
+                active
+                  ? opt.activeClass
+                  : 'border-border bg-surface text-ink-500 hover:bg-ink-50',
+              )}
+            >
+              {statusSaving === opt.value ? '…' : opt.label}
+            </button>
+          );
+        })}
+        {statusError && <span className="text-xs text-danger">{statusError}</span>}
+      </div>
+
       {/* Список сообщений */}
       <div ref={listRef} className={panelMode ? 'flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3 pr-1' : 'space-y-3 max-h-[60vh] overflow-y-auto pr-1'}>
         {hasMore && (
@@ -459,8 +528,8 @@ export function TicketConversation({
           </div>
         </form>
       ) : (
-        <div className="text-center text-sm text-ink-500 py-4 border-t border-border">
-          Тикет закрыт
+        <div className="border-t border-border py-4 text-center text-sm text-ink-500">
+          Тикет закрыт. Чтобы ответить, верните его в работу кнопкой выше.
         </div>
       )}
       </div>{/* end bottom section wrapper */}

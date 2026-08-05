@@ -29,6 +29,11 @@ export const TicketMessageSchema = z.object({
 });
 export class TicketMessageDto extends createZodDto(TicketMessageSchema) {}
 
+export const TicketStatusSchema = z.object({
+  status: z.enum(['OPEN', 'WAITING_MODERATOR', 'WAITING_USER', 'CLOSED']),
+});
+export class TicketStatusDto extends createZodDto(TicketStatusSchema) {}
+
 export const ApproveWithdrawalSchema = z.object({
   externalId: z.string().trim().max(200).optional(),
   note: z.string().trim().max(500).optional(),

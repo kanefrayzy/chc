@@ -182,6 +182,14 @@ export function TicketsDashboard({ initialTickets }: TicketsDashboardProps) {
     setPanelBalance(newBalanceMinor);
   };
 
+  /** Статус сменили в переписке — обновляем и список слева, и шапку панели. */
+  const handleStatusChanged = (status: AdminTicketRow['status']) => {
+    const id = panelData?.ticket.id;
+    if (!id) return;
+    setTickets((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
+    setPanelData((prev) => (prev ? { ...prev, ticket: { ...prev.ticket, status } } : prev));
+  };
+
   const unreadCount = tickets.filter((t) => t.status === 'WAITING_MODERATOR').length;
 
   return (
@@ -393,6 +401,7 @@ export function TicketsDashboard({ initialTickets }: TicketsDashboardProps) {
                 panelMode
                 externalAction={actionType ? { type: actionType, key: actionKey } : null}
                 onBalanceUpdated={handleBalanceUpdated}
+                onStatusChanged={handleStatusChanged}
               />
             </div>
           </div>

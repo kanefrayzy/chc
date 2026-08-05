@@ -8,6 +8,13 @@ import { TicketConversation } from './TicketConversation';
 
 export const dynamic = 'force-dynamic';
 
+const STATUS_LABEL: Record<string, string> = {
+  OPEN: 'Открыт',
+  WAITING_MODERATOR: 'В работе',
+  WAITING_USER: 'Ждём ответа',
+  CLOSED: 'Закрыт',
+};
+
 export default async function TicketDetailPage({ params }: { params: { id: string } }) {
   const cookie = cookieHeaderFromRequest();
   const [ticket, messages] = await Promise.all([
@@ -23,7 +30,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
         title={`Тикет ${shortId(ticket.id, 6, 4)}`}
         subtitle={ticket.subject ?? undefined}
         back="/tickets"
-        actions={<Badge tone={statusTone}>{ticket.status}</Badge>}
+        actions={<Badge tone={statusTone}>{STATUS_LABEL[ticket.status] ?? ticket.status}</Badge>}
       />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">

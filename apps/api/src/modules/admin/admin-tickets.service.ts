@@ -9,6 +9,7 @@ import { PrismaService } from '../../common/prisma/prisma.module';
 import { debitBalance } from '../../common/balance';
 import { AdminAuditService } from './admin-audit.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import type { TicketStatus } from '@chcgreen/db';
 
 /** Потолок одной корректировки баланса из тикета — 10 000 AZN. */
 const MAX_TICKET_ADJUST_MINOR = 1_000_000n;
@@ -254,31 +255,57 @@ export class AdminTicketsService {
     return { balanceAfterMinor: updatedUser.balanceMinor.toString() };
   }
 
-  async close(params: { actorId: string; ticketId: string; ip?: string; userAgent?: string }) {
+  /**
+   * Переводит тикет в любой статус: «открыт», «в работе», «ждём ответа» или
+   * «закрыт». Раньше был только `close`, и вернуть тикет в работу из админки
+   * было нельзя. Повторная установка того же статуса ничего не меняет.
+   */
+  async setStatus(params: {
+    actorId: string;
+    ticketId: string;
+    status: TicketStatus;
+    ip?: string;
+    userAgent?: string;
+  }) {
     const t = await this.prisma.ticket.findUnique({ where: { id: params.ticketId } });
     if (!t) throw new NotFoundException('TICKET_NOT_FOUND');
-    if (t.status === 'CLOSED') return t;
+    if (t.status === params.status) return t;
+
+    const closing = params.status === 'CLOSED';
     const updated = await this.prisma.ticket.update({
       where: { id: t.id },
-      data: { status: 'CLOSED', closedAt: new Date(), moderatorId: t.moderatorId ?? params.actorId },
+      data: {
+        status: params.status,
+        // При переоткрытии дату закрытия убираем — иначе в карточке остаётся
+        // «Закрыт» у активного тикета
+        closedAt: closing ? new Date() : null,
+        moderatorId: t.moderatorId ?? params.actorId,
+      },
     });
+
     await this.audit.log({
       actorId: params.actorId,
-      action: 'ticket.close',
+      action: closing ? 'ticket.close' : 'ticket.status',
       entityType: 'ticket',
       entityId: t.id,
+      payload: { status: params.status },
       ip: params.ip,
       userAgent: params.userAgent,
     });
+
     try {
       this.realtime.emitToTicket(t.id, 'ticket:status', {
         ticketId: t.id,
-        status: 'CLOSED',
+        status: updated.status,
         closedAt: updated.closedAt?.toISOString() ?? null,
       });
     } catch {
       // не блокируем
     }
     return updated;
+  }
+
+  async close(params: { actorId: string; ticketId: string; ip?: string; userAgent?: string }) {
+    return this.setStatus({ ...params, status: 'CLOSED' });
   }
 }
